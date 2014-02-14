@@ -1,0 +1,99 @@
+Downloading the F/RPKM data
+===========================
+
+Here, we download data from various public sources and extract the brain, heart and kidney samples.
+
+"HPA": Human Protein Atlas
+```{r}
+temp <- tempfile()
+download.file(url="http://www.proteinatlas.org/download/rna.csv.zip",destfile=temp)
+hpa <- read.csv(unz(temp, "rna.csv"))
+unlink(temp)
+
+hpa.heart <- hpa[hpa$Sample=="heart muscle", c("Gene", "Value")]
+hpa.brain <- hpa[hpa$Sample=="cerebral cortex", c("Gene", "Value")]
+hpa.kidney <- hpa[hpa$Sample=="kidney", c("Gene", "Value")]
+
+hpa.fpkms <- merge(hpa.heart, hpa.brain, by="Gene")
+hpa.fpkms <- merge(hpa.fpkms, hpa.kidney, by="Gene")
+colnames(hpa.fpkms) <- c("ENSG_ID", "HPA_heart", "HPA_brain", "HPA_kidney")
+```
+
+Check if the identifiers are unique and write table to file.
+```{r}
+length(hpa.fpkms[,1])
+length(unique(hpa.fpkms[,1]))
+
+write.table(hpa.fpkms,file="hpa_fpkms.txt",quote=F,sep="\t")
+```
+
+"Altiso": Alternative isoform regulation in human tissue transcriptomes
+```{r}
+temp <- tempfile()
+download.file(url="http://genes.mit.edu/burgelab/Supplementary/wang_sandberg08/hg18.ensGene.CEs.rpkm.txt",destfile=temp)
+altiso <- read.delim(temp, sep="\t")
+unlink(temp)
+
+There is no kidney sample here, so just use heart + brain
+
+```{r}
+altiso.fpkms <- altiso[,c("X.Gene","heart","brain")]
+colnames(altiso.fpkms) <- c("ENSG_ID", "AltIso_heart", "AltIso_brain")
+```
+
+Check uniqueness of IDs.
+
+```{r}
+length(altiso.fpkms[,1])
+length(unique(altiso.fpkms[,1]))
+
+write.table(altiso.fpkms,file="altiso_fpkms.txt",quote=F,sep="\t")
+```
+
+"GTEx": Genotype-Tissue Expression
+
+This is a big download: 337.8 Mb (as of 2014-02-04)
+We also add some code to randomly select one sample from each tissue type; there are many biological replicates in this data set.
+
+```{r}
+temp <- tempfile()
+download.file(url="http://www.broadinstitute.org/gtex/rest/file/download?portalFileId=119363&forDownload=true",destfile=temp)
+header_lines <- readLines(temp, n=2)
+gtex <- read.delim(temp, skip=2, sep="\t")
+unlink(temp)
+
+download.file(url="http://www.broadinstitute.org/gtex/rest/file/download?portalFileId=119273&forDownload=true",destfile="GTEx_description.txt")
+
+metadata <- read.delim("GTEx_description.txt", sep="\t")
+```
+
+Select random heart, kidney and brain samples.
+
+```{r}
+random.heart <- sample(which(metadata$SMTS=="Heart"), size=1)
+random.heart.samplename <- metadata[random.heart, "SAMPID"]
+gtex.heart.fpkm <- as.numeric(gtex[,random.heart])
+
+random.brain <- sample(which(metadata$SMTS=="Brain"), size=1)
+random.brain.samplename <- metadata[random.heart, "SAMPID"]
+gtex.brain.fpkm <- as.numeric(gtex[,random.brain])
+
+random.kidney <- sample(which(metadata$SMTS=="Kidney"), size=1)
+random.kidney.samplename <- metadata[random.kidney, "SAMPID"]
+gtex.kidney.fpkm <- as.numeric(gtex[,random.kidney])
+```
+
+Get gene IDs on same format as the other data sets by removing the part after the dot; check ID uniqueness and write to file.
+
+```{r}
+gtex.names <- gtex[,"Name"]
+temp_list <- strsplit(as.character(gtex.names), split="\\.")
+gtex.names.nodot <- unlist(temp_list)[2*(1:length(gtex.names))-1]
+
+gtex.fpkms <- data.frame(ENSG_ID=gtex.names.nodot, GTEx_heart=gtex.heart.fpkm, GTEx_brain=gtex.brain.fpkm,GTEx_kidney=gtex.kidney.fpkm)
+
+length(gtex.fpkms[,1])
+length(unique(gtex.fpkms[,1]))
+
+write.table(gtex.fpkms,file="gtex_fpkms.txt",quote=F,sep="\t")
+```
