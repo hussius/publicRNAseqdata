@@ -1,0 +1,154 @@
+Comparing reprocessed RNA-seq data
+========================================================
+
+FASTQ files have been downloaded and TopHat and HTSeq have been used to produce count tables as described elsewhere. (TODO: include link to Gist)
+
+Prepare by loading libraries and defining functions.
+
+```{r prepare}
+library(edgeR)
+library(pheatmap)
+library(ops)
+library(calibrate)
+
+normalize.voom <- function(counts){
+  require(limma)
+	return(voom(counts)$E)
+}
+ 
+cpm.tmm <- function(counts, groups=NA){
+	require(edgeR)
+	if(is.na(groups)){
+		d<-DGEList(counts=counts)
+	}
+	else{
+		d<-DGEList(counts=counts, group=groups)
+	}
+	d <- calcNormFactors(d, method="TMM") 
+	return(cpm(d, normalized.lib.sizes=TRUE))
+}
+
+do.SVD = function(m, comp.1=1, comp.2=2){ # returns eig.cell
+  s <- svd(m)
+	ev <- s$d^2 / sum(s$d^2)
+	return(s$u[,c(comp.1, comp.2)])
+}
+
+project.SVD <- function(m, eig.cell){
+	return(t(m) %*% eig.cell)
+}
+
+plot.SVD <- function(m, comp.1=1, comp.2=2, groups=rep("blue", ncol(m)), title=""){
+	eig <- do.SVD(m, comp.1, comp.2)
+	proj <- project.SVD(m, eig)
+	xminv <- min(proj[,1]) # - .2 * abs(min(proj[,1]))
+	xmaxv <- max(proj[,1]) # + .2 * abs(max(proj[,1]))
+	yminv <- min(proj[,2]) # - .2 * abs(min(proj[,2]))
+	ymaxv <- max(proj[,2]) # + .2 * abs(max(proj[,2]))
+	plot(proj,pch=20,col="white",xlim=c(xminv,xmaxv),ylim=c(yminv,ymaxv),xaxt='n',yaxt='n',xlab="PC1",ylab="PC2",main=title)
+	
+	points(proj, col=as.character(groups),pch=20) # , #pch=c(rep(15,3),rep(17,3),rep(19,3),rep(18,3),rep(20,2)), cex=2)
+	textxy(proj[,1],proj[,2],labs=colnames(m))
+}
+
+loadings.SVD <- function(m, comp=1, gene.ids = rownames(m)){
+	s <- svd(m)
+	l <- s$u[,comp]
+	names(l) <- gene.ids
+	l.s <- l[order(l)]
+	return(l.s)
+}
+
+plot.loadings.SVD <- function(m, comp=1, cutoff=0.1, gene.ids = rownames(m)){
+	l <- loadings.SVD(m, comp, gene.ids)
+	barplot(l[abs(l)>cutoff],las=2,main=paste("PC", comp, "cutoff", cutoff),cex.names=0.6)
+}
+```
+
+Read data. The columns in the count table have complicated names which we will replace for clarity.
+
+```{r load-data}
+counts <- read.delim("count_table.txt",row.names=1)
+colnames(counts)<-c("EoEG_brain_TH","EoEG_heart_TH","EoEG_kidney_TH","Atlas_brain_TH","Atlas_heart_TH","Atlas_kidney_TH","BodyMap_brain_TH","BodyMap_heart_TH","BodyMap_kidney_TH","HPA_brain_TH","HPA_heart_TH","HPA_kidney_TH","Wang_brain_TH","Wang_heart_TH")
+colors <- c("blue","red","black","blue","red","black","blue","red","black","blue","red","black","blue","red")
+```
+Make various preprocessed versions: OPS (optimal power space transform), voom (log2 transform), CPM-TMM (edgeR), log2-CPM-TMM.
+
+```{r transform-counts}
+p<-findP(counts)$maxIQR
+ops.counts <- counts^p
+tmm <- cpm.tmm(counts)
+voom <- normalize.voom(counts)
+dual <- normalize.voom(tmm)
+```
+
+SVD plots on the raw, logged, TMMed and logCPM-TMM preprocessed counts.
+
+```{r plot-svd}
+plotPC <- function(matrix,a,b,desc){
+eig <- do.SVD(matrix, a, b)
+proj <- project.SVD(matrix, eig)
+xminv <- min(proj[,1]) - .2 * abs(min(proj[,1]))
+xmaxv <- max(proj[,1]) + .2 * abs(max(proj[,1]))
+yminv <- min(proj[,2]) - .2 * abs(min(proj[,2]))
+ymaxv <- max(proj[,2]) + .2 * abs(max(proj[,2]))
+plot(proj,pch=20,xlim=c(xminv,xmaxv),ylim=c(yminv,ymaxv),xaxt='n',yaxt='n',xlab=paste0("PC",a),ylab=paste("PC",b),col=colors,main=desc)
+textxy(proj[,1],proj[,2],labs=rownames(proj))
+}
+
+plotPC(counts,1,2,"Raw counts PC1,2")
+plotPC(counts,2,3,"Raw counts PC2,3")
+plotPC(voom,1,2,"Log2 counts PC1,2")
+plotPC(voom,2,3,"Log2 counts PC2,3")
+plotPC(tmm,1,2,"CPM-TMM counts PC1,2")
+plotPC(tmm,2,3,"CPM-TMM counts PC2,3")
+plotPC(dual,1,2,"logCPM-TMM PC1,2")
+plotPC(dual,2,3,"logCPM-TMM PC2,3")
+plotPC(dual,3,4,"logCPM-TMM PC3,4")
+```
+
+Calculate RPKM and TPM values. For this, we need an auxiliary file of feature lengths
+
+```{r rpkm-tpm}
+lens <- read.delim("gene_lengths.tsv", header=F, row.names=1)
+r <- rpkm(counts[,1], lens, normalized.lib.sizes=F)
+for (i in 2:ncol(counts)){
+  temp <- rpkm(counts[,i], lens, normalized.lib.sizes=F)
+  r <- cbind(r, temp)
+}
+colnames(r)<-colnames(counts)
+
+tpm <- function(vec, feat.lens, rlens){
+rg <- vec 
+fl <- feat.lens # Feature lengths
+rl <- rlens
+T <- sum(rg*rl/fl)
+tpm <- rg*rl*1e6/(fl*T)
+return(tpm)
+}
+
+readlengths <- c(76,76,76,35,35,35,152,152,152)
+featlens <- lens
+d.tpm <- tpm(counts[,1], featlens, readlengths)
+for (i in 2:ncol(counts)){
+  temp <- tpm(counts[,i], featlens, readlengths)
+  d.tpm <- cbind(d.tpm, temp)
+}
+colnames(d.tpm)<-colnames(counts)
+```
+
+Some miscellaneous plots: heatmaps of various transformed counts, RPKMs, TPMs.
+
+Heatmaps with linear corr and Spearman rank corr on raw count, optimal power space transformed counts (OPS), TMM scaled counts, logged counts, and log-TMMed counts.
+
+```{r heatmaps}
+pheatmap(cor(counts),main="Raw counts, Pearson")
+pheatmap(cor(counts,method="spearman"),main="Raw counts, Spearman")
+pheatmap(cor(ops.counts),main= "OPS counts, Pearson")
+pheatmap(cor(tmm),main="CPM-TMM, Pearson")
+pheatmap(cor(tmm, method="spearman"),main="CPM-TMM, Spearman")
+pheatmap(cor(voom),main="Log2 counts, Pearson")
+pheatmap(cor(voom,method="spearman"),main="Log2 counts, Spearman")
+pheatmap(cor(dual),main="log-CPM-TMM")
+```
+
