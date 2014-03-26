@@ -1,7 +1,7 @@
 Comparing reprocessed RNA-seq data
 ========================================================
 
-FASTQ files have been downloaded and TopHat and HTSeq have been used to produce count tables as described elsewhere. (TODO: include link to Gist)
+FASTQ files have been downloaded and TopHat and HTSeq have been used to produce count and FPKM tables tables as described elsewhere. (TODO: include link to Gist)
 
 Prepare by loading libraries and defining functions.
 
@@ -135,6 +135,48 @@ for (i in 2:ncol(counts)){
   d.tpm <- cbind(d.tpm, temp)
 }
 colnames(d.tpm)<-colnames(counts)
+```
+
+Cufflinks FPKM based analysis
+=============================
+Cufflinks produces output which occasionally has duplicate entries for genes. We need to collapse these to a single value. One might take the maximum or the sum of genes with the same ID. We choose the latter option here. 
+
+```{r:read-fpkms}
+fpkm <- read.delim("fpkm_table_tophat.txt", sep="\t")
+```
+
+```{r SumTranscripts}
+library(data.table)
+data.dt <- data.table(fpkm)
+setkey(data.dt, ENSEMBL_ID)
+temp <- data.dt[, lapply(.SD, sum), by=ENSEMBL_ID]
+collapsed <- as.data.frame(temp)
+fpkms.summed <- collapsed[,3:ncol(collapsed)] 
+rownames(fpkms.summed) <- collapsed[,1]
+write.table(fpkms.summed, file="fpkm_table_tophat_summed.txt", quote=F, sep="\t")
+```
+
+
+TMM normalization on FPKMs.
+```{r:fpkm-tmm}
+sizeF <- calcNormFactors(fpkms.summed, method="TMM") 
+fpkm.tmm <- sizeF * fpkms.summed
+fpkm.voom <- normalize.voom(fpkms.summed)
+fpkm.dual <- normalize.voom(fpkm.tmm)
+```
+
+Plot PCA/SVD for FPKMs.
+
+```{r:plot-fpkm-pc}
+plotPC(fpkms.summed,1,2,"Raw FPKM PC1,2")
+plotPC(fpkms.summed,2,3,"Raw FPKM PC2,3")
+plotPC(fpkms.summed,3,4,"Raw FPKM PC3,4")
+plotPC(fpkm.tmm,3,4,"TMM-FPKM PC1,2")
+plotPC(fpkm.tmm,3,4,"TMM-FPKM PC2,3")
+plotPC(fpkm.voom,3,4,"Log2 FPKM PC1,2")
+plotPC(fpkm.voom,3,4,"Log2 FPKM PC2,3")
+plotPC(fpkm.dual,3,4,"Log2-TMM FPKM PC1,2")
+plotPC(fpkm.dual,3,4,"Log2-TMM FPKM PC2,3")
 ```
 
 Some miscellaneous plots: heatmaps of various transformed counts, RPKMs, TPMs.

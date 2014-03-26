@@ -133,10 +133,10 @@ library(data.table) # for collapsing transcript RPKMs
 library(pheatmap) # for nicer visualization
 library(edgeR) # for TMM normalization
 
-hpa.fpkms <- read.delim("hpa_fpkms.txt")
-altiso.fpkms <- read.delim("altiso_fpkms.txt")
-gtex.fpkms <- read.delim("gtex_fpkms.txt")
-atlas.fpkms <- read.delim("atlas_fpkms.txt")
+#hpa.fpkms <- read.delim("hpa_fpkms.txt")
+#altiso.fpkms <- read.delim("altiso_fpkms.txt")
+#gtex.fpkms <- read.delim("gtex_fpkms.txt")
+#atlas.fpkms <- read.delim("atlas_fpkms.txt")
 ```
 
 The RNA-seq Atlas data set uses many different identifiers, while the other all use ENSG as the primary identifier
@@ -199,6 +199,7 @@ fpkms <- merge(fpkms, atlas.fpkms.summed, by.x="ENSG_ID", by.y=0)
 gene_id <- fpkms[,1]
 f <- fpkms[,2:ncol(fpkms)]
 rownames(f) <- gene_id
+write.table(f, file = 'published_rpkms.txt', quote=F)
 ```
 
 Check how many ENSG IDs we have left.
@@ -272,11 +273,15 @@ colors <- c(1,2,3,1,2,1,2,3,1,2,3)
 
 p <- prcomp(t(f.log))
 
+s <- svd(f.log)
+
 par(mfrow=c(4,4))
 for (i in 1:6){
 	for(j in 1:6){
 		if (i<j){ 
-		plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
+      eig.cell <- s$u[,c(i, j)]
+      proj <- t(f) %*% eig.cell
+		  plot(proj[,1],proj[,2],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
 		}
 	}
 }
@@ -298,3 +303,4 @@ for (i in 1:6){
 		}
 	}
 }
+
