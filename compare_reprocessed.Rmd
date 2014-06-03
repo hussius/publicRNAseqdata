@@ -107,6 +107,66 @@ plotPC(dual,2,3,"logCPM-TMM PC2,3")
 plotPC(dual,3,4,"logCPM-TMM PC3,4")
 ```
 
+ANOVA as for published RPKMs.
+
+```{r:anova-counts}
+library(reshape)
+m <- melt(counts)
+colnames(m) <- c("sample_ID","count")
+meta <- data.frame(tissue=c(rep(c("brain","heart","kidney"),4),"brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
+rownames(meta) <- colnames(counts)
+tissue <- rep(meta$tissue, each=nrow(counts))
+study <- rep(meta$study, each=nrow(counts))
+prep <- rep(meta$prep, each=nrow(counts))
+layout <- rep(meta$layout, each=nrow(counts))
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(count ~ prep + layout + study + tissue, data=data)
+a <- anova(fit)
+```
+Revisit Anova with log-TMMed and combated values.
+
+```{r:anova2}
+m <- melt(dual)
+colnames(m) <- c("gene_ID","sample_ID","logTMM")
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(logTMM ~ + prep + layout + study + tissue, data=data)
+b <- anova(fit)
+
+m <- melt(combat)
+colnames(m) <- c("gene_ID","sample_ID","combatlogTMM")
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(combatlogTMM ~ prep + layout + study + tissue, data=data)
+d <- anova(fit)
+```
+
+Plot results
+```{r:plot-anova3}
+pdf("anova_repr_counts.pdf")
+par(mfrow=c(3,1))
+barplot(a$"F value",names.arg=rownames(a),main="Anova F score, Raw counts")
+barplot(b$"F value",names.arg=rownames(b),main="Anova F score, voom-TMM counts")
+barplot(d$"F value",names.arg=rownames(d),main="Anova F score, ComBat on voom-TMM")
+dev.off()
+```
+
+```{r:combat}
+library(sva)
+meta <- data.frame(study=c(rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HPA",3),rep("AltIso",2)),tissue=c("Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart"))
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue),data=meta)
+# Combat fails unless we remove low/unexpressed genes
+combat <- ComBat(dat=dual,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+plotPC(combat,1,2,"ComBat/dual")
+combat <- ComBat(dat=voom,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+plotPC(combat,1,2,"ComBat/voom")
+```
+
 Calculate RPKM and TPM values. For this, we need an auxiliary file of feature lengths
 
 ```{r rpkm-tpm}
@@ -177,6 +237,65 @@ plotPC(fpkm.voom,3,4,"Log2 FPKM PC1,2")
 plotPC(fpkm.voom,3,4,"Log2 FPKM PC2,3")
 plotPC(fpkm.dual,3,4,"Log2-TMM FPKM PC1,2")
 plotPC(fpkm.dual,3,4,"Log2-TMM FPKM PC2,3")
+```
+ANOVA on Cuff-FPKMs.
+
+```{r:anova-FPKM}
+library(reshape)
+m <- melt(fpkms.summed)
+colnames(m) <- c("sample_ID","FPKM")
+meta <- data.frame(tissue=c(rep(c("brain","heart","kidney"),4),"brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
+rownames(meta) <- colnames(fpkms.summed)
+tissue <- rep(meta$tissue, each=nrow(fpkms.summed))
+study <- rep(meta$study, each=nrow(fpkms.summed))
+prep <- rep(meta$prep, each=nrow(fpkms.summed))
+layout <- rep(meta$layout, each=nrow(fpkms.summed))
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(FPKM ~ prep + layout + study + tissue, data=data)
+a <- anova(fit)
+```
+Revisit Anova with log-TMMed and combated values.
+
+```{r:anova3}
+m <- melt(fpkm.dual)
+colnames(m) <- c("gene_ID","sample_ID","logTMMFPKM")
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(logTMMFPKM ~ + prep + layout + study + tissue, data=data)
+b <- anova(fit)
+
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue),data=meta)
+# Combat fails unless we remove low/unexpressed genes
+combat <- ComBat(dat=fpkm.dual,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+m <- melt(combat)
+colnames(m) <- c("gene_ID","sample_ID","combatlogTMMFPKM")
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(combatlogTMMFPKM ~ prep + layout + study + tissue, data=data)
+d <- anova(fit)
+```
+
+Plot results
+```{r:plot-anova2}
+pdf("anova_repr_FPKM.pdf")
+par(mfrow=c(3,1))
+barplot(a$"F value",names.arg=rownames(a),main="Anova F score, Raw counts")
+barplot(b$"F value",names.arg=rownames(b),main="Anova F score, voom-TMM counts")
+barplot(d$"F value",names.arg=rownames(d),main="Anova F score, ComBat on voom-TMM")
+dev.off()
+```
+
+Cufflinks on protein coding genes only:
+
+```{r:cuff-protcod}
+prot <- read.delim("cufflinks_data_protein_coding.txt")
+pnum <- prot[,3:ncol(prot)]
+rownames(pnum) <- prot[,1]
 ```
 
 Some miscellaneous plots: heatmaps of various transformed counts, RPKMs, TPMs.

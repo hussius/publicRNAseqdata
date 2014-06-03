@@ -211,8 +211,11 @@ dim(f)
 This looks much better. Let's proceed with this version of the data set. Start by a few correlation heat maps:
 
 ```{r}
+f <- read.delim("published_rpkms.txt",sep=" ")
 pheatmap(cor(f))
 ```
+
+
 
 Let's try Spearman correlation:
 
@@ -303,4 +306,82 @@ for (i in 1:6){
 		}
 	}
 }
+```
+
+Try ComBat.
+
+```{r:combat}
+library(sva)
+meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas",3)),tissue=c("Heart","Brain","Kidney","Heart","Brain","Heart","Brain","Kidney","Heart","Brain","Kidney"))
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue),data=meta)
+# Combat fails unless we remove low/unexpressed genes
+tmm <- cpm.tmm(f)
+log.tmm <- normalize.voom(tmm)
+combat <- ComBat(dat=log.tmm,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+
+pheatmap(cor(combat))
+
+s <- svd(combat)
+#s <- svd(f.nolow.tmm)
+
+par(mfrow=c(4,4))
+for (i in 1:6){
+  for(j in 1:6){
+		if (i<j){ 
+      eig.cell <- s$u[,c(i, j)]
+      proj <- t(combat) %*% eig.cell
+		  plot(proj[,1],proj[,2],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
+		}
+	}
+}
+```
+
+Try Anova on a "melted" expression matrix with some metadata:
+
+```{r:anova}
+library(reshape)
+m <- melt(f)
+colnames(m) <- c("sample_ID","RPKM")
+meta <- data.frame(tissue=c("heart","brain","kidney","heart","brain","heart","brain","kidney","heart","brain","kidney"),study=c("HPA","HPA","HPA","AltIso","AltIso","GTex","GTex","GTex","Atlas","Atlas","Atlas"),prep=c(rep("poly-A",8),rep("rRNA-depl",3)),layout=c(rep("PE",3),rep("SE",2),rep("PE",3),rep("SE",3)))
+rownames(meta) <- colnames(f)
+tissue <- rep(meta$tissue, each=nrow(f))
+study <- rep(meta$study, each=nrow(f))
+prep <- rep(meta$prep, each=nrow(f))
+layout <- rep(meta$layout, each=nrow(f))
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(RPKM ~ prep + layout + study + tissue, data=data)
+a <- anova(fit)
+```
+Revisit Anova with log-TMMed and combated values.
+
+```{r:anova2}
+m <- melt(log.tmm)
+colnames(m) <- c("gene_ID","sample_ID","logTMMRPKM")
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(logTMMRPKM ~ + prep + layout + study + tissue, data=data)
+b <- anova(fit)
+
+m <- melt(combat)
+colnames(m) <- c("gene_ID","sample_ID","combatlogTMMRPKM")
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(combatlogTMMRPKM ~ prep + layout + study + tissue, data=data)
+d <- anova(fit)
+```
+
+Plot results
+```{r:plot-anova}
+pdf("anova.pdf")
+par(mfrow=c(3,1))
+barplot(a$"F value",names.arg=rownames(a),main="Anova F score, Raw RPKM")
+barplot(b$"F value",names.arg=rownames(b),main="Anova F score, voom-TMM")
+barplot(d$"F value",names.arg=rownames(d),main="Anova F score, ComBat on voom-TMM")
+dev.off()
+```
 
