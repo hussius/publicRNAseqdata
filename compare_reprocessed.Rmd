@@ -85,7 +85,7 @@ dual <- normalize.voom(tmm)
 SVD plots on the raw, logged, TMMed and logCPM-TMM preprocessed counts.
 
 ```{r plot-svd}
-plotPC <- function(matrix,a,b,desc){
+plotPC <- function(matrix,a,b,desc,colors){
 eig <- do.SVD(matrix, a, b)
 proj <- project.SVD(matrix, eig)
 xminv <- min(proj[,1]) - .2 * abs(min(proj[,1]))

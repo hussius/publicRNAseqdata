@@ -1,6 +1,111 @@
 Downloading the F/RPKM data
 ---------------------------
 
+Prepare by defining functions etc.
+
+```r
+library(edgeR)
+```
+
+```
+## Loading required package: limma
+```
+
+```r
+library(pheatmap)
+library(ops)
+```
+
+```
+## 
+## Attaching package: 'ops'
+## 
+## The following object is masked from 'package:stats':
+## 
+##     filter
+```
+
+```r
+library(calibrate)
+```
+
+```
+## Loading required package: MASS
+```
+
+```r
+
+normalize.voom <- function(counts) {
+    require(limma)
+    return(voom(counts)$E)
+}
+
+cpm.tmm <- function(counts, groups = NA) {
+    require(edgeR)
+    if (is.na(groups)) {
+        d <- DGEList(counts = counts)
+    } else {
+        d <- DGEList(counts = counts, group = groups)
+    }
+    d <- calcNormFactors(d, method = "TMM")
+    return(cpm(d, normalized.lib.sizes = TRUE))
+}
+
+do.SVD = function(m, comp.1 = 1, comp.2 = 2) {
+    # returns eig.cell
+    s <- svd(m)
+    ev <- s$d^2/sum(s$d^2)
+    return(s$u[, c(comp.1, comp.2)])
+}
+
+project.SVD <- function(m, eig.cell) {
+    return(t(m) %*% eig.cell)
+}
+
+plot.SVD <- function(m, comp.1 = 1, comp.2 = 2, groups = rep("blue", ncol(m)), 
+    title = "") {
+    eig <- do.SVD(m, comp.1, comp.2)
+    proj <- project.SVD(m, eig)
+    xminv <- min(proj[, 1])  # - .2 * abs(min(proj[,1]))
+    xmaxv <- max(proj[, 1])  # + .2 * abs(max(proj[,1]))
+    yminv <- min(proj[, 2])  # - .2 * abs(min(proj[,2]))
+    ymaxv <- max(proj[, 2])  # + .2 * abs(max(proj[,2]))
+    plot(proj, pch = 20, col = "white", xlim = c(xminv, xmaxv), ylim = c(yminv, 
+        ymaxv), xaxt = "n", yaxt = "n", xlab = "PC1", ylab = "PC2", main = title)
+    
+    points(proj, col = as.character(groups), pch = 20)  # , #pch=c(rep(15,3),rep(17,3),rep(19,3),rep(18,3),rep(20,2)), cex=2)
+    textxy(proj[, 1], proj[, 2], labs = colnames(m))
+}
+
+loadings.SVD <- function(m, comp = 1, gene.ids = rownames(m)) {
+    s <- svd(m)
+    l <- s$u[, comp]
+    names(l) <- gene.ids
+    l.s <- l[order(l)]
+    return(l.s)
+}
+
+plot.loadings.SVD <- function(m, comp = 1, cutoff = 0.1, gene.ids = rownames(m)) {
+    l <- loadings.SVD(m, comp, gene.ids)
+    barplot(l[abs(l) > cutoff], las = 2, main = paste("PC", comp, "cutoff", 
+        cutoff), cex.names = 0.6)
+}
+
+plotPC <- function(matrix, a, b, desc, colors) {
+    eig <- do.SVD(matrix, a, b)
+    proj <- project.SVD(matrix, eig)
+    xminv <- min(proj[, 1]) - 0.2 * abs(min(proj[, 1]))
+    xmaxv <- max(proj[, 1]) + 0.2 * abs(max(proj[, 1]))
+    yminv <- min(proj[, 2]) - 0.2 * abs(min(proj[, 2]))
+    ymaxv <- max(proj[, 2]) + 0.2 * abs(max(proj[, 2]))
+    plot(proj, pch = 20, xlim = c(xminv, xmaxv), ylim = c(yminv, ymaxv), xaxt = "n", 
+        yaxt = "n", xlab = paste0("PC", a), ylab = paste("PC", b), col = colors, 
+        main = desc)
+    textxy(proj[, 1], proj[, 2], labs = rownames(proj))
+}
+```
+
+
 Here, we download data from various public sources and extract the brain, heart and kidney samples.
 
 "HPA": Human Protein Atlas
@@ -161,6 +266,10 @@ library(org.Hs.eg.db)  # for transferring gene identifiers
 ##     clusterExport, clusterMap, parApply, parCapply, parLapply,
 ##     parLapplyLB, parRapply, parSapply, parSapplyLB
 ## 
+## The following object is masked from 'package:limma':
+## 
+##     plotMA
+## 
 ## The following object is masked from 'package:stats':
 ## 
 ##     xtabs
@@ -181,6 +290,13 @@ library(org.Hs.eg.db)  # for transferring gene identifiers
 ##     'browseVignettes()'. To cite Bioconductor, see
 ##     'citation("Biobase")', and for packages 'citation("pkgname")'.
 ## 
+## 
+## Attaching package: 'AnnotationDbi'
+## 
+## The following object is masked from 'package:MASS':
+## 
+##     select
+## 
 ## Loading required package: DBI
 ```
 
@@ -188,19 +304,6 @@ library(org.Hs.eg.db)  # for transferring gene identifiers
 library(data.table)  # for collapsing transcript RPKMs
 library(pheatmap)  # for nicer visualization
 library(edgeR)  # for TMM normalization
-```
-
-```
-## Loading required package: limma
-## 
-## Attaching package: 'limma'
-## 
-## The following object is masked from 'package:BiocGenerics':
-## 
-##     plotMA
-```
-
-```r
 
 # hpa.fpkms <- read.delim('hpa_fpkms.txt') altiso.fpkms <-
 # read.delim('altiso_fpkms.txt') gtex.fpkms <- read.delim('gtex_fpkms.txt')
@@ -277,36 +380,38 @@ Check how many ENSG IDs we have left.
 
 
 ```r
+f <- read.delim("published_rpkms.txt", sep = " ")
 # dim(f)
 ```
 
 
 This looks much better. Let's proceed with this version of the data set. Start by a few correlation heat maps:
 
+**Figure 1B**
 
-```r
-f <- read.delim("published_rpkms.txt", sep = " ")
-pheatmap(cor(f))
-```
-
-![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13.png) 
-
-
-
-
-Let's try Spearman correlation:
+Heatmap of Spearman correlations between published expression profiles (# genes = 13,537)
 
 
 ```r
 pheatmap(cor(f, method = "spearman"))
 ```
 
+![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13.png) 
+
+
+The brain samples are in a separate cluster, whereas the heart and kidney ones are intermixed.
+
+Alternatively, one could use Pearson correlation (not shown in paper):
+
+
+```r
+pheatmap(cor(f))
+```
+
 ![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14.png) 
 
 
-Now the brain samples for a separate cluster, but the heart and kidney ones are intermixed.
-
-Sometimes the linear (Pearson) correlation works better on log values. We don't know what value to use for the pseudocount - let's pick 0.125.
+Sometimes the linear (Pearson) correlation works better on log values. We don't know what value to use for the pseudocount - let's pick 0.125. (not shown in paper)
 
  
  ```r
@@ -318,7 +423,7 @@ Sometimes the linear (Pearson) correlation works better on log values. We don't 
  ![plot of chunk unnamed-chunk-15](figure/unnamed-chunk-15.png) 
 
 
-What if we drop the genes that have less than FPKM 1 on average?
+What if we drop the genes that have less than FPKM 1 on average? (not shown in paper)
 
 
 ```r
@@ -339,170 +444,6 @@ pheatmap(cor(log2(f.nolow.tmm + pseudo)))
 ```
 
 ![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-17.png) 
-
-
-Let's look at PCA. We plot all pairwise combinations of principal components 1 to 5.
-
-Start with the "raw" F/RPKMs.
-
-
-```r
-
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
-
-p <- prcomp(t(f))
-
-par(mfrow = c(4, 4))
-for (i in 1:6) {
-    for (j in 1:6) {
-        if (i < j) {
-            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
-                i), ylab = paste("PC", j))
-        }
-    }
-}
-```
-
-![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18.png) 
-
-
-Or log2 values:
-
-
-```r
-
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
-
-p <- prcomp(t(f.log))
-
-s <- svd(f.log)
-
-par(mfrow = c(4, 4))
-for (i in 1:6) {
-    for (j in 1:6) {
-        if (i < j) {
-            eig.cell <- s$u[, c(i, j)]
-            proj <- t(f) %*% eig.cell
-            plot(proj[, 1], proj[, 2], pch = 20, col = colors, xlab = paste("PC", 
-                i), ylab = paste("PC", j))
-        }
-    }
-}
-```
-
-![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19.png) 
-
-
-Or log2/TMM values where genes with mean FPKM<1 have been filtered out:
-
-
-```r
-
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
-
-p <- prcomp(t(log2(f.nolow + pseudo)))
-
-par(mfrow = c(4, 4))
-for (i in 1:6) {
-    for (j in 1:6) {
-        if (i < j) {
-            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
-                i), ylab = paste("PC", j))
-        }
-    }
-}
-```
-
-![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20.png) 
-
-
-Try ComBat.
-
-
-```r
-library(sva)
-```
-
-```
-## Loading required package: corpcor
-## Loading required package: mgcv
-## Loading required package: nlme
-## This is mgcv 1.7-28. For overview type 'help("mgcv-package")'.
-```
-
-```r
-meta <- data.frame(study = c(rep("HPA", 3), rep("AltIso", 2), rep("GTex", 3), 
-    rep("Atlas", 3)), tissue = c("Heart", "Brain", "Kidney", "Heart", "Brain", 
-    "Heart", "Brain", "Kidney", "Heart", "Brain", "Kidney"))
-batch <- meta$study
-design <- model.matrix(~as.factor(tissue), data = meta)
-# Combat fails unless we remove low/unexpressed genes
-tmm <- cpm.tmm(f)
-```
-
-```
-## Error: could not find function "cpm.tmm"
-```
-
-```r
-log.tmm <- normalize.voom(tmm)
-```
-
-```
-## Error: could not find function "normalize.voom"
-```
-
-```r
-combat <- ComBat(dat = log.tmm, batch = batch, mod = design, numCovs = NULL, 
-    par.prior = TRUE)
-```
-
-```
-## Found 4 batches
-## Found 2  categorical covariate(s)
-```
-
-```
-## Error: object 'log.tmm' not found
-```
-
-```r
-
-pheatmap(cor(combat))
-```
-
-```
-## Error: object 'combat' not found
-```
-
-```r
-
-s <- svd(combat)
-```
-
-```
-## Error: object 'combat' not found
-```
-
-```r
-# s <- svd(f.nolow.tmm)
-
-par(mfrow = c(4, 4))
-for (i in 1:6) {
-    for (j in 1:6) {
-        if (i < j) {
-            eig.cell <- s$u[, c(i, j)]
-            proj <- t(combat) %*% eig.cell
-            plot(proj[, 1], proj[, 2], pch = 20, col = colors, xlab = paste("PC", 
-                i), ylab = paste("PC", j))
-        }
-    }
-}
-```
-
-```
-## Error: object 'combat' not found
-```
 
 
 Try Anova on a "melted" expression matrix with some metadata:
@@ -547,68 +488,320 @@ data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layo
 # subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(RPKM ~ prep + layout + study + tissue, data = data)
 a <- anova(fit)
+maxval = 2000
 ```
+
+
+**Figure 1C**
+
+
+```r
+barplot(a$"F value"[-5], names.arg = rownames(a)[-5], main = "Anova F score, Raw RPKM", 
+    ylim = c(0, maxval))
+```
+
+![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18.png) 
+
+
+Let's look at a few SVD plots. 
+
+**Figure 1D**
+
+
+```r
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+plotPC(f, 1, 2, "Published FPKM values \n SVD \n n=13537", colors = colors)
+```
+
+![plot of chunk :pca-fig1d](figure/:pca-fig1d.png) 
+
+
+The heart samples are clearly separating into their own group.
+
+**Figure 1E** (not included in the current manuscript version)
+
+
+```r
+plotPC(f, 2, 3, "Published FPKM values \n SVD \n n=13537", colors = colors)
+```
+
+![plot of chunk :pca-fig1e](figure/:pca-fig1e.png) 
+
+
+We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper)
+Start with SVD on the "raw" F/RPKMs.
+
+
+```r
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plotPC(f, i, j, desc = "", colors = colors)
+        }
+    }
+}
+```
+
+![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19.png) 
+
+
+Try prcomp() (regular PCA) instead of SVD.
+
+
+```r
+
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+
+p <- prcomp(t(f))
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
+}
+```
+
+![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20.png) 
+
+
+**Code for figure 2**
+
+Figure 2 deals with log-transformed F/RPKM values from published data sets. 
+
+PCA on log2-FPKM values:
+
+**Figure 2A**
+
+
+```r
+plotPC(f.log, 1, 2, desc = "Published FPKM values, log2 \n SVD \n n=13537", 
+    colors = colors)
+```
+
+![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-21.png) 
+
+
+**Figure 2B**
+
+
+```r
+plotPC(f.log, 2, 3, desc = "Published FPKM values, log2 \n SVD \n n=13537", 
+    colors = colors)
+```
+
+![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22.png) 
+
+
+Alternatively, with PCA (prcomp()) the plot would have looked like this (all combinations of top 5 PCs):
+
+
+```r
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+
+p <- prcomp(t(f.log))
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
+}
+```
+
+![plot of chunk unnamed-chunk-23](figure/unnamed-chunk-23.png) 
+
+
+Or log2/TMM values where genes with mean FPKM<1 have been filtered out:
+
+
+```r
+
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+
+p <- prcomp(t(log2(f.nolow + pseudo)))
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
+}
+```
+
+![plot of chunk unnamed-chunk-24](figure/unnamed-chunk-24.png) 
+
+
+**Figure 2C**
+
+
+```r
+# Frida fyller på kod.
+```
+
+
+**Figure 2D**
+
+
+```r
+m <- melt(f.log)
+```
+
+```
+## Using  as id variables
+```
+
+```r
+colnames(m) <- c("sample_ID", "log2RPKM")
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(log2RPKM ~ +prep + layout + study + tissue, data = data)
+b <- anova(fit)
+
+barplot(a$"F value"[-5], names.arg = rownames(a)[-5], main = "Anova F score, Raw RPKM", 
+    ylim = c(0, maxval))
+```
+
+![plot of chunk :anova-log](figure/:anova-log1.png) 
+
+```r
+print(a)
+```
+
+```
+## Analysis of Variance Table
+## 
+## Response: RPKM
+##               Df   Sum Sq Mean Sq F value  Pr(>F)    
+## prep           1 2.17e+06 2167983  164.92 < 2e-16 ***
+## layout         1 6.31e+03    6308    0.48    0.49    
+## study          1 1.87e+06 1870072  142.25 < 2e-16 ***
+## tissue         2 4.38e+05  219084   16.67 5.8e-08 ***
+## Residuals 148901 1.96e+09   13146                    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+```r
+barplot(b$"F value"[-5], names.arg = rownames(b)[-5], main = "Anova F score, log2-RPKM", 
+    ylim = c(0, maxval))
+```
+
+![plot of chunk :anova-log](figure/:anova-log2.png) 
+
+```r
+print(b)
+```
+
+```
+## Analysis of Variance Table
+## 
+## Response: log2RPKM
+##               Df  Sum Sq Mean Sq F value Pr(>F)    
+## prep           1   24177   24177    3082 <2e-16 ***
+## layout         1    8615    8615    1098 <2e-16 ***
+## study          1   19518   19518    2488 <2e-16 ***
+## tissue         2    4167    2083     266 <2e-16 ***
+## Residuals 148901 1168073       8                   
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+
+Try ComBat.
+
+
+```r
+library(sva)
+```
+
+```
+## Loading required package: corpcor
+## Loading required package: mgcv
+## Loading required package: nlme
+## This is mgcv 1.7-28. For overview type 'help("mgcv-package")'.
+```
+
+```r
+meta <- data.frame(study = c(rep("HPA", 3), rep("AltIso", 2), rep("GTex", 3), 
+    rep("Atlas", 3)), tissue = c("Heart", "Brain", "Kidney", "Heart", "Brain", 
+    "Heart", "Brain", "Kidney", "Heart", "Brain", "Kidney"))
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue), data = meta)
+# Combat fails unless we remove low/unexpressed genes
+tmm <- cpm.tmm(f)
+log.tmm <- normalize.voom(tmm)
+combat <- ComBat(dat = log.tmm, batch = batch, mod = design, numCovs = NULL, 
+    par.prior = TRUE)
+```
+
+```
+## Found 4 batches
+## Found 2  categorical covariate(s)
+## Standardizing Data across genes
+## Fitting L/S model and finding priors
+## Finding parametric adjustments
+## Adjusting the Data
+```
+
+```r
+
+pheatmap(cor(combat))
+```
+
+![plot of chunk :combat](figure/:combat1.png) 
+
+```r
+
+s <- svd(combat)
+# s <- svd(f.nolow.tmm)
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            eig.cell <- s$u[, c(i, j)]
+            proj <- t(combat) %*% eig.cell
+            plot(proj[, 1], proj[, 2], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
+}
+```
+
+![plot of chunk :combat](figure/:combat2.png) 
+
 
 Revisit Anova with log-TMMed and combated values.
 
 
 ```r
 m <- melt(log.tmm)
-```
-
-```
-## Error: object 'log.tmm' not found
-```
-
-```r
 colnames(m) <- c("gene_ID", "sample_ID", "logTMMRPKM")
-```
-
-```
-## Error: 'names' attribute [3] must be the same length as the vector [2]
-```
-
-```r
 data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
 
 # subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(logTMMRPKM ~ +prep + layout + study + tissue, data = data)
-```
-
-```
-## Error: object 'logTMMRPKM' not found
-```
-
-```r
 b <- anova(fit)
 
 m <- melt(combat)
-```
-
-```
-## Error: object 'combat' not found
-```
-
-```r
 colnames(m) <- c("gene_ID", "sample_ID", "combatlogTMMRPKM")
-```
-
-```
-## Error: 'names' attribute [3] must be the same length as the vector [2]
-```
-
-```r
 data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
 
 # subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(combatlogTMMRPKM ~ prep + layout + study + tissue, data = data)
-```
-
-```
-## Error: object 'combatlogTMMRPKM' not found
-```
-
-```r
 d <- anova(fit)
 ```
 
