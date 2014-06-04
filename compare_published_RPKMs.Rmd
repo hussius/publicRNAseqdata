@@ -5,6 +5,7 @@ Prepare by defining functions etc.
 ```{r prepare}
 library(edgeR)
 library(pheatmap)
+library(gplots)
 library(ops)
 library(calibrate)
 
@@ -457,6 +458,33 @@ for (i in 1:6){
 
 ```{r:venn}
 # Frida fyller på kod.
+#jämför överlapp mellan de 100 högst uttryckta i varje prov mellan studier
+
+HPA_b <- rownames(f[order(f$HPA_brain,decreasing=T),][1:100,])
+HPA_h <- rownames(f[order(f$HPA_heart,decreasing=T),][1:100,])
+HPA_k <- rownames(f[order(f$HPA_kidney,decreasing=T),][1:100,])
+
+AltIso_b <- rownames(f[order(f$AltIso_brain,decreasing=T),][1:100,])
+AltIso_h <- rownames(f[order(f$AltIso_heart,decreasing=T),][1:100,])
+
+GTEx_b <- rownames(f[order(f$GTEx_brain,decreasing=T),][1:100,])
+GTEx_h <- rownames(f[order(f$GTEx_heart,decreasing=T),][1:100,])
+GTEx_k <- rownames(f[order(f$GTEx_kidney,decreasing=T),][1:100,])
+
+Atlas_b <- rownames(f[order(f$Atlas_brain,decreasing=T),][1:100,])
+Atlas_h <- rownames(f[order(f$Atlas_heart,decreasing=T),][1:100,])
+Atlas_k <- rownames(f[order(f$Atlas_kidney,decreasing=T),][1:100,])
+
+HPA <- list(HPA_h,HPA_h,HPA_k)
+AltIso <- list(AltIso_b,AltIso_h)
+GTEx <- list(GTEx_b,GTEx_h,GTEx_k)
+Atlas <- list(Atlas_b,AltIso_h,Atlas_k)
+
+#venndiagram för de högst uttryckta generna i kidney
+
+k_Ids <- list(HPA_k,GTEx_k,Atlas_k)
+venn(k_Ids)
+
 ```
 
 **Figure 2D**
