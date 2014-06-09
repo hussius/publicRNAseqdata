@@ -607,9 +607,15 @@ for (i in 1:6){
 
 
 ```r
-# Frida fyller på kod.
-#jämför överlapp mellan de 100 högst uttryckta i varje prov mellan studier
+#let's have a look at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies
+library(VennDiagram)
+```
 
+```
+## Loading required package: grid
+```
+
+```r
 HPA_b <- rownames(f[order(f$HPA_brain,decreasing=T),][1:100,])
 HPA_h <- rownames(f[order(f$HPA_heart,decreasing=T),][1:100,])
 HPA_k <- rownames(f[order(f$HPA_kidney,decreasing=T),][1:100,])
@@ -632,11 +638,39 @@ Atlas <- list(Atlas_b,AltIso_h,Atlas_k)
 
 #venndiagram för de högst uttryckta generna i kidney
 
+
+b_Ids <- list(HPA_b,AltIso_b,GTEx_b,Atlas_b)
+
+draw.triple.venn(length(HPA_b),length(HPA_h), length(HPA_k), length(intersect(HPA_b,HPA_h)), length(intersect(HPA_h,HPA_k)),
+                 length(intersect(HPA_b,HPA_k)), length(intersect(intersect(HPA_b,HPA_h),HPA_k)))
+```
+
+![plot of chunk :venn](figure/:venn1.png) 
+
+```
+## (polygon[GRID.polygon.401], polygon[GRID.polygon.402], polygon[GRID.polygon.403], polygon[GRID.polygon.404], polygon[GRID.polygon.405], polygon[GRID.polygon.406], text[GRID.text.407], text[GRID.text.408], text[GRID.text.409], text[GRID.text.410], text[GRID.text.411], text[GRID.text.412], text[GRID.text.413], text[GRID.text.414], text[GRID.text.415], text[GRID.text.416])
+```
+
+```r
+category = rep("", 3)
+venn(b_Ids)
+```
+
+![plot of chunk :venn](figure/:venn2.png) 
+
+```r
+h_Ids <- list(HPA_h,AltIso_h,GTEx_h,Atlas_h)
+venn(h_Ids)
+```
+
+![plot of chunk :venn](figure/:venn3.png) 
+
+```r
 k_Ids <- list(HPA_k,GTEx_k,Atlas_k)
 venn(k_Ids)
 ```
 
-![plot of chunk :venn](figure/:venn.png) 
+![plot of chunk :venn](figure/:venn4.png) 
 
 **Figure 2D**
 

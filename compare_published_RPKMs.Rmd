@@ -457,8 +457,9 @@ for (i in 1:6){
 **Figure 2C**
 
 ```{r:venn}
-# Frida fyller på kod.
-#jämför överlapp mellan de 100 högst uttryckta i varje prov mellan studier
+
+#let's have a look at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies
+library(VennDiagram)
 
 HPA_b <- rownames(f[order(f$HPA_brain,decreasing=T),][1:100,])
 HPA_h <- rownames(f[order(f$HPA_heart,decreasing=T),][1:100,])
@@ -482,8 +483,22 @@ Atlas <- list(Atlas_b,AltIso_h,Atlas_k)
 
 #venndiagram för de högst uttryckta generna i kidney
 
+
+b_Ids <- list(HPA_b,AltIso_b,GTEx_b,Atlas_b)
+
+draw.triple.venn(length(HPA_b),length(HPA_h), length(HPA_k), length(intersect(HPA_b,HPA_h)), length(intersect(HPA_h,HPA_k)),
+                 length(intersect(HPA_b,HPA_k)), length(intersect(intersect(HPA_b,HPA_h),HPA_k)))
+                                  
+category = rep("", 3)
+venn(b_Ids)
+
+h_Ids <- list(HPA_h,AltIso_h,GTEx_h,Atlas_h)
+venn(h_Ids)
+
 k_Ids <- list(HPA_k,GTEx_k,Atlas_k)
 venn(k_Ids)
+
+
 
 ```
 
