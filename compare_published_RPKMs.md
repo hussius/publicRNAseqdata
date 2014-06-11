@@ -32,7 +32,12 @@ library(ops)
 ```
 
 ```
-## Error: there is no package called 'ops'
+## 
+## Attaching package: 'ops'
+## 
+## The following object is masked from 'package:stats':
+## 
+##     filter
 ```
 
 ```r
@@ -44,125 +49,142 @@ library(calibrate)
 ```
 
 ```r
-normalize.voom <- function(counts){
-  require(limma)
-  return(voom(counts)$E)
-}
- 
-cpm.tmm <- function(counts, groups=NA){
-	require(edgeR)
-	if(is.na(groups)){
-		d<-DGEList(counts=counts)
-	}
-	else{
-		d<-DGEList(counts=counts, group=groups)
-	}
-	d <- calcNormFactors(d, method="TMM") 
-	return(cpm(d, normalized.lib.sizes=TRUE))
+
+normalize.voom <- function(counts) {
+    require(limma)
+    return(voom(counts)$E)
 }
 
-do.SVD = function(m, comp.1=1, comp.2=2){ # returns eig.cell
-  s <- svd(m)
-	ev <- s$d^2 / sum(s$d^2)
-	return(s$u[,c(comp.1, comp.2)])
+cpm.tmm <- function(counts, groups = NA) {
+    require(edgeR)
+    if (is.na(groups)) {
+        d <- DGEList(counts = counts)
+    } else {
+        d <- DGEList(counts = counts, group = groups)
+    }
+    d <- calcNormFactors(d, method = "TMM")
+    return(cpm(d, normalized.lib.sizes = TRUE))
 }
 
-project.SVD <- function(m, eig.cell){
-	return(t(m) %*% eig.cell)
+log2.cpm <- function(x) {
+    x.pseud <- x + 0.5
+    libsizes = colSums(x)
+    libsize.pseud <- libsizes + 1
+    new.mtx <- log2(1e+06 * mapply("/", as.data.frame(x.pseud), libsize.pseud))
+    rownames(new.mtx) <- rownames(x)
+    return(as.matrix(new.mtx))
 }
 
-plot.SVD <- function(m, comp.1=1, comp.2=2, groups=rep("blue", ncol(m)), title=""){
-	eig <- do.SVD(m, comp.1, comp.2)
-	proj <- project.SVD(m, eig)
-	xminv <- min(proj[,1]) # - .2 * abs(min(proj[,1]))
-	xmaxv <- max(proj[,1]) # + .2 * abs(max(proj[,1]))
-	yminv <- min(proj[,2]) # - .2 * abs(min(proj[,2]))
-	ymaxv <- max(proj[,2]) # + .2 * abs(max(proj[,2]))
-	plot(proj,pch=20,col="white",xlim=c(xminv,xmaxv),ylim=c(yminv,ymaxv),xaxt='n',yaxt='n',xlab="PC1",ylab="PC2",main=title)
-	
-	points(proj, col=as.character(groups),pch=20) # , #pch=c(rep(15,3),rep(17,3),rep(19,3),rep(18,3),rep(20,2)), cex=2)
-	textxy(proj[,1],proj[,2],labs=colnames(m))
+do.SVD = function(m, comp.1 = 1, comp.2 = 2) {
+    # returns eig.cell
+    s <- svd(m)
+    ev <- s$d^2/sum(s$d^2)
+    return(s$u[, c(comp.1, comp.2)])
 }
 
-loadings.SVD <- function(m, comp=1, gene.ids = rownames(m)){
-	s <- svd(m)
-	l <- s$u[,comp]
-	names(l) <- gene.ids
-	l.s <- l[order(l)]
-	return(l.s)
+project.SVD <- function(m, eig.cell) {
+    return(t(m) %*% eig.cell)
 }
 
-plot.loadings.SVD <- function(m, comp=1, cutoff=0.1, gene.ids = rownames(m)){
-	l <- loadings.SVD(m, comp, gene.ids)
-	barplot(l[abs(l)>cutoff],las=2,main=paste("PC", comp, "cutoff", cutoff),cex.names=0.6)
+plot.SVD <- function(m, comp.1 = 1, comp.2 = 2, groups = rep("blue", ncol(m)), 
+    title = "") {
+    eig <- do.SVD(m, comp.1, comp.2)
+    proj <- project.SVD(m, eig)
+    xminv <- min(proj[, 1])  # - .2 * abs(min(proj[,1]))
+    xmaxv <- max(proj[, 1])  # + .2 * abs(max(proj[,1]))
+    yminv <- min(proj[, 2])  # - .2 * abs(min(proj[,2]))
+    ymaxv <- max(proj[, 2])  # + .2 * abs(max(proj[,2]))
+    plot(proj, pch = 20, col = "white", xlim = c(xminv, xmaxv), ylim = c(yminv, 
+        ymaxv), xaxt = "n", yaxt = "n", xlab = "PC1", ylab = "PC2", main = title)
+    
+    points(proj, col = as.character(groups), pch = 20)  # , #pch=c(rep(15,3),rep(17,3),rep(19,3),rep(18,3),rep(20,2)), cex=2)
+    textxy(proj[, 1], proj[, 2], labs = colnames(m))
 }
 
-plotPC <- function(matrix,a,b,desc,colors){
-eig <- do.SVD(matrix, a, b)
-proj <- project.SVD(matrix, eig)
-xminv <- min(proj[,1]) - .2 * abs(min(proj[,1]))
-xmaxv <- max(proj[,1]) + .2 * abs(max(proj[,1]))
-yminv <- min(proj[,2]) - .2 * abs(min(proj[,2]))
-ymaxv <- max(proj[,2]) + .2 * abs(max(proj[,2]))
-plot(proj,pch=20,xlim=c(xminv,xmaxv),ylim=c(yminv,ymaxv),xaxt='n',yaxt='n',xlab=paste0("PC",a),ylab=paste("PC",b),col=colors,main=desc)
-textxy(proj[,1],proj[,2],labs=rownames(proj))
+loadings.SVD <- function(m, comp = 1, gene.ids = rownames(m)) {
+    s <- svd(m)
+    l <- s$u[, comp]
+    names(l) <- gene.ids
+    l.s <- l[order(l)]
+    return(l.s)
+}
+
+plot.loadings.SVD <- function(m, comp = 1, cutoff = 0.1, gene.ids = rownames(m)) {
+    l <- loadings.SVD(m, comp, gene.ids)
+    barplot(l[abs(l) > cutoff], las = 2, main = paste("PC", comp, "cutoff", 
+        cutoff), cex.names = 0.6)
+}
+
+plotPC <- function(matrix, a, b, desc, colors) {
+    eig <- do.SVD(matrix, a, b)
+    proj <- project.SVD(matrix, eig)
+    xminv <- min(proj[, 1]) - 0.2 * abs(min(proj[, 1]))
+    xmaxv <- max(proj[, 1]) + 0.2 * abs(max(proj[, 1]))
+    yminv <- min(proj[, 2]) - 0.2 * abs(min(proj[, 2]))
+    ymaxv <- max(proj[, 2]) + 0.2 * abs(max(proj[, 2]))
+    plot(proj, pch = 20, xlim = c(xminv, xmaxv), ylim = c(yminv, ymaxv), xaxt = "n", 
+        yaxt = "n", xlab = paste0("PC", a), ylab = paste("PC", b), col = colors, 
+        main = desc)
+    textxy(proj[, 1], proj[, 2], labs = rownames(proj))
 }
 ```
+
 
 Here, we download data from various public sources and extract the brain, heart and kidney samples.
 
 "HPA": Human Protein Atlas
 
 ```r
-#temp <- tempfile()
-#download.file(url="http://www.proteinatlas.org/download/rna.csv.zip",destfile=temp)
-#hpa <- read.csv(unz(temp, "rna.csv"))
-#unlink(temp)
+# temp <- tempfile()
+# download.file(url='http://www.proteinatlas.org/download/rna.csv.zip',destfile=temp)
+# hpa <- read.csv(unz(temp, 'rna.csv')) unlink(temp)
 
-#hpa.heart <- hpa[hpa$Sample=="heart muscle", c("Gene", "Value")]
-#hpa.brain <- hpa[hpa$Sample=="cerebral cortex", c("Gene", "Value")]
-#hpa.kidney <- hpa[hpa$Sample=="kidney", c("Gene", "Value")]
+# hpa.heart <- hpa[hpa$Sample=='heart muscle', c('Gene', 'Value')] hpa.brain
+# <- hpa[hpa$Sample=='cerebral cortex', c('Gene', 'Value')] hpa.kidney <-
+# hpa[hpa$Sample=='kidney', c('Gene', 'Value')]
 
-#hpa.fpkms <- merge(hpa.heart, hpa.brain, by="Gene")
-#hpa.fpkms <- merge(hpa.fpkms, hpa.kidney, by="Gene")
-#colnames(hpa.fpkms) <- c("ENSG_ID", "HPA_heart", "HPA_brain", "HPA_kidney")
+# hpa.fpkms <- merge(hpa.heart, hpa.brain, by='Gene') hpa.fpkms <-
+# merge(hpa.fpkms, hpa.kidney, by='Gene') colnames(hpa.fpkms) <-
+# c('ENSG_ID', 'HPA_heart', 'HPA_brain', 'HPA_kidney')
 ```
+
 
 Check if the identifiers are unique and write table to file.
 
 ```r
-#length(hpa.fpkms[,1])
-#length(unique(hpa.fpkms[,1]))
+# length(hpa.fpkms[,1]) length(unique(hpa.fpkms[,1]))
 
-#write.table(hpa.fpkms,file="hpa_fpkms.txt",quote=F,sep="\t")
+# write.table(hpa.fpkms,file='hpa_fpkms.txt',quote=F,sep='\t')
 ```
+
 
 "Altiso": Alternative isoform regulation in human tissue transcriptomes
 
 ```r
-#temp <- tempfile()
-#download.file(url="http://genes.mit.edu/burgelab/Supplementary/wang_sandberg08/hg18.ensGene.CEs.rpkm.txt",destfile=temp)
-#altiso <- read.delim(temp, sep="\t")
-#unlink(temp)
+# temp <- tempfile()
+# download.file(url='http://genes.mit.edu/burgelab/Supplementary/wang_sandberg08/hg18.ensGene.CEs.rpkm.txt',destfile=temp)
+# altiso <- read.delim(temp, sep='\t') unlink(temp)
 ```
+
 
 There is no kidney sample here, so just use heart + brain
 
 
 ```r
-#altiso.fpkms <- altiso[,c("X.Gene","heart","brain")]
-#colnames(altiso.fpkms) <- c("ENSG_ID", "AltIso_heart", "AltIso_brain")
+# altiso.fpkms <- altiso[,c('X.Gene','heart','brain')]
+# colnames(altiso.fpkms) <- c('ENSG_ID', 'AltIso_heart', 'AltIso_brain')
 ```
+
 
 Check uniqueness of IDs.
 
 
 ```r
-#length(altiso.fpkms[,1])
-#length(unique(altiso.fpkms[,1]))
+# length(altiso.fpkms[,1]) length(unique(altiso.fpkms[,1]))
 
-#write.table(altiso.fpkms,file="altiso_fpkms.txt",quote=F,sep="\t")
+# write.table(altiso.fpkms,file='altiso_fpkms.txt',quote=F,sep='\t')
 ```
+
 
 "GTEx": Genotype-Tissue Expression
 
@@ -171,74 +193,79 @@ We also add some code to randomly select one sample from each tissue type; there
 
 
 ```r
-#temp <- tempfile()
-#download.file(url="http://www.broadinstitute.org/gtex/rest/file/download?portalFileId=119363&forDownload=true",destfile=temp)
-#header_lines <- readLines(temp, n=2)
-#gtex <- read.delim(temp, skip=2, sep="\t")
-#unlink(temp)
+# temp <- tempfile()
+# download.file(url='http://www.broadinstitute.org/gtex/rest/file/download?portalFileId=119363&forDownload=true',destfile=temp)
+# header_lines <- readLines(temp, n=2) gtex <- read.delim(temp, skip=2,
+# sep='\t') unlink(temp)
 
-#write.table(gtex, file="gtex_all.txt", 	quote=F, sep="\t")
+# write.table(gtex, file='gtex_all.txt', quote=F, sep='\t')
 
-#download.file(url="http://www.broadinstitute.org/gtex/rest/file/download?portalFileId=119273&forDownload=true",destfile="GTEx_description.txt")
+# download.file(url='http://www.broadinstitute.org/gtex/rest/file/download?portalFileId=119273&forDownload=true',destfile='GTEx_description.txt')
 
-#metadata <- read.delim("GTEx_description.txt", sep="\t")
+# metadata <- read.delim('GTEx_description.txt', sep='\t')
 ```
+
 
 The metadata table seems to contain entries that are not in the RPKM table.
 
 
 ```r
-#samp.id <- gsub('-','.',metadata$SAMPID)
-#eligible.samples <- which(samp.id %in% colnames(gtex))
-#metadata <- metadata[eligible.samples,]
+# samp.id <- gsub('-','.',metadata$SAMPID) eligible.samples <- which(samp.id
+# %in% colnames(gtex)) metadata <- metadata[eligible.samples,]
 ```
+
 
 Select random heart, kidney and brain samples.
 
 
 ```r
-#random.heart <- sample(which(metadata$SMTS=="Heart"), size=1)
-#random.heart.samplename <- gsub('-','.',metadata[random.heart, "SAMPID"])
-#gtex.heart.fpkm <- as.numeric(gtex[,random.heart.samplename])
+# random.heart <- sample(which(metadata$SMTS=='Heart'), size=1)
+# random.heart.samplename <- gsub('-','.',metadata[random.heart, 'SAMPID'])
+# gtex.heart.fpkm <- as.numeric(gtex[,random.heart.samplename])
 
-#random.brain <- sample(which(metadata$SMTS=="Brain"), size=1)
-#random.brain.samplename <- gsub('-','.',metadata[random.brain, "SAMPID"])
-#gtex.brain.fpkm <- as.numeric(gtex[,random.brain.samplename])
+# random.brain <- sample(which(metadata$SMTS=='Brain'), size=1)
+# random.brain.samplename <- gsub('-','.',metadata[random.brain, 'SAMPID'])
+# gtex.brain.fpkm <- as.numeric(gtex[,random.brain.samplename])
 
-#random.kidney <- sample(which(metadata$SMTS=="Kidney"), size=1)
-#random.kidney.samplename <- gsub('-','.',metadata[random.kidney, "SAMPID"])
-#gtex.kidney.fpkm <- as.numeric(gtex[,random.kidney.samplename])
+# random.kidney <- sample(which(metadata$SMTS=='Kidney'), size=1)
+# random.kidney.samplename <- gsub('-','.',metadata[random.kidney,
+# 'SAMPID']) gtex.kidney.fpkm <- as.numeric(gtex[,random.kidney.samplename])
 ```
+
 
 Get gene IDs on same format as the other data sets by removing the part after the dot; check ID uniqueness and write to file.
 
 
 ```r
-#gtex.names <- gtex[,"Name"]
-#temp_list <- strsplit(as.character(gtex.names), split="\\.")
-#gtex.names.nodot <- unlist(temp_list)[2*(1:length(gtex.names))-1]
+# gtex.names <- gtex[,'Name'] temp_list <-
+# strsplit(as.character(gtex.names), split='\\.') gtex.names.nodot <-
+# unlist(temp_list)[2*(1:length(gtex.names))-1]
 
-#gtex.fpkms <- data.frame(ENSG_ID=gtex.names.nodot, GTEx_heart=gtex.heart.fpkm, GTEx_brain=gtex.brain.fpkm,GTEx_kidney=gtex.kidney.fpkm)
+# gtex.fpkms <- data.frame(ENSG_ID=gtex.names.nodot,
+# GTEx_heart=gtex.heart.fpkm,
+# GTEx_brain=gtex.brain.fpkm,GTEx_kidney=gtex.kidney.fpkm)
 
-#length(gtex.fpkms[,1])
-#length(unique(gtex.fpkms[,1]))
+# length(gtex.fpkms[,1]) length(unique(gtex.fpkms[,1]))
 
-#write.table(gtex.fpkms,file="gtex_fpkms.txt",quote=F,sep="\t")
+# write.table(gtex.fpkms,file='gtex_fpkms.txt',quote=F,sep='\t')
 ```
+
 
 *RNA-seq Atlas*
 
 
 ```r
-#temp <- tempfile()
-#download.file(url="http://medicalgenomics.org/rna_seq_atlas/download?download_revision1=1",destfile=temp)
-#atlas <- read.delim(temp, sep="\t")
-#unlink(temp)
+# temp <- tempfile()
+# download.file(url='http://medicalgenomics.org/rna_seq_atlas/download?download_revision1=1',destfile=temp)
+# atlas <- read.delim(temp, sep='\t') unlink(temp)
 
-#atlas.fpkms <- atlas[,c("ensembl_gene_id","heart","hypothalamus","kidney")]
-#colnames(atlas.fpkms) <- c("ENSG_ID","Atlas_heart","Atlas_brain","Atlas_kidney")
-#write.table(atlas.fpkms,file="atlas_fpkms.txt",quote=F,sep="\t")
+# atlas.fpkms <-
+# atlas[,c('ensembl_gene_id','heart','hypothalamus','kidney')]
+# colnames(atlas.fpkms) <-
+# c('ENSG_ID','Atlas_heart','Atlas_brain','Atlas_kidney')
+# write.table(atlas.fpkms,file='atlas_fpkms.txt',quote=F,sep='\t')
 ```
+
 
 Combining F/RPKM values from public data sets
 ---------------------------------------------
@@ -247,30 +274,66 @@ We will join the data sets on ENSEMBL ID:s, losing a lot of data in the process 
 
 
 ```r
-library(org.Hs.eg.db) # for transferring gene identifiers
+library(org.Hs.eg.db)  # for transferring gene identifiers
 ```
 
 ```
-## Error: there is no package called 'org.Hs.eg.db'
+## Loading required package: AnnotationDbi
+## Loading required package: BiocGenerics
+## Loading required package: parallel
+## 
+## Attaching package: 'BiocGenerics'
+## 
+## The following objects are masked from 'package:parallel':
+## 
+##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+##     clusterExport, clusterMap, parApply, parCapply, parLapply,
+##     parLapplyLB, parRapply, parSapply, parSapplyLB
+## 
+## The following object is masked from 'package:limma':
+## 
+##     plotMA
+## 
+## The following object is masked from 'package:stats':
+## 
+##     xtabs
+## 
+## The following objects are masked from 'package:base':
+## 
+##     anyDuplicated, append, as.data.frame, as.vector, cbind,
+##     colnames, duplicated, eval, evalq, Filter, Find, get,
+##     intersect, is.unsorted, lapply, Map, mapply, match, mget,
+##     order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+##     rbind, Reduce, rep.int, rownames, sapply, setdiff, sort,
+##     table, tapply, union, unique, unlist
+## 
+## Loading required package: Biobase
+## Welcome to Bioconductor
+## 
+##     Vignettes contain introductory material; view with
+##     'browseVignettes()'. To cite Bioconductor, see
+##     'citation("Biobase")', and for packages 'citation("pkgname")'.
+## 
+## 
+## Attaching package: 'AnnotationDbi'
+## 
+## The following object is masked from 'package:MASS':
+## 
+##     select
+## 
+## Loading required package: DBI
 ```
 
 ```r
-library(data.table) # for collapsing transcript RPKMs
+library(data.table)  # for collapsing transcript RPKMs
+library(pheatmap)  # for nicer visualization
+library(edgeR)  # for TMM normalization
+
+# hpa.fpkms <- read.delim('hpa_fpkms.txt') altiso.fpkms <-
+# read.delim('altiso_fpkms.txt') gtex.fpkms <- read.delim('gtex_fpkms.txt')
+# atlas.fpkms <- read.delim('atlas_fpkms.txt')
 ```
 
-```
-## Error: there is no package called 'data.table'
-```
-
-```r
-library(pheatmap) # for nicer visualization
-library(edgeR) # for TMM normalization
-
-#hpa.fpkms <- read.delim("hpa_fpkms.txt")
-#altiso.fpkms <- read.delim("altiso_fpkms.txt")
-#gtex.fpkms <- read.delim("gtex_fpkms.txt")
-#atlas.fpkms <- read.delim("atlas_fpkms.txt")
-```
 
 The RNA-seq Atlas data set uses many different identifiers, while the other all use ENSG as the primary identifier
 
@@ -278,75 +341,73 @@ Approach 1: Merge on ENSEMBL genes (ENSG) as given in RNA-seq Atlas. Note that t
 
 
 ```r
-#data.dt <- data.table(atlas.fpkms)
-#setkey(data.dt, ENSG_ID)
-#temp <- data.dt[, lapply(.SD, sum), by=ENSG_ID]
-#collapsed <- as.data.frame(temp)
-#atlas.fpkms.summed <- collapsed[,2:ncol(collapsed)] 
-#rownames(atlas.fpkms.summed) <- collapsed[,1]
+# data.dt <- data.table(atlas.fpkms) setkey(data.dt, ENSG_ID) temp <-
+# data.dt[, lapply(.SD, sum), by=ENSG_ID] collapsed <- as.data.frame(temp)
+# atlas.fpkms.summed <- collapsed[,2:ncol(collapsed)]
+# rownames(atlas.fpkms.summed) <- collapsed[,1]
 
-#atlas.fpkms.summed <- atlas.fpkms.summed[2:nrow(atlas.fpkms.summed),]
+# atlas.fpkms.summed <- atlas.fpkms.summed[2:nrow(atlas.fpkms.summed),]
 ```
+
 
 Finally, combine all the data sets into a data frame.
 
 
 ```r
-#fpkms <- merge(hpa.fpkms, altiso.fpkms, by="ENSG_ID")
-#fpkms <- merge(fpkms, gtex.fpkms, by="ENSG_ID")
-#fpkms <- merge(fpkms, atlas.fpkms.summed, by.x="ENSG_ID", by.y=0)
-#gene_id <- fpkms[,1]
-#f <- fpkms[,2:ncol(fpkms)]
-#rownames(f) <- gene_id
+# fpkms <- merge(hpa.fpkms, altiso.fpkms, by='ENSG_ID') fpkms <-
+# merge(fpkms, gtex.fpkms, by='ENSG_ID') fpkms <- merge(fpkms,
+# atlas.fpkms.summed, by.x='ENSG_ID', by.y=0) gene_id <- fpkms[,1] f <-
+# fpkms[,2:ncol(fpkms)] rownames(f) <- gene_id
 ```
+
 
 Check how many ENSG IDs we have left.
 
 
 ```r
-#dim(f)
+# dim(f)
 ```
+
 
 Approach 2: Try to map Entrez symbols to ENSEMBL to recover more ENSG IDs than already present in the table. 
 
 
 ```r
-#m <- org.Hs.egENSEMBL
-#mapped_genes <- mappedkeys(m)
-#ensg.for.entrez <- as.list(m[mapped_genes])
-#remapped.ensg <- ensg.for.entrez[as.character(atlas$entrez_gene_id)]
+# m <- org.Hs.egENSEMBL mapped_genes <- mappedkeys(m) ensg.for.entrez <-
+# as.list(m[mapped_genes]) remapped.ensg <-
+# ensg.for.entrez[as.character(atlas$entrez_gene_id)]
 
-#atlas.fpkms$remapped_ensg <- as.character(remapped.ensg)
+# atlas.fpkms$remapped_ensg <- as.character(remapped.ensg)
 
-# And add expression values
-#data.dt <- data.table(atlas.fpkms[,2:ncol(atlas.fpkms)])
-#setkey(data.dt, remapped_ensg)
-#temp <- data.dt[, lapply(.SD, sum), by=remapped_ensg]
-#collapsed <- as.data.frame(temp)
-#atlas.fpkms.summed <- collapsed[,2:ncol(collapsed)] 
-#rownames(atlas.fpkms.summed) <- collapsed[,1]
+# And add expression values data.dt <-
+# data.table(atlas.fpkms[,2:ncol(atlas.fpkms)]) setkey(data.dt,
+# remapped_ensg) temp <- data.dt[, lapply(.SD, sum), by=remapped_ensg]
+# collapsed <- as.data.frame(temp) atlas.fpkms.summed <-
+# collapsed[,2:ncol(collapsed)] rownames(atlas.fpkms.summed) <-
+# collapsed[,1]
 ```
+
 
 Combine data sets again
 
 
 ```r
-#fpkms <- merge(hpa.fpkms, altiso.fpkms, by="ENSG_ID")
-#fpkms <- merge(fpkms, gtex.fpkms, by="ENSG_ID")
-#fpkms <- merge(fpkms, atlas.fpkms.summed, by.x="ENSG_ID", by.y=0)
-#gene_id <- fpkms[,1]
-#f <- fpkms[,2:ncol(fpkms)]
-#rownames(f) <- gene_id
-#write.table(f, file = 'published_rpkms.txt', quote=F)
+# fpkms <- merge(hpa.fpkms, altiso.fpkms, by='ENSG_ID') fpkms <-
+# merge(fpkms, gtex.fpkms, by='ENSG_ID') fpkms <- merge(fpkms,
+# atlas.fpkms.summed, by.x='ENSG_ID', by.y=0) gene_id <- fpkms[,1] f <-
+# fpkms[,2:ncol(fpkms)] rownames(f) <- gene_id write.table(f, file =
+# 'published_rpkms.txt', quote=F)
 ```
+
 
 Check how many ENSG IDs we have left.
 
 
 ```r
-f <- read.delim("published_rpkms.txt",sep=" ")
-#dim(f)
+f <- read.delim("published_rpkms.txt", sep = " ")
+# dim(f)
 ```
+
 
 This looks much better. Let's proceed with this version of the data set. Start by a few correlation heat maps:
 
@@ -356,10 +417,11 @@ Heatmap of Spearman correlations between published expression profiles (# genes 
 
 
 ```r
-pheatmap(cor(f, method="spearman")) 
+pheatmap(cor(f, method = "spearman"))
 ```
 
 ![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13.png) 
+
 
 The brain samples are in a separate cluster, whereas the heart and kidney ones are intermixed.
 
@@ -372,37 +434,57 @@ pheatmap(cor(f))
 
 ![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14.png) 
 
-Sometimes the linear (Pearson) correlation works better on log values. We don't know what value to use for the pseudocount - let's pick 0.125. (not shown in paper)
 
- 
- ```r
- pseudo <- 0.125
- f.log <- log2(f+pseudo)
- pheatmap(cor(f.log))
- ```
- 
- ![plot of chunk unnamed-chunk-15](figure/unnamed-chunk-15.png) 
+Sometimes the linear (Pearson) correlation works better on log values.  (not shown in paper)
+
+
+```r
+# pseudo <- 0.125 f.log <- log2(f+pseudo)
+f.log <- log2.cpm(f)
+pheatmap(cor(f.log))
+```
+
+![plot of chunk unnamed-chunk-15](figure/unnamed-chunk-15.png) 
+
+```r
+write.table(f.log, file = "published_rpkms_log2cpm.txt", quote = F)
+```
+
 
 What if we drop the genes that have less than FPKM 1 on average? (not shown in paper)
 
 
 ```r
-f.nolow <- f[-which(rowMeans(f)<1),]
-pheatmap(cor(log2(f.nolow+pseudo)))
+f.nolow <- f[-which(rowMeans(f) < 1), ]
+# pheatmap(cor(log2(f.nolow+pseudo)))
+pheatmap(cor(log2.cpm(f.nolow)))
 ```
 
 ![plot of chunk unnamed-chunk-16](figure/unnamed-chunk-16.png) 
+
 
 What if we use TMM normalization?
 
 
 ```r
-nf <- calcNormFactors(f.nolow)
-f.nolow.tmm <- nf*f.nolow
-pheatmap(cor(log2(f.nolow.tmm+pseudo)))
+nf <- calcNormFactors(f)
+f.tmm <- mapply("*", as.data.frame(f), nf)
+pheatmap(cor(f.tmm, method = "spearman"))
 ```
 
-![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-17.png) 
+![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-171.png) 
+
+```r
+f.log.tmm <- log2.cpm(f.tmm)  #log2(f.tmm+pseudo)
+pheatmap(cor(f.log.tmm, method = "spearman"))
+```
+
+![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-172.png) 
+
+```r
+write.table(f.log.tmm, file = "published_rpkms_log2cpm_tmm.txt", quote = F)
+```
+
 
 Try Anova on a "melted" expression matrix with some metadata:
 
@@ -412,7 +494,13 @@ library(reshape)
 ```
 
 ```
-## Error: there is no package called 'reshape'
+## Loading required package: plyr
+## 
+## Attaching package: 'reshape'
+## 
+## The following objects are masked from 'package:plyr':
+## 
+##     rename, round_any
 ```
 
 ```r
@@ -420,62 +508,40 @@ m <- melt(f)
 ```
 
 ```
-## Error: could not find function "melt"
+## Using  as id variables
 ```
 
 ```r
-colnames(m) <- c("sample_ID","RPKM")
-```
-
-```
-## Error: object 'm' not found
-```
-
-```r
-meta <- data.frame(tissue=c("heart","brain","kidney","heart","brain","heart","brain","kidney","heart","brain","kidney"),study=c("HPA","HPA","HPA","AltIso","AltIso","GTex","GTex","GTex","Atlas","Atlas","Atlas"),prep=c(rep("poly-A",8),rep("rRNA-depl",3)),layout=c(rep("PE",3),rep("SE",2),rep("PE",3),rep("SE",3)))
+colnames(m) <- c("sample_ID", "RPKM")
+meta <- data.frame(tissue = c("heart", "brain", "kidney", "heart", "brain", 
+    "heart", "brain", "kidney", "heart", "brain", "kidney"), study = c("HPA", 
+    "HPA", "HPA", "AltIso", "AltIso", "GTex", "GTex", "GTex", "Atlas", "Atlas", 
+    "Atlas"), prep = c(rep("poly-A", 8), rep("rRNA-depl", 3)), layout = c(rep("PE", 
+    3), rep("SE", 2), rep("PE", 3), rep("SE", 3)))
 rownames(meta) <- colnames(f)
-tissue <- rep(meta$tissue, each=nrow(f))
-study <- rep(meta$study, each=nrow(f))
-prep <- rep(meta$prep, each=nrow(f))
-layout <- rep(meta$layout, each=nrow(f))
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
-```
+tissue <- rep(meta$tissue, each = nrow(f))
+study <- rep(meta$study, each = nrow(f))
+prep <- rep(meta$prep, each = nrow(f))
+layout <- rep(meta$layout, each = nrow(f))
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
 
-```
-## Error: object 'm' not found
-```
-
-```r
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(RPKM ~ prep + layout + study + tissue, data=data)
-```
-
-```
-## Error: cannot coerce class ""function"" to a data.frame
-```
-
-```r
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(RPKM ~ prep + layout + study + tissue, data = data)
 a <- anova(fit)
-```
-
-```
-## Error: object 'fit' not found
-```
-
-```r
 maxval = 3200
 ```
+
 
 **Figure 1C**
 
 
 ```r
-barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Raw RPKM",ylim=c(0,maxval))
+barplot(a$"F value"[-5], names.arg = rownames(a)[-5], main = "Anova F score, Raw RPKM", 
+    ylim = c(0, maxval))
 ```
 
-```
-## Error: object 'a' not found
-```
+![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18.png) 
+
 
 Let's look at a few SVD plots. 
 
@@ -483,11 +549,12 @@ Let's look at a few SVD plots.
 
 
 ```r
-colors <- c(1,2,3,1,2,1,2,3,1,2,3)
-plotPC(f, 1, 2, "Published FPKM values \n SVD \n n=13537", colors=colors)
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+plotPC(f, 1, 2, "Published FPKM values \n SVD \n n=13537", colors = colors)
 ```
 
 ![plot of chunk :pca-fig1d](figure/:pca-fig1d.png) 
+
 
 The heart samples are clearly separating into their own group.
 
@@ -495,49 +562,54 @@ The heart samples are clearly separating into their own group.
 
 
 ```r
-plotPC(f, 2, 3, "Published FPKM values \n SVD \n n=13537", colors=colors)
+plotPC(f, 2, 3, "Published FPKM values \n SVD \n n=13537", colors = colors)
 ```
 
 ![plot of chunk :pca-fig1e](figure/:pca-fig1e.png) 
+
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper)
 Start with SVD on the "raw" F/RPKMs.
 
 
 ```r
-colors <- c(1,2,3,1,2,1,2,3,1,2,3)
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
 
-par(mfrow=c(4,4))
-for (i in 1:6){
-  for(j in 1:6){
-		if (i<j){ 
-		plotPC(f,i,j,desc="",colors=colors)
-		}
-	}
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plotPC(f, i, j, desc = "", colors = colors)
+        }
+    }
 }
 ```
 
 ![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19.png) 
 
+
 Try prcomp() (regular PCA) instead of SVD.
 
 
 ```r
-colors <- c(1,2,3,1,2,1,2,3,1,2,3)
+
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
 
 p <- prcomp(t(f))
 
-par(mfrow=c(4,4))
-for (i in 1:6){
-	for(j in 1:6){
-		if (i<j){ 
-		plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
-		}
-	}
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
 }
 ```
 
 ![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20.png) 
+
 
 **Code for figure 2**
 
@@ -549,170 +621,177 @@ PCA on log2-FPKM values:
 
 
 ```r
-plotPC(f.log, 1, 2, desc="Published FPKM values, log2 \n SVD \n n=13537", colors=colors)
+plotPC(f.log, 1, 2, desc = "Published FPKM values, log2 \n SVD \n n=13537", 
+    colors = colors)
 ```
 
 ![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-21.png) 
+
 
 **Figure 2B**
 
 
 ```r
-plotPC(f.log, 2, 3, desc="Published FPKM values, log2 \n SVD \n n=13537", colors=colors)
+plotPC(f.log, 2, 3, desc = "Published FPKM values, log2 \n SVD \n n=13537", 
+    colors = colors)
 ```
 
 ![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22.png) 
+
 
 Alternatively, with PCA (prcomp()) the plot would have looked like this (all combinations of top 5 PCs):
 
 
 ```r
-colors <- c(1,2,3,1,2,1,2,3,1,2,3)
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
 
 p <- prcomp(t(f.log))
 
-par(mfrow=c(4,4))
-for (i in 1:6){
-  for(j in 1:6){
-		if (i<j){ 
-    	plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
-		}
-	}
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
 }
 ```
 
 ![plot of chunk unnamed-chunk-23](figure/unnamed-chunk-23.png) 
 
+
 Or log2/TMM values where genes with mean FPKM<1 have been filtered out:
 
 
 ```r
-colors <- c(1,2,3,1,2,1,2,3,1,2,3)
 
-p <- prcomp(t(log2(f.nolow+pseudo)))
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
 
-par(mfrow=c(4,4))
-for (i in 1:6){
-	for(j in 1:6){
-		if (i<j){ 
-		plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
-		}
-	}
+# p <- prcomp(t(log2(f.nolow+pseudo)))
+
+p <- prcomp(t(log2.cpm(f.nolow)))
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
 }
 ```
 
 ![plot of chunk unnamed-chunk-24](figure/unnamed-chunk-24.png) 
 
+
 **Figure 2C**
+
+Compare overlap between the top 100 expressed genes in each tissue between studies.
 
 
 ```r
-# Frida fyller på kod.
-#jämför överlapp mellan de 100 högst uttryckta i varje prov mellan studier
+HPA_b <- rownames(f[order(f$HPA_brain, decreasing = T), ][1:100, ])
+HPA_h <- rownames(f[order(f$HPA_heart, decreasing = T), ][1:100, ])
+HPA_k <- rownames(f[order(f$HPA_kidney, decreasing = T), ][1:100, ])
 
-HPA_b <- rownames(f[order(f$HPA_brain,decreasing=T),][1:100,])
-HPA_h <- rownames(f[order(f$HPA_heart,decreasing=T),][1:100,])
-HPA_k <- rownames(f[order(f$HPA_kidney,decreasing=T),][1:100,])
+AltIso_b <- rownames(f[order(f$AltIso_brain, decreasing = T), ][1:100, ])
+AltIso_h <- rownames(f[order(f$AltIso_heart, decreasing = T), ][1:100, ])
 
-AltIso_b <- rownames(f[order(f$AltIso_brain,decreasing=T),][1:100,])
-AltIso_h <- rownames(f[order(f$AltIso_heart,decreasing=T),][1:100,])
+GTEx_b <- rownames(f[order(f$GTEx_brain, decreasing = T), ][1:100, ])
+GTEx_h <- rownames(f[order(f$GTEx_heart, decreasing = T), ][1:100, ])
+GTEx_k <- rownames(f[order(f$GTEx_kidney, decreasing = T), ][1:100, ])
 
-GTEx_b <- rownames(f[order(f$GTEx_brain,decreasing=T),][1:100,])
-GTEx_h <- rownames(f[order(f$GTEx_heart,decreasing=T),][1:100,])
-GTEx_k <- rownames(f[order(f$GTEx_kidney,decreasing=T),][1:100,])
+Atlas_b <- rownames(f[order(f$Atlas_brain, decreasing = T), ][1:100, ])
+Atlas_h <- rownames(f[order(f$Atlas_heart, decreasing = T), ][1:100, ])
+Atlas_k <- rownames(f[order(f$Atlas_kidney, decreasing = T), ][1:100, ])
 
-Atlas_b <- rownames(f[order(f$Atlas_brain,decreasing=T),][1:100,])
-Atlas_h <- rownames(f[order(f$Atlas_heart,decreasing=T),][1:100,])
-Atlas_k <- rownames(f[order(f$Atlas_kidney,decreasing=T),][1:100,])
+HPA <- list(HPA_h, HPA_h, HPA_k)
+AltIso <- list(AltIso_b, AltIso_h)
+GTEx <- list(GTEx_b, GTEx_h, GTEx_k)
+Atlas <- list(Atlas_b, AltIso_h, Atlas_k)
 
-HPA <- list(HPA_h,HPA_h,HPA_k)
-AltIso <- list(AltIso_b,AltIso_h)
-GTEx <- list(GTEx_b,GTEx_h,GTEx_k)
-Atlas <- list(Atlas_b,AltIso_h,Atlas_k)
+# venndiagram för de högst uttryckta generna i kidney
 
-#venndiagram för de högst uttryckta generna i kidney
-
-k_Ids <- list(HPA_k,GTEx_k,Atlas_k)
+k_Ids <- list(HPA_k, GTEx_k, Atlas_k)
 venn(k_Ids)
 ```
 
 ![plot of chunk :venn](figure/:venn.png) 
+
 
 **Figure 2D**
 
 
 ```r
 m <- melt(f.log)
-```
-
-```
-## Error: could not find function "melt"
-```
-
-```r
-colnames(m) <- c("sample_ID","log2RPKM")
-```
-
-```
-## Error: object 'm' not found
-```
-
-```r
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
-```
-
-```
-## Error: object 'm' not found
-```
-
-```r
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(log2RPKM ~ + prep + layout + study + tissue, data=data)
-```
-
-```
-## Error: cannot coerce class ""function"" to a data.frame
-```
-
-```r
+colnames(m) <- c("gene_ID", "sample_ID", "log2RPKM")
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(log2RPKM ~ +prep + layout + study + tissue, data = data)
 b <- anova(fit)
+
+barplot(b$"F value"[-5], names.arg = rownames(b)[-5], main = "Anova F score, log2-RPKM", 
+    ylim = c(0, maxval))
 ```
 
-```
-## Error: object 'fit' not found
-```
-
-```r
-barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Raw RPKM",ylim=c(0,maxval))
-```
-
-```
-## Error: object 'a' not found
-```
-
-```r
-print(a)
-```
-
-```
-## Error: object 'a' not found
-```
-
-```r
-barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM",ylim=c(0,maxval))
-```
-
-```
-## Error: object 'b' not found
-```
+![plot of chunk :anova-log](figure/:anova-log.png) 
 
 ```r
 print(b)
 ```
 
 ```
-## Error: object 'b' not found
+## Analysis of Variance Table
+## 
+## Response: log2RPKM
+##               Df Sum Sq Mean Sq F value  Pr(>F)    
+## prep           1    224     224    45.3 1.7e-11 ***
+## layout         1   7223    7223  1460.5 < 2e-16 ***
+## study          1    199     199    40.3 2.2e-10 ***
+## tissue         2  10684    5342  1080.2 < 2e-16 ***
+## Residuals 148901 736416       5                    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ```
+
+
+ANOVA for TMM scaled values. (no figure)
+
+
+```r
+m <- melt(f.tmm)
+colnames(m) <- c("gene_ID", "sample_ID", "TMM_RPKM")
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(TMM_RPKM ~ +prep + layout + study + tissue, data = data)
+a.tmm <- anova(fit)
+
+barplot(a.tmm$"F value"[-5], names.arg = rownames(a.tmm)[-5], main = "Anova F score, TMM", 
+    ylim = c(0, maxval))
+```
+
+![plot of chunk :anova-tmm](figure/:anova-tmm.png) 
+
+```r
+print(a.tmm)
+```
+
+```
+## Analysis of Variance Table
+## 
+## Response: TMM_RPKM
+##               Df   Sum Sq Mean Sq F value  Pr(>F)    
+## prep           1 3.73e+06 3725115   384.5 < 2e-16 ***
+## layout         1 1.71e+06 1709688   176.5 < 2e-16 ***
+## study          1 6.10e+06 6095428   629.2 < 2e-16 ***
+## tissue         2 2.82e+05  141030    14.6 4.8e-07 ***
+## Residuals 148901 1.44e+09    9688                    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
 
 **Code for figure 3**
 
@@ -728,17 +807,18 @@ library(sva)
 ## Loading required package: corpcor
 ## Loading required package: mgcv
 ## Loading required package: nlme
-## This is mgcv 1.7-29. For overview type 'help("mgcv-package")'.
+## This is mgcv 1.7-28. For overview type 'help("mgcv-package")'.
 ```
 
 ```r
-meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas",3)),tissue=c("Heart","Brain","Kidney","Heart","Brain","Heart","Brain","Kidney","Heart","Brain","Kidney"))
+meta <- data.frame(study = c(rep("HPA", 3), rep("AltIso", 2), rep("GTex", 3), 
+    rep("Atlas", 3)), tissue = c("Heart", "Brain", "Kidney", "Heart", "Brain", 
+    "Heart", "Brain", "Kidney", "Heart", "Brain", "Kidney"))
 batch <- meta$study
-design <- model.matrix(~as.factor(tissue),data=meta)
-# Combat fails unless we remove low/unexpressed genes
-tmm <- cpm.tmm(f)
-log.tmm <- normalize.voom(tmm)
-combat <- ComBat(dat=log.tmm,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+design <- model.matrix(~as.factor(tissue), data = meta)
+
+combat <- ComBat(dat = f.log.tmm, batch = batch, mod = design, numCovs = NULL, 
+    par.prior = TRUE)
 ```
 
 ```
@@ -751,143 +831,80 @@ combat <- ComBat(dat=log.tmm,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
 ```
 
 ```r
+# combat <-
+# ComBat(dat=f.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+write.table(combat, file = "published_rpkms_combat_log2cpm_tmm.txt", quote = F)
 pheatmap(cor(combat))
 ```
 
 ![plot of chunk :combat](figure/:combat1.png) 
 
 ```r
-s <- svd(combat)
-#s <- svd(f.nolow.tmm)
 
-par(mfrow=c(4,4))
-for (i in 1:6){
-  for(j in 1:6){
-		if (i<j){ 
-      eig.cell <- s$u[,c(i, j)]
-      proj <- t(combat) %*% eig.cell
-		  plot(proj[,1],proj[,2],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
-		}
-	}
-}
+plotPC(combat, 1, 2, colors = colors, desc = "Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13537")
 ```
 
 ![plot of chunk :combat](figure/:combat2.png) 
+
+```r
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            eig.cell <- s$u[, c(i, j)]
+            proj <- t(combat) %*% eig.cell
+            plot(proj[, 1], proj[, 2], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
+}
+```
+
+```
+## Error: object of type 'closure' is not subsettable
+```
+
 
 Revisit Anova with log-TMMed and combated values.
 
 
 ```r
-m <- melt(log.tmm)
-```
+m <- melt(f.log.tmm)
+colnames(m) <- c("gene_ID", "sample_ID", "logTMMRPKM")
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
 
-```
-## Error: could not find function "melt"
-```
-
-```r
-colnames(m) <- c("gene_ID","sample_ID","logTMMRPKM")
-```
-
-```
-## Error: object 'm' not found
-```
-
-```r
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
-```
-
-```
-## Error: object 'm' not found
-```
-
-```r
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(logTMMRPKM ~ + prep + layout + study + tissue, data=data)
-```
-
-```
-## Error: cannot coerce class ""function"" to a data.frame
-```
-
-```r
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(logTMMRPKM ~ +prep + layout + study + tissue, data = data)
 b <- anova(fit)
+barplot(b$"F value", names.arg = rownames(b), main = "Anova F score, log2-TMM")
 ```
 
-```
-## Error: object 'fit' not found
-```
+![plot of chunk :anova2](figure/:anova21.png) 
 
 ```r
+
 m <- melt(combat)
-```
+colnames(m) <- c("gene_ID", "sample_ID", "combatlogTMMRPKM")
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
 
-```
-## Error: could not find function "melt"
-```
-
-```r
-colnames(m) <- c("gene_ID","sample_ID","combatlogTMMRPKM")
-```
-
-```
-## Error: object 'm' not found
-```
-
-```r
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
-```
-
-```
-## Error: object 'm' not found
-```
-
-```r
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(combatlogTMMRPKM ~ prep + layout + study + tissue, data=data)
-```
-
-```
-## Error: cannot coerce class ""function"" to a data.frame
-```
-
-```r
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(combatlogTMMRPKM ~ prep + layout + study + tissue, data = data)
 d <- anova(fit)
+barplot(d$"F value", names.arg = rownames(d), main = "Anova F score, ComBat on voom-TMM")
 ```
 
-```
-## Error: object 'fit' not found
-```
+![plot of chunk :anova2](figure/:anova22.png) 
+
 
 Plot results
 
 ```r
 pdf("anova.pdf")
-par(mfrow=c(3,1))
-barplot(a$"F value",names.arg=rownames(a),main="Anova F score, Raw RPKM")
-```
-
-```
-## Error: object 'a' not found
-```
-
-```r
-barplot(b$"F value",names.arg=rownames(b),main="Anova F score, voom-TMM")
-```
-
-```
-## Error: object 'b' not found
-```
-
-```r
-barplot(d$"F value",names.arg=rownames(d),main="Anova F score, ComBat on voom-TMM")
-```
-
-```
-## Error: object 'd' not found
-```
-
-```r
+par(mfrow = c(3, 1))
+barplot(a$"F value", names.arg = rownames(a), main = "Anova F score, Raw RPKM")
+barplot(b$"F value", names.arg = rownames(b), main = "Anova F score, voom-TMM")
+barplot(d$"F value", names.arg = rownames(d), main = "Anova F score, ComBat on voom-TMM")
 dev.off()
 ```
 
@@ -895,4 +912,5 @@ dev.off()
 ## pdf 
 ##   2
 ```
+
 
