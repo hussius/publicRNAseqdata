@@ -1,0 +1,243 @@
+Comparing FPKMs for FASTQ files reprocessed with TopHat and Cufflinks 
+========================================================
+
+Preliminaries (libraries etc.)
+
+```{r}
+library(pheatmap)
+library(edgeR)
+library(calibrate)
+#f <- read.delim("fpkm_table_tophat_summed.txt")
+f <- read.delim("fpkm_table_tophat_summed_coding.txt")
+
+cpm.tmm <- function(counts, groups=NA){
+  require(edgeR)
+	if(is.na(groups)){
+		d<-DGEList(counts=counts)
+	}
+	else{
+		d<-DGEList(counts=counts, group=groups)
+	}
+	d <- calcNormFactors(d, method="TMM") 
+	return(cpm(d, normalized.lib.sizes=TRUE))
+}
+
+log2.cpm <- function(x){
+  x.pseud <- x + 0.5
+  libsizes = colSums(x)
+  libsize.pseud <- libsizes + 1.0
+  new.mtx <- log2(1e6 * mapply("/",as.data.frame(x.pseud),libsize.pseud))
+  rownames(new.mtx) <- rownames(x)
+  return(as.matrix(new.mtx))
+}
+
+do.SVD = function(m, comp.1=1, comp.2=2){ # returns eig.cell
+  s <- svd(m)
+  ev <- s$d^2 / sum(s$d^2)
+	return(s$u[,c(comp.1, comp.2)])
+}
+
+project.SVD <- function(m, eig.cell){
+	return(t(m) %*% eig.cell)
+}
+
+plot.SVD <- function(m, comp.1=1, comp.2=2, groups=rep("blue", ncol(m)), title=""){
+	eig <- do.SVD(m, comp.1, comp.2)
+	proj <- project.SVD(m, eig)
+	xminv <- min(proj[,1]) # - .2 * abs(min(proj[,1]))
+	xmaxv <- max(proj[,1]) # + .2 * abs(max(proj[,1]))
+	yminv <- min(proj[,2]) # - .2 * abs(min(proj[,2]))
+	ymaxv <- max(proj[,2]) # + .2 * abs(max(proj[,2]))
+	plot(proj,pch=20,col="white",xlim=c(xminv,xmaxv),ylim=c(yminv,ymaxv),xaxt='n',yaxt='n',xlab="PC1",ylab="PC2",main=title)
+	
+	points(proj, col=as.character(groups),pch=20) # , #pch=c(rep(15,3),rep(17,3),rep(19,3),rep(18,3),rep(20,2)), cex=2)
+	textxy(proj[,1],proj[,2],labs=colnames(m))
+}
+
+loadings.SVD <- function(m, comp=1, gene.ids = rownames(m)){
+	s <- svd(m)
+	l <- s$u[,comp]
+	names(l) <- gene.ids
+	l.s <- l[order(l)]
+	return(l.s)
+}
+
+plot.loadings.SVD <- function(m, comp=1, cutoff=0.1, gene.ids = rownames(m)){
+	l <- loadings.SVD(m, comp, gene.ids)
+	barplot(l[abs(l)>cutoff],las=2,main=paste("PC", comp, "cutoff", cutoff),cex.names=0.6)
+}
+
+plotPC <- function(matrix,a,b,desc,colors){
+eig <- do.SVD(matrix, a, b)
+proj <- project.SVD(matrix, eig)
+xminv <- min(proj[,1]) - .2 * abs(min(proj[,1]))
+xmaxv <- max(proj[,1]) + .2 * abs(max(proj[,1]))
+yminv <- min(proj[,2]) - .2 * abs(min(proj[,2]))
+ymaxv <- max(proj[,2]) + .2 * abs(max(proj[,2]))
+plot(proj,pch=20,xlim=c(xminv,xmaxv),ylim=c(yminv,ymaxv),xaxt='n',yaxt='n',xlab=paste0("PC",a),ylab=paste("PC",b),col=colors,main=desc)
+textxy(proj[,1],proj[,2],labs=rownames(proj))
+}
+
+```
+
+**Figure 4B (?)**
+
+Heatmap of Spearman correlations between published expression profiles (# genes = 13,537)
+
+```{r}
+pheatmap(cor(f, method="spearman")) 
+```
+
+Log2-CPM (no figure)
+
+```{r}
+#pseudo <- 0.125
+#f.log <- log2(f+pseudo)
+f.log <- log2.cpm(f)
+pheatmap(cor(f.log))
+write.table(f.log, file="reprocessed_Cufflinks_log2cpm.txt",quote=F)
+```
+Restricting ourselves to genes with mean FPKM > 1
+
+```{r}
+f.nolow <- f[-which(rowMeans(f)<1),]
+#pheatmap(cor(log2(f.nolow+pseudo)))
+pheatmap(cor(log2.cpm(f.nolow)))
+```
+
+What if we use TMM normalization?
+
+```{r}
+nf <- calcNormFactors(f)
+f.tmm <- mapply("*",as.data.frame(f),nf)
+pheatmap(cor(f.tmm,method="spearman"))
+f.log.tmm <- log2.cpm(f.tmm) #log2(f.tmm+pseudo)
+pheatmap(cor(f.tmm,method="spearman"))
+write.table(f.tmm, file="reprocessed_Cufflinks_fpkms_tmm.txt", quote=F)
+write.table(f.log.tmm, file="reprocessed_Cufflinks_log2cpm_tmm.txt", quote=F)
+```
+
+```{r:anova}
+library(reshape)
+m <- melt(f)
+colnames(m) <- c("sample_ID","Cuff_FPKM")
+meta <- data.frame(tissue=c("brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
+rownames(meta) <- colnames(f)
+tissue <- rep(meta$tissue, each=nrow(f))
+study <- rep(meta$study, each=nrow(f))
+prep <- rep(meta$prep, each=nrow(f))
+layout <- rep(meta$layout, each=nrow(f))
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(Cuff_FPKM ~ prep + layout + study + tissue, data=data)
+a <- anova(fit)
+maxval = 100
+```
+
+**Figure 4C (?)**
+
+```{r}
+barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Cufflinks FPKM",ylim=c(0,maxval))
+```
+
+**Figure 4D (?)**
+
+```{r:pca-fig1d}
+colors <- c(1,2,3,1,2,3,1,2,3,1,2,3,1,2)
+plotPC(f, 1, 2, "Reprocessed Cufflinks FPKM values \n SVD \n n=22674", colors=colors)
+plotPC(f, 2, 3, "Reprocessed Cufflinks FPKM values \n SVD \n n=22674", colors=colors)
+p <- prcomp(t(f))
+plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values \n PCA \n n=22674")
+plot(p$x[,2],p$x[,3],pch=20,col=colors,xlab=paste("PC", 2),ylab=paste("PC", 3),main="Reprocessed Cufflinks FPKM values \n PCA \n n=22674")
+```
+
+PC plots for log transform, mean FPKM > 1, TMM, ComBat
+
+Log2-CPM
+
+```{r}
+plotPC(f.log, 1, 2, "log2-cpm Cufflinks FPKM values \n SVD \n n=22674", colors=colors)
+p <- prcomp(t(f.log))
+plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (log2cpm) \n PCA \n n=22674")
+```
+
+Log2-CPM (FPKM>1)
+
+```{r}
+f.log.nolow <- log2.cpm(f.nolow)
+plotPC(f.log.nolow, 1, 2, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
+plotPC(f.log.nolow, 2, 3, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
+p <- prcomp(t(f.log.nolow))
+plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (log2, FPKM>1) \n PCA \n n=22674")
+```
+
+Log2-CPM-TMM
+
+```{r}
+plotPC(f.log.tmm, 1, 2, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
+plotPC(f.log.tmm, 2, 3, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
+p <- prcomp(t(f.log.tmm))
+plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (log2cpm TMM) \n PCA \n n=22674")
+```
+
+ANOVA analyses
+
+```{r:anova-log}
+m <- melt(f.log)
+colnames(m) <- c("gene_ID","sample_ID","log2FPKM")
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(log2FPKM ~ + prep + layout + study + tissue, data=data)
+b <- anova(fit)
+
+barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM",ylim=c(0,3000))
+print(b)
+```
+
+```{r:anova-logtmm}
+m <- melt(f.log.tmm)
+colnames(m) <- c("gene_ID","sample_ID","log2FPKM")
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(log2FPKM ~ + prep + layout + study + tissue, data=data)
+b <- anova(fit)
+
+barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
+print(b)
+```
+
+Try ComBat.
+
+```{r:combat}
+library(sva)
+meta <- data.frame(tissue=c("brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue),data=meta)
+
+combat <- ComBat(dat=f.log.tmm,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+p <- prcomp(t(combat))
+plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (ComBat log2cpm TMM) \n PCA \n n=22674")
+
+pheatmap(cor(combat))
+
+plotPC(combat, 1, 2, "ComBat adjusted logCPM-TMM FPKM values \n SVD \n n=22654", colors=colors)
+
+
+
+write.table(combat, file="reprocessed_Cufflinks_combat_log2cpm_tmm.txt",quote=F)
+```
+
+Finally, ANOVA on ComBat.
+
+```{r:anova-combat}
+m <- melt(combat)
+colnames(m) <- c("gene_ID","sample_ID","combat")
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+#subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(combat ~ + prep + layout + study + tissue, data=data)
+b <- anova(fit)
+
+barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
+print(b)
+```
