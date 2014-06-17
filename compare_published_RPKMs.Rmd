@@ -473,9 +473,14 @@ for (i in 1:6){
 
 **Figure 2C**
 
-Compare overlap between the top 100 expressed genes in each tissue between studies.
 
-```{r:venn}
+Let's have a look at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies
+
+
+```{r:venn }
+
+library(VennDiagram)
+
 HPA_b <- rownames(f[order(f$HPA_brain,decreasing=T),][1:100,])
 HPA_h <- rownames(f[order(f$HPA_heart,decreasing=T),][1:100,])
 HPA_k <- rownames(f[order(f$HPA_kidney,decreasing=T),][1:100,])
@@ -491,15 +496,72 @@ Atlas_b <- rownames(f[order(f$Atlas_brain,decreasing=T),][1:100,])
 Atlas_h <- rownames(f[order(f$Atlas_heart,decreasing=T),][1:100,])
 Atlas_k <- rownames(f[order(f$Atlas_kidney,decreasing=T),][1:100,])
 
+
 HPA <- list(HPA_h,HPA_h,HPA_k)
 AltIso <- list(AltIso_b,AltIso_h)
 GTEx <- list(GTEx_b,GTEx_h,GTEx_k)
 Atlas <- list(Atlas_b,AltIso_h,Atlas_k)
 
-#venndiagram för de högst uttryckta generna i kidney
+```
+Let's start with the four brain samples:
 
+```{r:venn brain}
+#brain
+b_Ids <- list(HPA_b,AltIso_b,GTEx_b,Atlas_b)
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(HPA_b,AltIso_b)),
+               length(intersect(HPA_b,GTEx_b)),
+               length(intersect(HPA_b,Atlas_b)),
+               length(intersect(AltIso_b,GTEx_b)),
+               length(intersect(AltIso_b,Atlas_b)),
+               length(intersect(GTEx_b,Atlas_b)),
+               length(intersect(intersect(HPA_b,AltIso_b),GTEx_b)),
+               length(intersect(intersect(HPA_b,AltIso_b),Atlas_b)),
+               length(intersect(intersect(HPA_b,GTEx_b),Atlas_b)),
+               length(intersect(intersect(AltIso_b,GTEx_b),Atlas_b)),
+               length(intersect(intersect(HPA_b,AltIso_b),intersect(Atlas_b,GTEx_b))),
+               category = c("HPA","AltIso","GTEx","Atlas"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+)
+
+```
+Let's investigate the heart samples
+```{r:venn heart}
+
+h_Ids <- list(HPA_h,AltIso_h,GTEx_h,Atlas_h)
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(HPA_h,AltIso_h)),
+               length(intersect(HPA_h,GTEx_h)),
+               length(intersect(HPA_h,Atlas_h)),
+               length(intersect(AltIso_h,GTEx_h)),
+               length(intersect(AltIso_h,Atlas_h)),
+               length(intersect(GTEx_h,Atlas_h)),
+               length(intersect(intersect(HPA_h,AltIso_h),GTEx_h)),
+               length(intersect(intersect(HPA_h,AltIso_h),Atlas_h)),
+               length(intersect(intersect(HPA_h,GTEx_h),Atlas_h)),
+               length(intersect(intersect(AltIso_h,GTEx_h),Atlas_h)),
+               length(intersect(intersect(HPA_h,AltIso_h),intersect(Atlas_h,GTEx_h))),
+               category = c("HPA","AltIso","GTEx","Atlas"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+)
+
+```
+...and the three kidney samples
+
+```{r:venn kidney}
+#kidney
 k_Ids <- list(HPA_k,GTEx_k,Atlas_k)
-venn(k_Ids)
+draw.triple.venn(100, 100, 100, 
+                 length(intersect(HPA_k,GTEx_k)),
+                 length(intersect(GTEx_k,Atlas_k)),
+                 length(intersect(HPA_k,Atlas_k)),
+                 length(intersect(intersect(HPA_k,GTEx_k),Atlas_k)),
+                 category = c("HPA","GTEx","Atlas"), lwd = rep(0, 3), lty = rep("solid", 3),
+                 fill = c("steelblue","lightgoldenrod","darkseagreen")
+)
+
+
+
 
 ```
 
