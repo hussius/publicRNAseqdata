@@ -292,14 +292,23 @@ f <- read.delim("published_rpkms.txt",sep=" ")
 #dim(f)
 ```
 
-This looks much better. Let's proceed with this version of the data set. Start by a few correlation heat maps:
+This looks much better. 
+Let's remove all lines where FPKM=0 in all samples before we proceed with this version of the data set:
+
+```{r}
+
+f.nozero <- f[-which(rowSums(f[,])==0),]
+
+```
+
+Start by a few correlation heat maps:
 
 **Figure 1B**
 
-Heatmap of Spearman correlations between published expression profiles (# genes = 13,537)
+Heatmap of Spearman correlations between published expression profiles (# genes = 13,333)
 
 ```{r}
-pheatmap(cor(f, method="spearman")) 
+pheatmap(cor(f.nozero, method="spearman")) 
 ```
 
 The brain samples are in a separate cluster, whereas the heart and kidney ones are intermixed.
@@ -307,36 +316,37 @@ The brain samples are in a separate cluster, whereas the heart and kidney ones a
 Alternatively, one could use Pearson correlation (not shown in paper):
 
 ```{r}
-pheatmap(cor(f))
+pheatmap(cor(f.nozero))
 ```
 
-Sometimes the linear (Pearson) correlation works better on log values.  (not shown in paper)
+Sometimes the linear (Pearson) correlation works better on log values.  (not shown in paper):
 
 ```{r}
-#pseudo <- 0.125
-#f.log <- log2(f+pseudo)
-f.log <- log2.cpm(f)
-pheatmap(cor(f.log))
-write.table(f.log, file="published_rpkms_log2cpm.txt", quote=F)
+pseudo <- 1
+fpkms.log <- log2(f.nozero + pseudo)
+pheatmap(cor(fpkms.log))
+write.table(fpkms.log, file="published_rpkms_log2.txt", quote=F)
 ```
 
-What if we drop the genes that have less than FPKM 1 on average? (not shown in paper)
+What if we drop the genes that have less than FPKM 1 on average? (not shown in paper):
 
 ```{r}
-f.nolow <- f[-which(rowMeans(f)<1),]
+f.nolow <- f.nozero[-which(rowMeans(f.nozero)<1),]
 #pheatmap(cor(log2(f.nolow+pseudo)))
-pheatmap(cor(log2.cpm(f.nolow)))
+fpkms.log.nolow <- log2(f.nolow + pseudo)
+pheatmap(cor(fpkms.log.nolow))
 ```
 
 What if we use TMM normalization?
 
+
 ```{r}
-nf <- calcNormFactors(f)
-f.tmm <- mapply("*",as.data.frame(f.nolow),nf)
-pheatmap(cor(f.tmm,method="spearman"))
-f.log.tmm <- log2(f.tmm+pseudo) log2.cpm(f.tmm)
-pheatmap(cor(f.log.tmm,method="spearman"))
-write.table(f.log.tmm, file="published_rpkms_log2cpm_tmm.txt", quote=F)
+#nf <- calcNormFactors(f)
+#f.tmm <- mapply("*",as.data.frame(f),nf)
+#pheatmap(cor(f.tmm,method="spearman"))
+#f.log.tmm <- log2.cpm(f.tmm) #log2(f.tmm+pseudo)
+#pheatmap(cor(f.log.tmm,method="spearman"))
+#write.table(f.log.tmm, file="published_rpkms_log2cpm_tmm.txt", quote=F)
 ```
 
 Try Anova on a "melted" expression matrix with some metadata:
@@ -371,7 +381,7 @@ Let's look at a few SVD plots.
 
 ```{r:pca-fig1d}
 colors <- c(1,2,3,1,2,1,2,3,1,2,3)
-plotPC(f, 1, 2, "Published FPKM values \n SVD \n n=13537", colors=colors)
+plotPC(f.nozero, 1, 2, "Published FPKM values \n SVD \n n=13333", colors=colors)
 ```
 
 The heart samples are clearly separating into their own group.
@@ -379,7 +389,7 @@ The heart samples are clearly separating into their own group.
 **Figure 1E** (not included in the current manuscript version)
 
 ```{r:pca-fig1e}
-plotPC(f, 2, 3, "Published FPKM values \n SVD \n n=13537", colors=colors)
+plotPC(f.nozero, 2, 3, "Published FPKM values \n SVD \n n=13333", colors=colors)
 ```
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper)
@@ -392,25 +402,7 @@ par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
 		if (i<j){ 
-		plotPC(f,i,j,desc="",colors=colors)
-		}
-	}
-}
-```
-
-Try prcomp() (regular PCA) instead of SVD.
-
-```{r}
-
-colors <- c(1,2,3,1,2,1,2,3,1,2,3)
-
-p <- prcomp(t(f))
-
-par(mfrow=c(4,4))
-for (i in 1:6){
-	for(j in 1:6){
-		if (i<j){ 
-		plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
+		plotPC(f.nozero,i,j,desc="",colors=colors)
 		}
 	}
 }
@@ -426,28 +418,17 @@ PCA on log2-FPKM values:
 
 **Figure 2A**
 
-Try prcomp() (regular PCA) instead of SVD.
-
 ```{r}
-
-zero_all <- c()
-for(i in 1:nrow(f)) {
-  if(rowSums(f[i,])==0){
-    zero_all <- c(zero_all,i)
-  } 
-}
-
-f.nolow <- f[-zero_all,]
 pseudo <- 1
-fpkms.log <- log2(f.nolow + pseudo)
+fpkms.log <- log2(f.nozero + pseudo)
 
-plotPC(fpkms.log, 1, 2, desc="Published FPKM values, log2 \n SVD \n n=13537", colors=colors)
+plotPC(fpkms.log, 1, 2, desc="Published FPKM values, log2 \n SVD \n n=13333", colors=colors)
 ```
 
 **Figure 2B**
 
 ```{r}
-plotPC(fpkms.log, 2, 3, desc="Published FPKM values, log2 \n SVD \n n=13537", colors=colors)
+plotPC(fpkms.log, 2, 3, desc="Published FPKM values, log2 \n SVD \n n=13333", colors=colors)
 ```
 
 Alternatively, with PCA (prcomp()) the plot would have looked like this (all combinations of top 5 PCs):
@@ -465,26 +446,7 @@ for (i in 1:6){
 		}
 	}
 }
-```
 
-Or log2/TMM values where genes with mean FPKM<1 have been filtered out:
-
-```{r}
-
-colors <- c(1,2,3,1,2,1,2,3,1,2,3)
-
-#p <- prcomp(t(log2(f.nolow+pseudo)))
-
-p <- prcomp(t(log2.cpm(f.nolow)))
-
-par(mfrow=c(4,4))
-for (i in 1:6){
-	for(j in 1:6){
-		if (i<j){ 
-		plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
-		}
-	}
-}
 ```
 
 **Figure 2C**
@@ -522,7 +484,7 @@ Atlas <- list(Atlas_b,AltIso_h,Atlas_k)
 Let's start with the four brain samples:
 
 ```{r:venn brain}
-#brain
+
 b_Ids <- list(HPA_b,AltIso_b,GTEx_b,Atlas_b)
 draw.quad.venn(100, 100, 100, 100, 
                length(intersect(HPA_b,AltIso_b)),
@@ -541,7 +503,9 @@ draw.quad.venn(100, 100, 100, 100,
 )
 
 ```
-Let's investigate the heart samples
+
+Let's investigate the heart samples:
+
 ```{r:venn heart}
 
 h_Ids <- list(HPA_h,AltIso_h,GTEx_h,Atlas_h)
@@ -562,10 +526,11 @@ draw.quad.venn(100, 100, 100, 100,
 )
 
 ```
-...and the three kidney samples
+
+...and the three kidney samples:
 
 ```{r:venn kidney}
-#kidney
+
 k_Ids <- list(HPA_k,GTEx_k,Atlas_k)
 draw.triple.venn(100, 100, 100, 
                  length(intersect(HPA_k,GTEx_k)),
@@ -577,14 +542,12 @@ draw.triple.venn(100, 100, 100,
 )
 
 
-
-
 ```
 
 **Figure 2D**
 
 ```{r:anova-log}
-m <- melt(fpkms.log)
+m <- melt(f.log)
 colnames(m) <- c("gene_ID","sample_ID","log2RPKM")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
@@ -613,21 +576,26 @@ print(a.tmm)
 
 Figure 3 is about ComBat.
 
-Combat analysis is performed on logged values after removal of all rows (n=204) with FPKM=zero in all samples
+Combat analysis is performed on logged values (n=13333)
 
 
 ```{r:combat}
 library(sva)
+
 meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas",3)),tissue=c("Heart","Brain","Kidney","Heart","Brain","Heart","Brain","Kidney","Heart","Brain","Kidney"))
+
 batch <- meta$study
 design <- model.matrix(~as.factor(tissue),data=meta)
 
 combat <- ComBat(dat=fpkms.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-#combat <- ComBat(dat=f.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+
 write.table(combat, file="published_rpkms_combat_log2.txt", quote=F)
+
 pheatmap(cor(combat))
 
-plotPC(combat,1,2,colors=colors,desc="Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13537")
+plotPC(combat,1,2,colors=colors,desc="Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13333")
+
+plotPC(combat,2,3,colors=colors,desc="Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13333")
 
 par(mfrow=c(4,4))
 for (i in 1:6){

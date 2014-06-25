@@ -409,18 +409,28 @@ f <- read.delim("published_rpkms.txt", sep = " ")
 ```
 
 
-This looks much better. Let's proceed with this version of the data set. Start by a few correlation heat maps:
-
-**Figure 1B**
-
-Heatmap of Spearman correlations between published expression profiles (# genes = 13,537)
+This looks much better. 
+Let's remove all lines where FPKM=0 in all samples before we proceed with this version of the data set:
 
 
 ```r
-pheatmap(cor(f, method = "spearman"))
+
+f.nozero <- f[-which(rowSums(f[, ]) == 0), ]
 ```
 
-![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13.png) 
+
+Start by a few correlation heat maps:
+
+**Figure 1B**
+
+Heatmap of Spearman correlations between published expression profiles (# genes = 13,333)
+
+
+```r
+pheatmap(cor(f.nozero, method = "spearman"))
+```
+
+![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14.png) 
 
 
 The brain samples are in a separate cluster, whereas the heart and kidney ones are intermixed.
@@ -429,87 +439,795 @@ Alternatively, one could use Pearson correlation (not shown in paper):
 
 
 ```r
-pheatmap(cor(f))
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14.png) 
-
-
-Sometimes the linear (Pearson) correlation works better on log values.  (not shown in paper)
-
-
-```r
-# pseudo <- 0.125 f.log <- log2(f+pseudo)
-f.log <- log2.cpm(f)
-pheatmap(cor(f.log))
+pheatmap(cor(f.nozero))
 ```
 
 ![plot of chunk unnamed-chunk-15](figure/unnamed-chunk-15.png) 
 
-```r
-write.table(f.log, file = "published_rpkms_log2cpm.txt", quote = F)
-```
 
-
-What if we drop the genes that have less than FPKM 1 on average? (not shown in paper)
+Sometimes the linear (Pearson) correlation works better on log values.  (not shown in paper):
 
 
 ```r
-f.nolow <- f[-which(rowMeans(f) < 1), ]
-# pheatmap(cor(log2(f.nolow+pseudo)))
-pheatmap(cor(log2.cpm(f.nolow)))
+pseudo <- 1
+fpkms.log <- log2(f.nozero + pseudo)
+pheatmap(cor(fpkms.log))
 ```
 
 ![plot of chunk unnamed-chunk-16](figure/unnamed-chunk-16.png) 
+
+```r
+write.table(fpkms.log, file = "published_rpkms_log2.txt", quote = F)
+```
+
+
+What if we drop the genes that have less than FPKM 1 on average? (not shown in paper):
+
+
+```r
+f.nolow <- f.nozero[-which(rowMeans(f.nozero) < 1), ]
+# pheatmap(cor(log2(f.nolow+pseudo)))
+fpkms.log.nolow <- log2(f.nolow + pseudo)
+pheatmap(cor(fpkms.log.nolow))
+```
+
+![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-17.png) 
 
 
 What if we use TMM normalization?
 
 
 
+```r
+# nf <- calcNormFactors(f) f.tmm <- mapply('*',as.data.frame(f),nf)
+# pheatmap(cor(f.tmm,method='spearman')) f.log.tmm <- log2.cpm(f.tmm)
+# #log2(f.tmm+pseudo) pheatmap(cor(f.log.tmm,method='spearman'))
+# write.table(f.log.tmm, file='published_rpkms_log2cpm_tmm.txt', quote=F)
+```
+
+
+Try Anova on a "melted" expression matrix with some metadata:
+
+
+```r
+library(reshape)
+```
+
+```
+## Loading required package: plyr
+## 
+## Attaching package: 'reshape'
+## 
+## The following objects are masked from 'package:plyr':
+## 
+##     rename, round_any
+```
+
+```r
+m <- melt(f.nolow)
+```
+
+```
+## Using  as id variables
+```
+
+```r
+colnames(m) <- c("sample_ID", "RPKM")
+meta <- data.frame(tissue = c("heart", "brain", "kidney", "heart", "brain", 
+    "heart", "brain", "kidney", "heart", "brain", "kidney"), study = c("HPA", 
+    "HPA", "HPA", "AltIso", "AltIso", "GTex", "GTex", "GTex", "Atlas", "Atlas", 
+    "Atlas"), prep = c(rep("poly-A", 8), rep("rRNA-depl", 3)), layout = c(rep("PE", 
+    3), rep("SE", 2), rep("PE", 3), rep("SE", 3)))
+rownames(meta) <- colnames(f)
+tissue <- rep(meta$tissue, each = nrow(f))
+study <- rep(meta$study, each = nrow(f))
+prep <- rep(meta$prep, each = nrow(f))
+layout <- rep(meta$layout, each = nrow(f))
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
+```
+
+```
+## Error: arguments imply differing number of rows: 115918, 148907
+```
+
+```r
+
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(RPKM ~ prep + layout + study + tissue, data = data)
+```
+
+```
+## Error: 'data' argument is of the wrong type
+```
+
+```r
+a <- anova(fit)
+```
+
+```
+## Error: object 'fit' not found
+```
+
+```r
+maxval = 3200
+```
+
+
+**Figure 1C**
+
+
+```r
+barplot(a$"F value"[-5], names.arg = rownames(a)[-5], main = "Anova F score, Raw RPKM", 
+    ylim = c(0, maxval))
+```
+
+```
+## Error: object 'a' not found
+```
+
+
+Let's look at a few SVD plots. 
+
+**Figure 1D**
+
+
+```r
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+plotPC(f.nozero, 1, 2, "Published FPKM values \n SVD \n n=13333", colors = colors)
+```
+
+![plot of chunk :pca-fig1d](figure/:pca-fig1d.png) 
+
+
+The heart samples are clearly separating into their own group.
+
+**Figure 1E** (not included in the current manuscript version)
+
+
+```r
+plotPC(f.nozero, 2, 3, "Published FPKM values \n SVD \n n=13333", colors = colors)
+```
+
+![plot of chunk :pca-fig1e](figure/:pca-fig1e.png) 
+
+
+We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper)
+Start with SVD on the "raw" F/RPKMs.
+
+
+```r
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plotPC(f.nozero, i, j, desc = "", colors = colors)
+        }
+    }
+}
+```
+
+![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20.png) 
+
+
+**Code for figure 2**
+
+Figure 2 deals with log-transformed F/RPKM values from published data sets. 
+
+First we remove all rows where FPKM is zero in all samples and then add a pseudo count 1
+
+PCA on log2-FPKM values:
+
+**Figure 2A**
+
+
+```r
+pseudo <- 1
+fpkms.log <- log2(f.nozero + pseudo)
+
+plotPC(fpkms.log, 1, 2, desc = "Published FPKM values, log2 \n SVD \n n=13333", 
+    colors = colors)
+```
+
+![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-21.png) 
+
+
+**Figure 2B**
+
+
+```r
+plotPC(fpkms.log, 2, 3, desc = "Published FPKM values, log2 \n SVD \n n=13333", 
+    colors = colors)
+```
+
+![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22.png) 
+
+
+Alternatively, with PCA (prcomp()) the plot would have looked like this (all combinations of top 5 PCs):
+
+
+```r
+colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+
+p <- prcomp(t(fpkms.log))
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
+}
+```
+
+![plot of chunk unnamed-chunk-23](figure/unnamed-chunk-23.png) 
+
+
+**Figure 2C**
+
+
+Let's have a look at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies
 
 
 
+```r
+
+library(VennDiagram)
+```
+
+```
+## Loading required package: grid
+```
+
+```r
+
+HPA_b <- rownames(f[order(f$HPA_brain, decreasing = T), ][1:100, ])
+HPA_h <- rownames(f[order(f$HPA_heart, decreasing = T), ][1:100, ])
+HPA_k <- rownames(f[order(f$HPA_kidney, decreasing = T), ][1:100, ])
+
+AltIso_b <- rownames(f[order(f$AltIso_brain, decreasing = T), ][1:100, ])
+AltIso_h <- rownames(f[order(f$AltIso_heart, decreasing = T), ][1:100, ])
+
+GTEx_b <- rownames(f[order(f$GTEx_brain, decreasing = T), ][1:100, ])
+GTEx_h <- rownames(f[order(f$GTEx_heart, decreasing = T), ][1:100, ])
+GTEx_k <- rownames(f[order(f$GTEx_kidney, decreasing = T), ][1:100, ])
+
+Atlas_b <- rownames(f[order(f$Atlas_brain, decreasing = T), ][1:100, ])
+Atlas_h <- rownames(f[order(f$Atlas_heart, decreasing = T), ][1:100, ])
+Atlas_k <- rownames(f[order(f$Atlas_kidney, decreasing = T), ][1:100, ])
+
+
+HPA <- list(HPA_h, HPA_h, HPA_k)
+AltIso <- list(AltIso_b, AltIso_h)
+GTEx <- list(GTEx_b, GTEx_h, GTEx_k)
+Atlas <- list(Atlas_b, AltIso_h, Atlas_k)
+```
+
+Let's start with the four brain samples:
+
+
+```r
+
+b_Ids <- list(HPA_b, AltIso_b, GTEx_b, Atlas_b)
+draw.quad.venn(100, 100, 100, 100, length(intersect(HPA_b, AltIso_b)), length(intersect(HPA_b, 
+    GTEx_b)), length(intersect(HPA_b, Atlas_b)), length(intersect(AltIso_b, 
+    GTEx_b)), length(intersect(AltIso_b, Atlas_b)), length(intersect(GTEx_b, 
+    Atlas_b)), length(intersect(intersect(HPA_b, AltIso_b), GTEx_b)), length(intersect(intersect(HPA_b, 
+    AltIso_b), Atlas_b)), length(intersect(intersect(HPA_b, GTEx_b), Atlas_b)), 
+    length(intersect(intersect(AltIso_b, GTEx_b), Atlas_b)), length(intersect(intersect(HPA_b, 
+        AltIso_b), intersect(Atlas_b, GTEx_b))), category = c("HPA", "AltIso", 
+        "GTEx", "Atlas"), lwd = rep(0, 4), lty = rep("solid", 4), fill = c("mistyrose", 
+        "steelblue", "lightgoldenrod", "darkseagreen"))
+```
+
+![plot of chunk :venn brain](figure/:venn_brain.png) 
+
+```
+## (polygon[GRID.polygon.321], polygon[GRID.polygon.322], polygon[GRID.polygon.323], polygon[GRID.polygon.324], polygon[GRID.polygon.325], polygon[GRID.polygon.326], polygon[GRID.polygon.327], polygon[GRID.polygon.328], text[GRID.text.329], text[GRID.text.330], text[GRID.text.331], text[GRID.text.332], text[GRID.text.333], text[GRID.text.334], text[GRID.text.335], text[GRID.text.336], text[GRID.text.337], text[GRID.text.338], text[GRID.text.339], text[GRID.text.340], text[GRID.text.341], text[GRID.text.342], text[GRID.text.343], text[GRID.text.344], text[GRID.text.345], text[GRID.text.346], text[GRID.text.347])
+```
+
+
+Let's investigate the heart samples:
+
+
+```r
+
+h_Ids <- list(HPA_h, AltIso_h, GTEx_h, Atlas_h)
+draw.quad.venn(100, 100, 100, 100, length(intersect(HPA_h, AltIso_h)), length(intersect(HPA_h, 
+    GTEx_h)), length(intersect(HPA_h, Atlas_h)), length(intersect(AltIso_h, 
+    GTEx_h)), length(intersect(AltIso_h, Atlas_h)), length(intersect(GTEx_h, 
+    Atlas_h)), length(intersect(intersect(HPA_h, AltIso_h), GTEx_h)), length(intersect(intersect(HPA_h, 
+    AltIso_h), Atlas_h)), length(intersect(intersect(HPA_h, GTEx_h), Atlas_h)), 
+    length(intersect(intersect(AltIso_h, GTEx_h), Atlas_h)), length(intersect(intersect(HPA_h, 
+        AltIso_h), intersect(Atlas_h, GTEx_h))), category = c("HPA", "AltIso", 
+        "GTEx", "Atlas"), lwd = rep(0, 4), lty = rep("solid", 4), fill = c("mistyrose", 
+        "steelblue", "lightgoldenrod", "darkseagreen"))
+```
+
+![plot of chunk :venn heart](figure/:venn_heart.png) 
+
+```
+## (polygon[GRID.polygon.348], polygon[GRID.polygon.349], polygon[GRID.polygon.350], polygon[GRID.polygon.351], polygon[GRID.polygon.352], polygon[GRID.polygon.353], polygon[GRID.polygon.354], polygon[GRID.polygon.355], text[GRID.text.356], text[GRID.text.357], text[GRID.text.358], text[GRID.text.359], text[GRID.text.360], text[GRID.text.361], text[GRID.text.362], text[GRID.text.363], text[GRID.text.364], text[GRID.text.365], text[GRID.text.366], text[GRID.text.367], text[GRID.text.368], text[GRID.text.369], text[GRID.text.370], text[GRID.text.371], text[GRID.text.372], text[GRID.text.373], text[GRID.text.374])
+```
+
+
+...and the three kidney samples:
+
+
+```r
+
+k_Ids <- list(HPA_k, GTEx_k, Atlas_k)
+draw.triple.venn(100, 100, 100, length(intersect(HPA_k, GTEx_k)), length(intersect(GTEx_k, 
+    Atlas_k)), length(intersect(HPA_k, Atlas_k)), length(intersect(intersect(HPA_k, 
+    GTEx_k), Atlas_k)), category = c("HPA", "GTEx", "Atlas"), lwd = rep(0, 3), 
+    lty = rep("solid", 3), fill = c("steelblue", "lightgoldenrod", "darkseagreen"))
+```
+
+![plot of chunk :venn kidney](figure/:venn_kidney.png) 
+
+```
+## (polygon[GRID.polygon.375], polygon[GRID.polygon.376], polygon[GRID.polygon.377], polygon[GRID.polygon.378], polygon[GRID.polygon.379], polygon[GRID.polygon.380], text[GRID.text.381], text[GRID.text.382], text[GRID.text.383], text[GRID.text.384], text[GRID.text.385], text[GRID.text.386], text[GRID.text.387], text[GRID.text.388], text[GRID.text.389], text[GRID.text.390])
+```
+
+```r
+
+```
+
+
+**Figure 2D**
+
+
+```r
+m <- melt(f.log)
+```
+
+```
+## Error: object 'f.log' not found
+```
+
+```r
+colnames(m) <- c("gene_ID", "sample_ID", "log2RPKM")
+```
+
+```
+## Error: 'names' attribute [3] must be the same length as the vector [2]
+```
+
+```r
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
+```
+
+```
+## Error: arguments imply differing number of rows: 115918, 148907
+```
+
+```r
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(log2RPKM ~ +prep + layout + study + tissue, data = data)
+```
+
+```
+## Error: 'data' argument is of the wrong type
+```
+
+```r
+b <- anova(fit)
+```
+
+```
+## Error: object 'fit' not found
+```
+
+```r
+
+barplot(b$"F value"[-5], names.arg = rownames(b)[-5], main = "Anova F score, log2-RPKM", 
+    ylim = c(0, maxval))
+```
+
+```
+## Error: object 'b' not found
+```
+
+```r
+print(b)
+```
+
+```
+## Error: object 'b' not found
+```
+
+
+ANOVA for TMM scaled values. (no figure)
+
+
+```r
+m <- melt(f.tmm)
+```
+
+```
+## Error: object 'f.tmm' not found
+```
+
+```r
+colnames(m) <- c("gene_ID", "sample_ID", "TMM_RPKM")
+```
+
+```
+## Error: 'names' attribute [3] must be the same length as the vector [2]
+```
+
+```r
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
+```
+
+```
+## Error: arguments imply differing number of rows: 115918, 148907
+```
+
+```r
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(TMM_RPKM ~ +prep + layout + study + tissue, data = data)
+```
+
+```
+## Error: 'data' argument is of the wrong type
+```
+
+```r
+a.tmm <- anova(fit)
+```
+
+```
+## Error: object 'fit' not found
+```
+
+```r
+
+barplot(a.tmm$"F value"[-5], names.arg = rownames(a.tmm)[-5], main = "Anova F score, TMM", 
+    ylim = c(0, maxval))
+```
+
+```
+## Error: object 'a.tmm' not found
+```
+
+```r
+print(a.tmm)
+```
+
+```
+## Error: object 'a.tmm' not found
+```
+
+
+**Code for figure 3**
+
+Figure 3 is about ComBat.
+
+Combat analysis is performed on logged values (n=13333)
 
 
 
+```r
+library(sva)
+```
+
+```
+## Loading required package: corpcor
+## Loading required package: mgcv
+## Loading required package: nlme
+## This is mgcv 1.7-28. For overview type 'help("mgcv-package")'.
+```
+
+```r
+
+meta <- data.frame(study = c(rep("HPA", 3), rep("AltIso", 2), rep("GTex", 3), 
+    rep("Atlas", 3)), tissue = c("Heart", "Brain", "Kidney", "Heart", "Brain", 
+    "Heart", "Brain", "Kidney", "Heart", "Brain", "Kidney"))
+
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue), data = meta)
+
+combat <- ComBat(dat = fpkms.log, batch = batch, mod = design, numCovs = NULL, 
+    par.prior = TRUE)
+```
+
+```
+## Found 4 batches
+## Found 2  categorical covariate(s)
+## Standardizing Data across genes
+## Fitting L/S model and finding priors
+## Finding parametric adjustments
+## Adjusting the Data
+```
+
+```r
+
+write.table(combat, file = "published_rpkms_combat_log2.txt", quote = F)
+
+pheatmap(cor(combat))
+```
+
+![plot of chunk :combat](figure/:combat1.png) 
+
+```r
+
+plotPC(combat, 1, 2, colors = colors, desc = "Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13333")
+```
+
+![plot of chunk :combat](figure/:combat2.png) 
+
+```r
+
+plotPC(combat, 2, 3, colors = colors, desc = "Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13333")
+```
+
+![plot of chunk :combat](figure/:combat3.png) 
+
+```r
+
+par(mfrow = c(4, 4))
+for (i in 1:6) {
+    for (j in 1:6) {
+        if (i < j) {
+            eig.cell <- s$u[, c(i, j)]
+            proj <- t(combat) %*% eig.cell
+            plot(proj[, 1], proj[, 2], pch = 20, col = colors, xlab = paste("PC", 
+                i), ylab = paste("PC", j))
+        }
+    }
+}
+```
+
+```
+## Error: object of type 'closure' is not subsettable
+```
 
 
+Let's have a look again at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies, but this time looking at the values after the ComBat run:
 
 
+```r
+
+HPA_b_c <- rownames(combat[order(combat[, 1], decreasing = T), ][1:100, ])
+HPA_h_c <- rownames(combat[order(combat[, 2], decreasing = T), ][1:100, ])
+HPA_k_c <- rownames(combat[order(combat[, 3], decreasing = T), ][1:100, ])
+
+AltIso_b_c <- rownames(combat[order(combat[, 4], decreasing = T), ][1:100, ])
+AltIso_h_c <- rownames(combat[order(combat[, 5], decreasing = T), ][1:100, ])
+
+GTEx_b_c <- rownames(combat[order(combat[, 6], decreasing = T), ][1:100, ])
+GTEx_h_c <- rownames(combat[order(combat[, 7], decreasing = T), ][1:100, ])
+GTEx_k_c <- rownames(combat[order(combat[, 8], decreasing = T), ][1:100, ])
+
+Atlas_b_c <- rownames(combat[order(combat[, 9], decreasing = T), ][1:100, ])
+Atlas_h_c <- rownames(combat[order(combat[, 10], decreasing = T), ][1:100, ])
+Atlas_k_c <- rownames(combat[order(combat[, 11], decreasing = T), ][1:100, ])
+```
+
+Brain:
+
+```r
+
+library(gridExtra)
+r <- rectGrob(gp = gpar(fill = "white", lwd = 0))
+top <- arrangeGrob(r, r, r, r, nrow = 2)
+grid.arrange(top, r, ncol = 1, main = "\nBrain Combat", heights = c(2, 1))
+
+draw.quad.venn(100, 100, 100, 100, length(intersect(HPA_b_c, AltIso_b_c)), length(intersect(HPA_b_c, 
+    GTEx_b_c)), length(intersect(HPA_b_c, Atlas_b_c)), length(intersect(AltIso_b_c, 
+    GTEx_b_c)), length(intersect(AltIso_b_c, Atlas_b_c)), length(intersect(GTEx_b_c, 
+    Atlas_b_c)), length(intersect(intersect(HPA_b_c, AltIso_b_c), GTEx_b_c)), 
+    length(intersect(intersect(HPA_b_c, AltIso_b_c), Atlas_b_c)), length(intersect(intersect(HPA_b_c, 
+        GTEx_b_c), Atlas_b_c)), length(intersect(intersect(AltIso_b_c, GTEx_b_c), 
+        Atlas_b_c)), length(intersect(intersect(HPA_b_c, AltIso_b_c), intersect(Atlas_b_c, 
+        GTEx_b_c))), category = c("HPA", "AltIso", "GTEx", "Atlas"), lwd = rep(0, 
+        4), lty = rep("solid", 4), fill = c("mistyrose", "steelblue", "lightgoldenrod", 
+        "darkseagreen"))
+```
+
+![plot of chunk :combatVennBrain](figure/:combatVennBrain.png) 
+
+```
+## (polygon[GRID.polygon.524], polygon[GRID.polygon.525], polygon[GRID.polygon.526], polygon[GRID.polygon.527], polygon[GRID.polygon.528], polygon[GRID.polygon.529], polygon[GRID.polygon.530], polygon[GRID.polygon.531], text[GRID.text.532], text[GRID.text.533], text[GRID.text.534], text[GRID.text.535], text[GRID.text.536], text[GRID.text.537], text[GRID.text.538], text[GRID.text.539], text[GRID.text.540], text[GRID.text.541], text[GRID.text.542], text[GRID.text.543], text[GRID.text.544], text[GRID.text.545], text[GRID.text.546], text[GRID.text.547], text[GRID.text.548], text[GRID.text.549], text[GRID.text.550])
+```
+
+Heart:
+
+```r
+
+r <- rectGrob(gp=gpar(fill="white",lwd=0))
+top <- arrangeGrob(r, r, r, r, nrow=2)
+grid.arrange(top, r, ncol=1, main = "\nHeart Combat", heights=c(2, 1))
+
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(HPA_h_c,AltIso_h_c)),
+               length(intersect(HPA_h_c,GTEx_h_c)),
+               length(intersect(HPA_h_c,Atlas_h_c)),
+               length(intersect(AltIso_h_c,GTEx_h_c)),
+               length(intersect(AltIso_h_c,Atlas_h_c)),
+               length(intersect(GTEx_h_c,Atlas_h_c)),
+               length(intersect(intersect(HPA_h_c,AltIso_h_c),GTEx_h_c)),
+               length(intersect(intersect(HPA_h_c,AltIso_h_c),Atlas_h_c)),
+               length(intersect(intersect(HPA_h_c,GTEx_h_c),Atlas_h_c)),
+               length(intersect(intersect(AltIso_h_c,GTEx_h_c),Atlas_h_c)),
+               length(intersect(intersect(HPA_h_c,AltIso_h_c),intersect(Atlas_h_c,GTEx_h_c))),
+               category = c("HPA","AltIso","GTEx","Atlas"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+               
+)
+```
+
+![plot of chunk :combatVennHeart](figure/:combatVennHeart.png) 
+
+```
+## (polygon[GRID.polygon.594], polygon[GRID.polygon.595], polygon[GRID.polygon.596], polygon[GRID.polygon.597], polygon[GRID.polygon.598], polygon[GRID.polygon.599], polygon[GRID.polygon.600], polygon[GRID.polygon.601], text[GRID.text.602], text[GRID.text.603], text[GRID.text.604], text[GRID.text.605], text[GRID.text.606], text[GRID.text.607], text[GRID.text.608], text[GRID.text.609], text[GRID.text.610], text[GRID.text.611], text[GRID.text.612], text[GRID.text.613], text[GRID.text.614], text[GRID.text.615], text[GRID.text.616], text[GRID.text.617], text[GRID.text.618], text[GRID.text.619], text[GRID.text.620])
+```
+
+Kidney:
+
+```r
+
+r <- rectGrob(gp = gpar(fill = "white", lwd = 0))
+top <- arrangeGrob(r, r, r, r, nrow = 2)
+grid.arrange(top, r, ncol = 1, main = "\n\nKidney Combat", heights = c(2, 1))
+
+draw.triple.venn(100, 100, 100, length(intersect(HPA_k_c, GTEx_k_c)), length(intersect(GTEx_k_c, 
+    Atlas_k_c)), length(intersect(HPA_k_c, Atlas_k_c)), length(intersect(intersect(HPA_k_c, 
+    GTEx_k_c), Atlas_k_c)), category = c("HPA", "GTEx", "Atlas"), lwd = rep(0, 
+    3), lty = rep("solid", 3), fill = c("steelblue", "lightgoldenrod", "darkseagreen"))
+```
+
+![plot of chunk :combatVennKidney](figure/:combatVennKidney.png) 
+
+```
+## (polygon[GRID.polygon.664], polygon[GRID.polygon.665], polygon[GRID.polygon.666], polygon[GRID.polygon.667], polygon[GRID.polygon.668], polygon[GRID.polygon.669], text[GRID.text.670], text[GRID.text.671], text[GRID.text.672], text[GRID.text.673], text[GRID.text.674], text[GRID.text.675], text[GRID.text.676], text[GRID.text.677], text[GRID.text.678], text[GRID.text.679])
+```
 
 
+Revisit Anova with log-TMMed and combated values.
 
 
+```r
+m <- melt(f.log.tmm)
+```
+
+```
+## Error: object 'f.log.tmm' not found
+```
+
+```r
+colnames(m) <- c("gene_ID", "sample_ID", "logTMMRPKM")
+```
+
+```
+## Error: 'names' attribute [3] must be the same length as the vector [2]
+```
+
+```r
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
+```
+
+```
+## Error: arguments imply differing number of rows: 115918, 148907
+```
+
+```r
+
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(logTMMRPKM ~ +prep + layout + study + tissue, data = data)
+```
+
+```
+## Error: 'data' argument is of the wrong type
+```
+
+```r
+b <- anova(fit)
+```
+
+```
+## Error: object 'fit' not found
+```
+
+```r
+barplot(b$"F value", names.arg = rownames(b), main = "Anova F score, log2-TMM")
+```
+
+```
+## Error: object 'b' not found
+```
+
+```r
+
+m <- melt(combat)
+```
+
+```
+## Using  as id variables
+```
+
+```r
+colnames(m) <- c("gene_ID", "sample_ID", "combatlogTMMRPKM")
+```
+
+```
+## Error: 'names' attribute [3] must be the same length as the vector [2]
+```
+
+```r
+data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
+```
+
+```
+## Error: arguments imply differing number of rows: 146663, 148907
+```
+
+```r
+
+# subset <- data[sample(1:nrow(data), 1000),]
+fit <- lm(combatlogTMMRPKM ~ prep + layout + study + tissue, data = data)
+```
+
+```
+## Error: 'data' argument is of the wrong type
+```
+
+```r
+d <- anova(fit)
+```
+
+```
+## Error: object 'fit' not found
+```
+
+```r
+barplot(d$"F value", names.arg = rownames(d), main = "Anova F score, ComBat on voom-TMM")
+```
+
+```
+## Error: object 'd' not found
+```
 
 
+Plot results
 
+```r
+pdf("anova.pdf")
+par(mfrow = c(3, 1))
+barplot(a$"F value", names.arg = rownames(a), main = "Anova F score, Raw RPKM")
+```
 
+```
+## Error: object 'a' not found
+```
 
+```r
+barplot(b$"F value", names.arg = rownames(b), main = "Anova F score, voom-TMM")
+```
 
+```
+## Error: object 'b' not found
+```
 
+```r
+barplot(d$"F value", names.arg = rownames(d), main = "Anova F score, ComBat on voom-TMM")
+```
 
+```
+## Error: object 'd' not found
+```
 
+```r
+dev.off()
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
+## pdf 
+##   2
+```
 
 
