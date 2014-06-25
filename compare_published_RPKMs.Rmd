@@ -420,12 +420,28 @@ for (i in 1:6){
 
 Figure 2 deals with log-transformed F/RPKM values from published data sets. 
 
+First we remove all rows where FPKM is zero in all samples and then add a pseudo count 1
+
 PCA on log2-FPKM values:
 
 **Figure 2A**
 
+Try prcomp() (regular PCA) instead of SVD.
+
 ```{r}
-plotPC(f.log, 1, 2, desc="Published FPKM values, log2 \n SVD \n n=13537", colors=colors)
+
+zero_all <- c()
+for(i in 1:nrow(f)) {
+  if(rowSums(f[i,])==0){
+    zero_all <- c(zero_all,i)
+  } 
+}
+
+f.nolow <- f[-zero_all,]
+pseudo <- 1
+fpkms.log <- log2(f.nolow + pseudo)
+
+plotPC(fpkms.log, 1, 2, desc="Published FPKM values, log2 \n SVD \n n=13537", colors=colors)
 ```
 
 **Figure 2B**
@@ -597,6 +613,8 @@ print(a.tmm)
 
 Figure 3 is about ComBat.
 
+Combat analysis is performed on logged values after removal of all rows (n=204) with FPKM=zero in all samples
+
 
 ```{r:combat}
 library(sva)
@@ -604,9 +622,9 @@ meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas
 batch <- meta$study
 design <- model.matrix(~as.factor(tissue),data=meta)
 
-combat <- ComBat(dat=f.log.tmm,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+combat <- ComBat(dat=fpkms.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
 #combat <- ComBat(dat=f.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-write.table(combat, file="published_rpkms_combat_log2cpm_tmm.txt", quote=F)
+write.table(combat, file="published_rpkms_combat_log2.txt", quote=F)
 pheatmap(cor(combat))
 
 plotPC(combat,1,2,colors=colors,desc="Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13537")
@@ -621,6 +639,93 @@ for (i in 1:6){
 		}
 	}
 }
+```
+
+Let's have a look again at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies, but this time looking at the values after the ComBat run:
+
+```{r:combatVenn}
+
+HPA_b_c <- rownames(combat[order(combat[,1],decreasing=T),][1:100,])
+HPA_h_c <- rownames(combat[order(combat[,2],decreasing=T),][1:100,])
+HPA_k_c <- rownames(combat[order(combat[,3],decreasing=T),][1:100,])
+
+AltIso_b_c <- rownames(combat[order(combat[,4],decreasing=T),][1:100,])
+AltIso_h_c <- rownames(combat[order(combat[,5],decreasing=T),][1:100,])
+
+GTEx_b_c <- rownames(combat[order(combat[,6],decreasing=T),][1:100,])
+GTEx_h_c <- rownames(combat[order(combat[,7],decreasing=T),][1:100,])
+GTEx_k_c <- rownames(combat[order(combat[,8],decreasing=T),][1:100,])
+
+Atlas_b_c <- rownames(combat[order(combat[,9],decreasing=T),][1:100,])
+Atlas_h_c <- rownames(combat[order(combat[,10],decreasing=T),][1:100,])
+Atlas_k_c <- rownames(combat[order(combat[,11],decreasing=T),][1:100,])
+```
+Brain:
+```{r:combatVennBrain}
+
+library(gridExtra)
+r <- rectGrob(gp=gpar(fill="white",lwd=0))
+top <- arrangeGrob(r, r, r, r, nrow=2)
+grid.arrange(top, r, ncol=1, main = "\nBrain Combat", heights=c(2, 1))
+
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(HPA_b_c,AltIso_b_c)),
+               length(intersect(HPA_b_c,GTEx_b_c)),
+               length(intersect(HPA_b_c,Atlas_b_c)),
+               length(intersect(AltIso_b_c,GTEx_b_c)),
+               length(intersect(AltIso_b_c,Atlas_b_c)),
+               length(intersect(GTEx_b_c,Atlas_b_c)),
+               length(intersect(intersect(HPA_b_c,AltIso_b_c),GTEx_b_c)),
+               length(intersect(intersect(HPA_b_c,AltIso_b_c),Atlas_b_c)),
+               length(intersect(intersect(HPA_b_c,GTEx_b_c),Atlas_b_c)),
+               length(intersect(intersect(AltIso_b_c,GTEx_b_c),Atlas_b_c)),
+               length(intersect(intersect(HPA_b_c,AltIso_b_c),intersect(Atlas_b_c,GTEx_b_c))),
+               category = c("HPA","AltIso","GTEx","Atlas"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+)
+
+```
+Heart:
+```{r:combatVennHeart}
+
+r <- rectGrob(gp=gpar(fill="white",lwd=0))
+top <- arrangeGrob(r, r, r, r, nrow=2)
+grid.arrange(top, r, ncol=1, main = "\nHeart Combat", heights=c(2, 1))
+
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(HPA_h_c,AltIso_h_c)),
+               length(intersect(HPA_h_c,GTEx_h_c)),
+               length(intersect(HPA_h_c,Atlas_h_c)),
+               length(intersect(AltIso_h_c,GTEx_h_c)),
+               length(intersect(AltIso_h_c,Atlas_h_c)),
+               length(intersect(GTEx_h_c,Atlas_h_c)),
+               length(intersect(intersect(HPA_h_c,AltIso_h_c),GTEx_h_c)),
+               length(intersect(intersect(HPA_h_c,AltIso_h_c),Atlas_h_c)),
+               length(intersect(intersect(HPA_h_c,GTEx_h_c),Atlas_h_c)),
+               length(intersect(intersect(AltIso_h_c,GTEx_h_c),Atlas_h_c)),
+               length(intersect(intersect(HPA_h_c,AltIso_h_c),intersect(Atlas_h_c,GTEx_h_c))),
+               category = c("HPA","AltIso","GTEx","Atlas"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+               
+)
+
+```
+Kidney:
+```{r:combatVennKidney}
+
+r <- rectGrob(gp=gpar(fill="white",lwd=0))
+top <- arrangeGrob(r, r, r, r, nrow=2)
+grid.arrange(top, r, ncol=1, main = "\n\nKidney Combat", heights=c(2, 1))
+
+draw.triple.venn(100, 100, 100, 
+                 length(intersect(HPA_k_c,GTEx_k_c)),
+                 length(intersect(GTEx_k_c,Atlas_k_c)),
+                 length(intersect(HPA_k_c,Atlas_k_c)),
+                 length(intersect(intersect(HPA_k_c,GTEx_k_c),Atlas_k_c)),
+                 category = c("HPA","GTEx","Atlas"), lwd = rep(0, 3), lty = rep("solid", 3),
+                 fill = c("steelblue","lightgoldenrod","darkseagreen")
+)
+
 ```
 
 Revisit Anova with log-TMMed and combated values.
