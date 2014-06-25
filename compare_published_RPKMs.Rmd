@@ -332,9 +332,9 @@ What if we use TMM normalization?
 
 ```{r}
 nf <- calcNormFactors(f)
-f.tmm <- mapply("*",as.data.frame(f),nf)
+f.tmm <- mapply("*",as.data.frame(f.nolow),nf)
 pheatmap(cor(f.tmm,method="spearman"))
-f.log.tmm <- log2.cpm(f.tmm) #log2(f.tmm+pseudo)
+f.log.tmm <- log2(f.tmm+pseudo) log2.cpm(f.tmm)
 pheatmap(cor(f.log.tmm,method="spearman"))
 write.table(f.log.tmm, file="published_rpkms_log2cpm_tmm.txt", quote=F)
 ```
@@ -343,7 +343,7 @@ Try Anova on a "melted" expression matrix with some metadata:
 
 ```{r:anova}
 library(reshape)
-m <- melt(f)
+m <- melt(f.nolow)
 colnames(m) <- c("sample_ID","RPKM")
 meta <- data.frame(tissue=c("heart","brain","kidney","heart","brain","heart","brain","kidney","heart","brain","kidney"),study=c("HPA","HPA","HPA","AltIso","AltIso","GTex","GTex","GTex","Atlas","Atlas","Atlas"),prep=c(rep("poly-A",8),rep("rRNA-depl",3)),layout=c(rep("PE",3),rep("SE",2),rep("PE",3),rep("SE",3)))
 rownames(meta) <- colnames(f)
@@ -447,7 +447,7 @@ plotPC(fpkms.log, 1, 2, desc="Published FPKM values, log2 \n SVD \n n=13537", co
 **Figure 2B**
 
 ```{r}
-plotPC(f.log, 2, 3, desc="Published FPKM values, log2 \n SVD \n n=13537", colors=colors)
+plotPC(fpkms.log, 2, 3, desc="Published FPKM values, log2 \n SVD \n n=13537", colors=colors)
 ```
 
 Alternatively, with PCA (prcomp()) the plot would have looked like this (all combinations of top 5 PCs):
@@ -455,7 +455,7 @@ Alternatively, with PCA (prcomp()) the plot would have looked like this (all com
 ```{r}
 colors <- c(1,2,3,1,2,1,2,3,1,2,3)
 
-p <- prcomp(t(f.log))
+p <- prcomp(t(fpkms.log))
 
 par(mfrow=c(4,4))
 for (i in 1:6){
@@ -584,7 +584,7 @@ draw.triple.venn(100, 100, 100,
 **Figure 2D**
 
 ```{r:anova-log}
-m <- melt(f.log)
+m <- melt(fpkms.log)
 colnames(m) <- c("gene_ID","sample_ID","log2RPKM")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]

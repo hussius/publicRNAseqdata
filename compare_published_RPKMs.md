@@ -466,499 +466,50 @@ pheatmap(cor(log2.cpm(f.nolow)))
 What if we use TMM normalization?
 
 
-```r
-nf <- calcNormFactors(f)
-f.tmm <- mapply("*", as.data.frame(f), nf)
-pheatmap(cor(f.tmm, method = "spearman"))
-```
 
-![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-171.png) 
 
-```r
-f.log.tmm <- log2.cpm(f.tmm)  #log2(f.tmm+pseudo)
-pheatmap(cor(f.log.tmm, method = "spearman"))
-```
 
-![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-172.png) 
 
-```r
-write.table(f.log.tmm, file = "published_rpkms_log2cpm_tmm.txt", quote = F)
-```
 
 
-Try Anova on a "melted" expression matrix with some metadata:
 
 
-```r
-library(reshape)
-```
 
-```
-## Loading required package: plyr
-## 
-## Attaching package: 'reshape'
-## 
-## The following objects are masked from 'package:plyr':
-## 
-##     rename, round_any
-```
 
-```r
-m <- melt(f)
-```
 
-```
-## Using  as id variables
-```
 
-```r
-colnames(m) <- c("sample_ID", "RPKM")
-meta <- data.frame(tissue = c("heart", "brain", "kidney", "heart", "brain", 
-    "heart", "brain", "kidney", "heart", "brain", "kidney"), study = c("HPA", 
-    "HPA", "HPA", "AltIso", "AltIso", "GTex", "GTex", "GTex", "Atlas", "Atlas", 
-    "Atlas"), prep = c(rep("poly-A", 8), rep("rRNA-depl", 3)), layout = c(rep("PE", 
-    3), rep("SE", 2), rep("PE", 3), rep("SE", 3)))
-rownames(meta) <- colnames(f)
-tissue <- rep(meta$tissue, each = nrow(f))
-study <- rep(meta$study, each = nrow(f))
-prep <- rep(meta$prep, each = nrow(f))
-layout <- rep(meta$layout, each = nrow(f))
-data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
 
-# subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(RPKM ~ prep + layout + study + tissue, data = data)
-a <- anova(fit)
-maxval = 3200
-```
 
 
-**Figure 1C**
 
 
-```r
-barplot(a$"F value"[-5], names.arg = rownames(a)[-5], main = "Anova F score, Raw RPKM", 
-    ylim = c(0, maxval))
-```
 
-![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18.png) 
 
 
-Let's look at a few SVD plots. 
 
-**Figure 1D**
 
 
-```r
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
-plotPC(f, 1, 2, "Published FPKM values \n SVD \n n=13537", colors = colors)
-```
 
-![plot of chunk :pca-fig1d](figure/:pca-fig1d.png) 
 
 
-The heart samples are clearly separating into their own group.
 
-**Figure 1E** (not included in the current manuscript version)
 
 
-```r
-plotPC(f, 2, 3, "Published FPKM values \n SVD \n n=13537", colors = colors)
-```
 
-![plot of chunk :pca-fig1e](figure/:pca-fig1e.png) 
 
 
-We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper)
-Start with SVD on the "raw" F/RPKMs.
 
 
-```r
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
 
-par(mfrow = c(4, 4))
-for (i in 1:6) {
-    for (j in 1:6) {
-        if (i < j) {
-            plotPC(f, i, j, desc = "", colors = colors)
-        }
-    }
-}
-```
 
-![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19.png) 
 
 
-Try prcomp() (regular PCA) instead of SVD.
 
 
-```r
 
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
 
-p <- prcomp(t(f))
 
-par(mfrow = c(4, 4))
-for (i in 1:6) {
-    for (j in 1:6) {
-        if (i < j) {
-            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
-                i), ylab = paste("PC", j))
-        }
-    }
-}
-```
 
-![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20.png) 
 
-
-**Code for figure 2**
-
-Figure 2 deals with log-transformed F/RPKM values from published data sets. 
-
-PCA on log2-FPKM values:
-
-**Figure 2A**
-
-
-```r
-plotPC(f.log, 1, 2, desc = "Published FPKM values, log2 \n SVD \n n=13537", 
-    colors = colors)
-```
-
-![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-21.png) 
-
-
-**Figure 2B**
-
-
-```r
-plotPC(f.log, 2, 3, desc = "Published FPKM values, log2 \n SVD \n n=13537", 
-    colors = colors)
-```
-
-![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22.png) 
-
-
-Alternatively, with PCA (prcomp()) the plot would have looked like this (all combinations of top 5 PCs):
-
-
-```r
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
-
-p <- prcomp(t(f.log))
-
-par(mfrow = c(4, 4))
-for (i in 1:6) {
-    for (j in 1:6) {
-        if (i < j) {
-            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
-                i), ylab = paste("PC", j))
-        }
-    }
-}
-```
-
-![plot of chunk unnamed-chunk-23](figure/unnamed-chunk-23.png) 
-
-
-Or log2/TMM values where genes with mean FPKM<1 have been filtered out:
-
-
-```r
-
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
-
-# p <- prcomp(t(log2(f.nolow+pseudo)))
-
-p <- prcomp(t(log2.cpm(f.nolow)))
-
-par(mfrow = c(4, 4))
-for (i in 1:6) {
-    for (j in 1:6) {
-        if (i < j) {
-            plot(p$x[, i], p$x[, j], pch = 20, col = colors, xlab = paste("PC", 
-                i), ylab = paste("PC", j))
-        }
-    }
-}
-```
-
-![plot of chunk unnamed-chunk-24](figure/unnamed-chunk-24.png) 
-
-
-**Figure 2C**
-
-Compare overlap between the top 100 expressed genes in each tissue between studies.
-
-<<<<<<< HEAD
-
-```r
-HPA_b <- rownames(f[order(f$HPA_brain, decreasing = T), ][1:100, ])
-HPA_h <- rownames(f[order(f$HPA_heart, decreasing = T), ][1:100, ])
-HPA_k <- rownames(f[order(f$HPA_kidney, decreasing = T), ][1:100, ])
-=======
-```r
-#let's have a look at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies
-library(VennDiagram)
-```
-
-```
-## Loading required package: grid
-```
-
-```r
-HPA_b <- rownames(f[order(f$HPA_brain,decreasing=T),][1:100,])
-HPA_h <- rownames(f[order(f$HPA_heart,decreasing=T),][1:100,])
-HPA_k <- rownames(f[order(f$HPA_kidney,decreasing=T),][1:100,])
->>>>>>> 87d407041721e2a0da50833af1e316b9283d5345
-
-AltIso_b <- rownames(f[order(f$AltIso_brain, decreasing = T), ][1:100, ])
-AltIso_h <- rownames(f[order(f$AltIso_heart, decreasing = T), ][1:100, ])
-
-GTEx_b <- rownames(f[order(f$GTEx_brain, decreasing = T), ][1:100, ])
-GTEx_h <- rownames(f[order(f$GTEx_heart, decreasing = T), ][1:100, ])
-GTEx_k <- rownames(f[order(f$GTEx_kidney, decreasing = T), ][1:100, ])
-
-Atlas_b <- rownames(f[order(f$Atlas_brain, decreasing = T), ][1:100, ])
-Atlas_h <- rownames(f[order(f$Atlas_heart, decreasing = T), ][1:100, ])
-Atlas_k <- rownames(f[order(f$Atlas_kidney, decreasing = T), ][1:100, ])
-
-HPA <- list(HPA_h, HPA_h, HPA_k)
-AltIso <- list(AltIso_b, AltIso_h)
-GTEx <- list(GTEx_b, GTEx_h, GTEx_k)
-Atlas <- list(Atlas_b, AltIso_h, Atlas_k)
-
-# venndiagram för de högst uttryckta generna i kidney
-
-<<<<<<< HEAD
-k_Ids <- list(HPA_k, GTEx_k, Atlas_k)
-=======
-
-b_Ids <- list(HPA_b,AltIso_b,GTEx_b,Atlas_b)
-
-draw.triple.venn(length(HPA_b),length(HPA_h), length(HPA_k), length(intersect(HPA_b,HPA_h)), length(intersect(HPA_h,HPA_k)),
-                 length(intersect(HPA_b,HPA_k)), length(intersect(intersect(HPA_b,HPA_h),HPA_k)))
-```
-
-![plot of chunk :venn](figure/:venn1.png) 
-
-```
-## (polygon[GRID.polygon.401], polygon[GRID.polygon.402], polygon[GRID.polygon.403], polygon[GRID.polygon.404], polygon[GRID.polygon.405], polygon[GRID.polygon.406], text[GRID.text.407], text[GRID.text.408], text[GRID.text.409], text[GRID.text.410], text[GRID.text.411], text[GRID.text.412], text[GRID.text.413], text[GRID.text.414], text[GRID.text.415], text[GRID.text.416])
-```
-
-```r
-category = rep("", 3)
-venn(b_Ids)
-```
-
-![plot of chunk :venn](figure/:venn2.png) 
-
-```r
-h_Ids <- list(HPA_h,AltIso_h,GTEx_h,Atlas_h)
-venn(h_Ids)
-```
-
-![plot of chunk :venn](figure/:venn3.png) 
-
-```r
-k_Ids <- list(HPA_k,GTEx_k,Atlas_k)
->>>>>>> 87d407041721e2a0da50833af1e316b9283d5345
-venn(k_Ids)
-```
-
-![plot of chunk :venn](figure/:venn4.png) 
-
-
-**Figure 2D**
-
-
-```r
-m <- melt(f.log)
-colnames(m) <- c("gene_ID", "sample_ID", "log2RPKM")
-data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
-# subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(log2RPKM ~ +prep + layout + study + tissue, data = data)
-b <- anova(fit)
-
-barplot(b$"F value"[-5], names.arg = rownames(b)[-5], main = "Anova F score, log2-RPKM", 
-    ylim = c(0, maxval))
-```
-
-![plot of chunk :anova-log](figure/:anova-log.png) 
-
-```r
-print(b)
-```
-
-```
-## Analysis of Variance Table
-## 
-## Response: log2RPKM
-##               Df Sum Sq Mean Sq F value  Pr(>F)    
-## prep           1    224     224    45.3 1.7e-11 ***
-## layout         1   7223    7223  1460.5 < 2e-16 ***
-## study          1    199     199    40.3 2.2e-10 ***
-## tissue         2  10684    5342  1080.2 < 2e-16 ***
-## Residuals 148901 736416       5                    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-```
-
-
-ANOVA for TMM scaled values. (no figure)
-
-
-```r
-m <- melt(f.tmm)
-colnames(m) <- c("gene_ID", "sample_ID", "TMM_RPKM")
-data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
-# subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(TMM_RPKM ~ +prep + layout + study + tissue, data = data)
-a.tmm <- anova(fit)
-
-barplot(a.tmm$"F value"[-5], names.arg = rownames(a.tmm)[-5], main = "Anova F score, TMM", 
-    ylim = c(0, maxval))
-```
-
-![plot of chunk :anova-tmm](figure/:anova-tmm.png) 
-
-```r
-print(a.tmm)
-```
-
-```
-## Analysis of Variance Table
-## 
-## Response: TMM_RPKM
-##               Df   Sum Sq Mean Sq F value  Pr(>F)    
-## prep           1 3.73e+06 3725115   384.5 < 2e-16 ***
-## layout         1 1.71e+06 1709688   176.5 < 2e-16 ***
-## study          1 6.10e+06 6095428   629.2 < 2e-16 ***
-## tissue         2 2.82e+05  141030    14.6 4.8e-07 ***
-## Residuals 148901 1.44e+09    9688                    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-```
-
-
-**Code for figure 3**
-
-Figure 3 is about ComBat.
-
-
-
-```r
-library(sva)
-```
-
-```
-## Loading required package: corpcor
-## Loading required package: mgcv
-## Loading required package: nlme
-## This is mgcv 1.7-28. For overview type 'help("mgcv-package")'.
-```
-
-```r
-meta <- data.frame(study = c(rep("HPA", 3), rep("AltIso", 2), rep("GTex", 3), 
-    rep("Atlas", 3)), tissue = c("Heart", "Brain", "Kidney", "Heart", "Brain", 
-    "Heart", "Brain", "Kidney", "Heart", "Brain", "Kidney"))
-batch <- meta$study
-design <- model.matrix(~as.factor(tissue), data = meta)
-
-combat <- ComBat(dat = f.log.tmm, batch = batch, mod = design, numCovs = NULL, 
-    par.prior = TRUE)
-```
-
-```
-## Found 4 batches
-## Found 2  categorical covariate(s)
-## Standardizing Data across genes
-## Fitting L/S model and finding priors
-## Finding parametric adjustments
-## Adjusting the Data
-```
-
-```r
-# combat <-
-# ComBat(dat=f.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-write.table(combat, file = "published_rpkms_combat_log2cpm_tmm.txt", quote = F)
-pheatmap(cor(combat))
-```
-
-![plot of chunk :combat](figure/:combat1.png) 
-
-```r
-
-plotPC(combat, 1, 2, colors = colors, desc = "Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13537")
-```
-
-![plot of chunk :combat](figure/:combat2.png) 
-
-```r
-
-par(mfrow = c(4, 4))
-for (i in 1:6) {
-    for (j in 1:6) {
-        if (i < j) {
-            eig.cell <- s$u[, c(i, j)]
-            proj <- t(combat) %*% eig.cell
-            plot(proj[, 1], proj[, 2], pch = 20, col = colors, xlab = paste("PC", 
-                i), ylab = paste("PC", j))
-        }
-    }
-}
-```
-
-```
-## Error: object of type 'closure' is not subsettable
-```
-
-
-Revisit Anova with log-TMMed and combated values.
-
-
-```r
-m <- melt(f.log.tmm)
-colnames(m) <- c("gene_ID", "sample_ID", "logTMMRPKM")
-data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
-
-# subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(logTMMRPKM ~ +prep + layout + study + tissue, data = data)
-b <- anova(fit)
-barplot(b$"F value", names.arg = rownames(b), main = "Anova F score, log2-TMM")
-```
-
-![plot of chunk :anova2](figure/:anova21.png) 
-
-```r
-
-m <- melt(combat)
-colnames(m) <- c("gene_ID", "sample_ID", "combatlogTMMRPKM")
-data <- data.frame(m, tissue = tissue, study = study, prep = prep, layout = layout)
-
-# subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(combatlogTMMRPKM ~ prep + layout + study + tissue, data = data)
-d <- anova(fit)
-barplot(d$"F value", names.arg = rownames(d), main = "Anova F score, ComBat on voom-TMM")
-```
-
-![plot of chunk :anova2](figure/:anova22.png) 
-
-
-Plot results
-
-```r
-pdf("anova.pdf")
-par(mfrow = c(3, 1))
-barplot(a$"F value", names.arg = rownames(a), main = "Anova F score, Raw RPKM")
-barplot(b$"F value", names.arg = rownames(b), main = "Anova F score, voom-TMM")
-barplot(d$"F value", names.arg = rownames(d), main = "Anova F score, ComBat on voom-TMM")
-dev.off()
-```
-
-```
-## pdf 
-##   2
-```
 
 
