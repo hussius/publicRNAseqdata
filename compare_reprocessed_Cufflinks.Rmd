@@ -4,32 +4,12 @@ Comparing FPKMs for FASTQ files reprocessed with TopHat and Cufflinks
 Preliminaries (libraries etc.)
 
 ```{r}
+
 library(pheatmap)
 library(edgeR)
 library(calibrate)
-#f <- read.delim("fpkm_table_tophat_summed.txt")
-f <- read.delim("fpkm_table_tophat_summed_coding.txt")
 
-cpm.tmm <- function(counts, groups=NA){
-  require(edgeR)
-	if(is.na(groups)){
-		d<-DGEList(counts=counts)
-	}
-	else{
-		d<-DGEList(counts=counts, group=groups)
-	}
-	d <- calcNormFactors(d, method="TMM") 
-	return(cpm(d, normalized.lib.sizes=TRUE))
-}
-
-log2.cpm <- function(x){
-  x.pseud <- x + 0.5
-  libsizes = colSums(x)
-  libsize.pseud <- libsizes + 1.0
-  new.mtx <- log2(1e6 * mapply("/",as.data.frame(x.pseud),libsize.pseud))
-  rownames(new.mtx) <- rownames(x)
-  return(as.matrix(new.mtx))
-}
+f <- read.delim("fpkm_table_tophat.txt")
 
 do.SVD = function(m, comp.1=1, comp.2=2){ # returns eig.cell
   s <- svd(m)
@@ -80,42 +60,136 @@ textxy(proj[,1],proj[,2],labs=rownames(proj))
 
 ```
 
-**Figure 4B (?)**
-
-Heatmap of Spearman correlations between published expression profiles (# genes = 13,537)
+First, we will restrict the data set to only include protein coding genes:
 
 ```{r}
-pheatmap(cor(f, method="spearman")) 
+
+library(biomaRt)
+
+f_ids <- as.vector(f[,1])
+
+ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
+
+gene_type <- getBM(attributes=c("ensembl_gene_id", "gene_biotype"), 
+                   filters = "ensembl_gene_id",
+                   values=f_ids,
+                   mart=ensembl)
+
+pc <- subset(gene_type[,1],gene_type[,2]=="protein_coding")
+
+f_pc <- f[match(pc,f[,1]),]
+
+
 ```
 
-Log2-CPM (no figure)
+And let's remove all lines where FPKM is close to zero in all samples before we proceed with this version of the data set:
 
 ```{r}
-#pseudo <- 0.125
-#f.log <- log2(f+pseudo)
-f.log <- log2.cpm(f)
-pheatmap(cor(f.log))
-write.table(f.log, file="reprocessed_Cufflinks_log2cpm.txt",quote=F)
+
+f_pc_nozero <- f_pc[-which(rowSums(f_pc[,3:16])<=0.01),]
+
 ```
-Restricting ourselves to genes with mean FPKM > 1
+
+**Figure 4A**
+
+Heatmap of Spearman correlations between reprocessed expression profiles (# genes = 22,360)
 
 ```{r}
-f.nolow <- f[-which(rowMeans(f)<1),]
-#pheatmap(cor(log2(f.nolow+pseudo)))
-pheatmap(cor(log2.cpm(f.nolow)))
+pheatmap(cor(f_pc_nozero[,3:16], method="spearman"))
 ```
 
-What if we use TMM normalization?
+Alternatively, one could use Pearson correlation (not shown in paper):
 
 ```{r}
-nf <- calcNormFactors(f)
-f.tmm <- mapply("*",as.data.frame(f),nf)
-pheatmap(cor(f.tmm,method="spearman"))
-f.log.tmm <- log2.cpm(f.tmm) #log2(f.tmm+pseudo)
-pheatmap(cor(f.tmm,method="spearman"))
-write.table(f.tmm, file="reprocessed_Cufflinks_fpkms_tmm.txt", quote=F)
-write.table(f.log.tmm, file="reprocessed_Cufflinks_log2cpm_tmm.txt", quote=F)
+pheatmap(cor(f_pc_nozero[,3:16]))
 ```
+
+Sometimes the linear (Pearson) correlation works better on log values.  (not shown in paper):
+
+```{r}
+pseudo <- 1
+fpkms.log <- log2(f_pc_nozero[,3:16] + pseudo)
+pheatmap(cor(fpkms.log[,]))
+```
+
+What if we drop the genes that have less than FPKM 1 on average? (not shown in paper):
+
+```{r}
+f.nolow <- f_pc_nozero[-which(rowMeans(f_pc_nozero[,3:16])<1),]
+pheatmap(cor(log2(f.nolow[,3:16] + pseudo)))
+```
+
+Let's look at a few SVD plots. 
+
+First we take a look at the "raw" FPKM values for PC 1&2:
+
+**Figure 4B**
+```{r}
+
+colors <- c(2,1,3,2,1,3,2,1,3,2,1,3,2,1)
+plotPC(f_pc_nozero[,3:16], 1, 2, "Reprocessed FPKM values \n SVD \n n=19524", colors=colors)
+
+```
+
+and PC 2&3:
+
+**Figure 1D** (not included in the current manuscript version)
+
+```{r}
+
+plotPC(f_pc_nozero[,3:16], 2, 3, "Reprocessed FPKM values \n SVD \n n=19524", colors=colors)
+
+```
+
+We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper)
+Start with SVD on the "raw" F/RPKMs.
+
+```{r}
+
+colors <- c(2,1,3,2,1,3,2,1,3,2,1,3,2,1)
+
+par(mfrow=c(4,4))
+for (i in 1:6){
+  for(j in 1:6){
+  	if (i<j){ 
+		plotPC(f_pc_nozero[,3:16],i,j,desc="",colors=colors)
+		}
+	}
+}
+
+```
+
+Let's see how the PCA plots look for log2-FPKM values:
+
+```{r}
+
+plotPC(fpkms.log, 1, 2, desc="Reprocessed F/RPKM values, log2 \n SVD \n n=19475", colors=colors)
+
+plotPC(fpkms.log, 2, 3, desc="Reprocessed FPKM values, log2 \n SVD \n n=19475", colors=colors)
+
+```
+
+Combat analysis for removal of batch effects (n=19475):
+
+```{r:combat}
+library(sva)
+
+meta <- data.frame(study=c(rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HPA",3),rep("AltIso",2)),tissue=c("Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
+
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue),data=meta)
+
+combat <- ComBat(dat=fpkms.log[,],batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+
+write.table(combat, file="reprocessed_rpkms_combat_log2.txt", quote=F)
+
+pheatmap(cor(combat))
+plotPC(combat,1,2,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
+plotPC(combat,2,3,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
+
+
+```
+
 
 ```{r:anova}
 library(reshape)
@@ -154,15 +228,6 @@ plot(p$x[,2],p$x[,3],pch=20,col=colors,xlab=paste("PC", 2),ylab=paste("PC", 3),m
 
 PC plots for log transform, mean FPKM > 1, TMM, ComBat
 
-Log2-CPM
-
-```{r}
-plotPC(f.log, 1, 2, "log2-cpm Cufflinks FPKM values \n SVD \n n=22674", colors=colors)
-p <- prcomp(t(f.log))
-plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (log2cpm) \n PCA \n n=22674")
-```
-
-Log2-CPM (FPKM>1)
 
 ```{r}
 f.log.nolow <- log2.cpm(f.nolow)
@@ -170,15 +235,7 @@ plotPC(f.log.nolow, 1, 2, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=2
 plotPC(f.log.nolow, 2, 3, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
 p <- prcomp(t(f.log.nolow))
 plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (log2, FPKM>1) \n PCA \n n=22674")
-```
 
-Log2-CPM-TMM
-
-```{r}
-plotPC(f.log.tmm, 1, 2, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
-plotPC(f.log.tmm, 2, 3, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
-p <- prcomp(t(f.log.tmm))
-plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (log2cpm TMM) \n PCA \n n=22674")
 ```
 
 ANOVA analyses
@@ -207,27 +264,6 @@ barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-
 print(b)
 ```
 
-Try ComBat.
-
-```{r:combat}
-library(sva)
-meta <- data.frame(tissue=c("brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
-batch <- meta$study
-design <- model.matrix(~as.factor(tissue),data=meta)
-
-combat <- ComBat(dat=f.log.tmm,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-p <- prcomp(t(combat))
-plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (ComBat log2cpm TMM) \n PCA \n n=22674")
-
-pheatmap(cor(combat))
-
-plotPC(combat, 1, 2, "ComBat adjusted logCPM-TMM FPKM values \n SVD \n n=22654", colors=colors)
-
-
-
-write.table(combat, file="reprocessed_Cufflinks_combat_log2cpm_tmm.txt",quote=F)
-```
-
 Finally, ANOVA on ComBat.
 
 ```{r:anova-combat}
@@ -240,4 +276,103 @@ b <- anova(fit)
 
 barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
 print(b)
+```
+
+**Figure X**
+
+
+Let's have a look at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies
+
+
+```{r:venn }
+
+library(VennDiagram)
+
+EoGE_b <- rownames(f_pc[order(f_pc$EoGE_brain,decreasing=T),][1:100,])
+EoGE_h <- rownames(f_pc[order(f_pc$EoGE_heart,decreasing=T),][1:100,])
+EoGE_k <- rownames(f_pc[order(f_pc$EoGE_kidney,decreasing=T),][1:100,])
+
+Atlas_b <- rownames(f_pc[order(f_pc$Atlas_brain,decreasing=T),][1:100,])
+Atlas_h <- rownames(f_pc[order(f_pc$Atlas_heart,decreasing=T),][1:100,])
+Atlas_k <- rownames(f_pc[order(f_pc$Atlas_kidney,decreasing=T),][1:100,])
+
+BodyMap_b <- rownames(f_pc[order(f_pc$BodyMap_brain,decreasing=T),][1:100,])
+BodyMap_h <- rownames(f_pc[order(f_pc$BodyMap_heart,decreasing=T),][1:100,])
+BodyMap_k <- rownames(f_pc[order(f_pc$BodyMap_kidney,decreasing=T),][1:100,])
+
+HPA_b <- rownames(f_pc[order(f_pc$HPA_brain,decreasing=T),][1:100,])
+HPA_h <- rownames(f_pc[order(f_pc$HPA_heart,decreasing=T),][1:100,])
+HPA_k <- rownames(f_pc[order(f_pc$HPA_kidney,decreasing=T),][1:100,])
+
+AltIso_b <- rownames(f_pc[order(f_pc$AltIso_brain,decreasing=T),][1:100,])
+AltIso_h <- rownames(f_pc[order(f_pc$AltIso_heart,decreasing=T),][1:100,])
+
+```
+
+Let's start with the five brain samples:
+
+```{r:venn brain}
+
+b_Ids <- list(HPA_b,AltIso_b,GTEx_b,Atlas_b)
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_b,Atlas_b)),
+               length(intersect(EoGE_b,BodyMap_b)),
+               length(intersect(EoGE_b,HPA_b)),
+               length(intersect(EoGE_b,AltIso_b)),
+               length(intersect(Atlas_b,BodyMap_b)),
+               length(intersect(Atlas_b,HPA_b)),
+               length(intersect(Atlas_b,AltIso_b)),
+               length(intersect(BodyMap_b,HPA_b)),
+               length(intersect(BodyMap_b,AltIso_b)),
+               length(intersect(HPA_b,AltIso_b)),
+               
+               length(intersect(intersect(HPA_b,AltIso_b),GTEx_b)),
+               length(intersect(intersect(HPA_b,AltIso_b),Atlas_b)),
+               length(intersect(intersect(HPA_b,GTEx_b),Atlas_b)),
+               length(intersect(intersect(AltIso_b,GTEx_b),Atlas_b)),
+               length(intersect(intersect(HPA_b,AltIso_b),intersect(Atlas_b,GTEx_b))),
+               category = c("HPA","AltIso","GTEx","Atlas"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+)
+
+```
+
+Let's investigate the heart samples:
+
+```{r:venn heart}
+
+h_Ids <- list(HPA_h,AltIso_h,GTEx_h,Atlas_h)
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(HPA_h,AltIso_h)),
+               length(intersect(HPA_h,GTEx_h)),
+               length(intersect(HPA_h,Atlas_h)),
+               length(intersect(AltIso_h,GTEx_h)),
+               length(intersect(AltIso_h,Atlas_h)),
+               length(intersect(GTEx_h,Atlas_h)),
+               length(intersect(intersect(HPA_h,AltIso_h),GTEx_h)),
+               length(intersect(intersect(HPA_h,AltIso_h),Atlas_h)),
+               length(intersect(intersect(HPA_h,GTEx_h),Atlas_h)),
+               length(intersect(intersect(AltIso_h,GTEx_h),Atlas_h)),
+               length(intersect(intersect(HPA_h,AltIso_h),intersect(Atlas_h,GTEx_h))),
+               category = c("HPA","AltIso","GTEx","Atlas"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+)
+
+```
+
+...and the three kidney samples:
+
+```{r:venn kidney}
+
+k_Ids <- list(HPA_k,GTEx_k,Atlas_k)
+draw.triple.venn(100, 100, 100, 
+                 length(intersect(HPA_k,GTEx_k)),
+                 length(intersect(GTEx_k,Atlas_k)),
+                 length(intersect(HPA_k,Atlas_k)),
+                 length(intersect(intersect(HPA_k,GTEx_k),Atlas_k)),
+                 category = c("HPA","GTEx","Atlas"), lwd = rep(0, 3), lty = rep("solid", 3),
+                 fill = c("steelblue","lightgoldenrod","darkseagreen")
+)
+
+
 ```

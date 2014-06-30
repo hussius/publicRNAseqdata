@@ -14,17 +14,6 @@ normalize.voom <- function(counts){
   return(voom(counts)$E)
 }
  
-cpm.tmm <- function(counts, groups=NA){
-	require(edgeR)
-	if(is.na(groups)){
-		d<-DGEList(counts=counts)
-	}
-	else{
-		d<-DGEList(counts=counts, group=groups)
-	}
-	d <- calcNormFactors(d, method="TMM") 
-	return(cpm(d, normalized.lib.sizes=TRUE))
-}
 
 log2.cpm <- function(x){
   x.pseud <- x + 0.5
@@ -337,18 +326,6 @@ fpkms.log.nolow <- log2(f.nolow + pseudo)
 pheatmap(cor(fpkms.log.nolow))
 ```
 
-What if we use TMM normalization?
-
-
-```{r}
-#nf <- calcNormFactors(f)
-#f.tmm <- mapply("*",as.data.frame(f),nf)
-#pheatmap(cor(f.tmm,method="spearman"))
-#f.log.tmm <- log2.cpm(f.tmm) #log2(f.tmm+pseudo)
-#pheatmap(cor(f.log.tmm,method="spearman"))
-#write.table(f.log.tmm, file="published_rpkms_log2cpm_tmm.txt", quote=F)
-```
-
 Try Anova on a "melted" expression matrix with some metadata:
 
 ```{r:anova}
@@ -369,7 +346,7 @@ a <- anova(fit)
 maxval = 3200
 ```
 
-**Figure 1C**
+**Figure 1X**
 
 ```{r}
 barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Raw RPKM",ylim=c(0,maxval))
@@ -377,7 +354,7 @@ barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Raw RPKM"
 
 Let's look at a few SVD plots. 
 
-**Figure 1D**
+**Figure 1C**
 
 ```{r:pca-fig1d}
 colors <- c(1,2,3,1,2,1,2,3,1,2,3)
@@ -386,7 +363,7 @@ plotPC(f.nozero, 1, 2, "Published FPKM values \n SVD \n n=13333", colors=colors)
 
 The heart samples are clearly separating into their own group.
 
-**Figure 1E** (not included in the current manuscript version)
+**Figure 1D** (not included in the current manuscript version)
 
 ```{r:pca-fig1e}
 plotPC(f.nozero, 2, 3, "Published FPKM values \n SVD \n n=13333", colors=colors)
@@ -474,11 +451,6 @@ Atlas_b <- rownames(f[order(f$Atlas_brain,decreasing=T),][1:100,])
 Atlas_h <- rownames(f[order(f$Atlas_heart,decreasing=T),][1:100,])
 Atlas_k <- rownames(f[order(f$Atlas_kidney,decreasing=T),][1:100,])
 
-
-HPA <- list(HPA_h,HPA_h,HPA_k)
-AltIso <- list(AltIso_b,AltIso_h)
-GTEx <- list(GTEx_b,GTEx_h,GTEx_k)
-Atlas <- list(Atlas_b,AltIso_h,Atlas_k)
 
 ```
 Let's start with the four brain samples:
