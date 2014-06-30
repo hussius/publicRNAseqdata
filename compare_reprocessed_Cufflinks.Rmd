@@ -183,24 +183,31 @@ combat <- ComBat(dat=fpkms.log[,],batch=batch,mod=design,numCovs=NULL,par.prior=
 
 write.table(combat, file="reprocessed_rpkms_combat_log2.txt", quote=F)
 
+```
+
+Let's see how the correlation heatmap and PCA plots look after correction for batch effects with combat:
+
+```{r}
+
+
 pheatmap(cor(combat))
 plotPC(combat,1,2,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
 plotPC(combat,2,3,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
 
-
 ```
 
+Anova analysis of different batch factors:
 
 ```{r:anova}
 library(reshape)
-m <- melt(f)
-colnames(m) <- c("sample_ID","Cuff_FPKM")
+m <- melt(f_pc_nozero)
+colnames(m) <- c("ENSG","Gene","sample_ID","Cuff_FPKM")
 meta <- data.frame(tissue=c("brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
-rownames(meta) <- colnames(f)
-tissue <- rep(meta$tissue, each=nrow(f))
-study <- rep(meta$study, each=nrow(f))
-prep <- rep(meta$prep, each=nrow(f))
-layout <- rep(meta$layout, each=nrow(f))
+rownames(meta) <- colnames(f_pc_nozero)[3:16]
+tissue <- rep(meta$tissue, each=nrow(f_pc_nozero))
+study <- rep(meta$study, each=nrow(f_pc_nozero))
+prep <- rep(meta$prep, each=nrow(f_pc_nozero))
+layout <- rep(meta$layout, each=nrow(f_pc_nozero))
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 
 #subset <- data[sample(1:nrow(data), 1000),]
@@ -209,7 +216,7 @@ a <- anova(fit)
 maxval = 100
 ```
 
-**Figure 4C (?)**
+**Figure 4C**
 
 ```{r}
 barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Cufflinks FPKM",ylim=c(0,maxval))
@@ -217,32 +224,14 @@ barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Cufflinks
 
 **Figure 4D (?)**
 
-```{r:pca-fig1d}
-colors <- c(1,2,3,1,2,3,1,2,3,1,2,3,1,2)
-plotPC(f, 1, 2, "Reprocessed Cufflinks FPKM values \n SVD \n n=22674", colors=colors)
-plotPC(f, 2, 3, "Reprocessed Cufflinks FPKM values \n SVD \n n=22674", colors=colors)
-p <- prcomp(t(f))
-plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values \n PCA \n n=22674")
-plot(p$x[,2],p$x[,3],pch=20,col=colors,xlab=paste("PC", 2),ylab=paste("PC", 3),main="Reprocessed Cufflinks FPKM values \n PCA \n n=22674")
 ```
 
-PC plots for log transform, mean FPKM > 1, TMM, ComBat
-
-
-```{r}
-f.log.nolow <- log2.cpm(f.nolow)
-plotPC(f.log.nolow, 1, 2, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
-plotPC(f.log.nolow, 2, 3, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
-p <- prcomp(t(f.log.nolow))
-plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (log2, FPKM>1) \n PCA \n n=22674")
-
-```
-
-ANOVA analyses
+ANOVA analyseson logged values:
 
 ```{r:anova-log}
-m <- melt(f.log)
-colnames(m) <- c("gene_ID","sample_ID","log2FPKM")
+m <- melt(fpkms.log[,])
+colnames(m) <- c("sample_ID","log2FPKM")
+
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(log2FPKM ~ + prep + layout + study + tissue, data=data)
@@ -252,30 +241,19 @@ barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM
 print(b)
 ```
 
-```{r:anova-logtmm}
-m <- melt(f.log.tmm)
-colnames(m) <- c("gene_ID","sample_ID","log2FPKM")
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(log2FPKM ~ + prep + layout + study + tissue, data=data)
-b <- anova(fit)
-
-barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
-print(b)
-```
 
 Finally, ANOVA on ComBat.
 
 ```{r:anova-combat}
 m <- melt(combat)
-colnames(m) <- c("gene_ID","sample_ID","combat")
+colnames(m) <- c("sample_ID","combat")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(combat ~ + prep + layout + study + tissue, data=data)
-b <- anova(fit)
+c <- anova(fit)
 
-barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
-print(b)
+barplot(c$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
+print(c)
 ```
 
 **Figure X**
@@ -313,7 +291,6 @@ Let's start with the five brain samples:
 
 ```{r:venn brain}
 
-b_Ids <- list(HPA_b,AltIso_b,GTEx_b,Atlas_b)
 draw.quintuple.venn(100, 100, 100, 100, 100, 
                length(intersect(EoGE_b,Atlas_b)),
                length(intersect(EoGE_b,BodyMap_b)),
@@ -325,54 +302,84 @@ draw.quintuple.venn(100, 100, 100, 100, 100,
                length(intersect(BodyMap_b,HPA_b)),
                length(intersect(BodyMap_b,AltIso_b)),
                length(intersect(HPA_b,AltIso_b)),
-               
-               length(intersect(intersect(HPA_b,AltIso_b),GTEx_b)),
-               length(intersect(intersect(HPA_b,AltIso_b),Atlas_b)),
-               length(intersect(intersect(HPA_b,GTEx_b),Atlas_b)),
-               length(intersect(intersect(AltIso_b,GTEx_b),Atlas_b)),
-               length(intersect(intersect(HPA_b,AltIso_b),intersect(Atlas_b,GTEx_b))),
-               category = c("HPA","AltIso","GTEx","Atlas"), lwd = rep(0, 4), lty = rep("solid", 4),
-               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+               length(intersect(intersect(EoGE_b,Atlas_b),BodyMap_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),HPA_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),AltIso_b)),
+               length(intersect(intersect(EoGE_b,BodyMap_b),HPA_b)),
+               length(intersect(intersect(EoGE_b,BodyMap_b),AltIso_b)),
+               length(intersect(intersect(EoGE_b,HPA_b),AltIso_b)),
+               length(intersect(intersect(Atlas_b,BodyMap_b),HPA_b)),
+               length(intersect(intersect(Atlas_b,BodyMap_b),AltIso_b)),
+               length(intersect(intersect(Atlas_b,HPA_b),AltIso_b)),
+               length(intersect(intersect(BodyMap_b,HPA_b),AltIso_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,HPA_b))),
+               length(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,AltIso_b))),
+               length(intersect(intersect(EoGE_b,Atlas_b),intersect(HPA_b,AltIso_b))),
+               length(intersect(intersect(EoGE_b,BodyMap_b),intersect(HPA_b,AltIso_b))),
+               length(intersect(intersect(Atlas_b,BodyMap_b),intersect(HPA_b,AltIso_b))),
+               length(intersect(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,HPA_b)),AltIso_b)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
 )
 
 ```
 
-Let's investigate the heart samples:
+and the five heart samples:
 
 ```{r:venn heart}
-
-h_Ids <- list(HPA_h,AltIso_h,GTEx_h,Atlas_h)
-draw.quad.venn(100, 100, 100, 100, 
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_h,Atlas_h)),
+               length(intersect(EoGE_h,BodyMap_h)),
+               length(intersect(EoGE_h,HPA_h)),
+               length(intersect(EoGE_h,AltIso_h)),
+               length(intersect(Atlas_h,BodyMap_h)),
+               length(intersect(Atlas_h,HPA_h)),
+               length(intersect(Atlas_h,AltIso_h)),
+               length(intersect(BodyMap_h,HPA_h)),
+               length(intersect(BodyMap_h,AltIso_h)),
                length(intersect(HPA_h,AltIso_h)),
-               length(intersect(HPA_h,GTEx_h)),
-               length(intersect(HPA_h,Atlas_h)),
-               length(intersect(AltIso_h,GTEx_h)),
-               length(intersect(AltIso_h,Atlas_h)),
-               length(intersect(GTEx_h,Atlas_h)),
-               length(intersect(intersect(HPA_h,AltIso_h),GTEx_h)),
-               length(intersect(intersect(HPA_h,AltIso_h),Atlas_h)),
-               length(intersect(intersect(HPA_h,GTEx_h),Atlas_h)),
-               length(intersect(intersect(AltIso_h,GTEx_h),Atlas_h)),
-               length(intersect(intersect(HPA_h,AltIso_h),intersect(Atlas_h,GTEx_h))),
-               category = c("HPA","AltIso","GTEx","Atlas"), lwd = rep(0, 4), lty = rep("solid", 4),
-               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+               length(intersect(intersect(EoGE_h,Atlas_h),BodyMap_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),HPA_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),AltIso_h)),
+               length(intersect(intersect(EoGE_h,BodyMap_h),HPA_h)),
+               length(intersect(intersect(EoGE_h,BodyMap_h),AltIso_h)),
+               length(intersect(intersect(EoGE_h,HPA_h),AltIso_h)),
+               length(intersect(intersect(Atlas_h,BodyMap_h),HPA_h)),
+               length(intersect(intersect(Atlas_h,BodyMap_h),AltIso_h)),
+               length(intersect(intersect(Atlas_h,HPA_h),AltIso_h)),
+               length(intersect(intersect(BodyMap_h,HPA_h),AltIso_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,HPA_h))),
+               length(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,AltIso_h))),
+               length(intersect(intersect(EoGE_h,Atlas_h),intersect(HPA_h,AltIso_h))),
+               length(intersect(intersect(EoGE_h,BodyMap_h),intersect(HPA_h,AltIso_h))),
+               length(intersect(intersect(Atlas_h,BodyMap_h),intersect(HPA_h,AltIso_h))),
+               length(intersect(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,HPA_h)),AltIso_h)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
 )
+
+
 
 ```
 
-...and the three kidney samples:
+...and the four kidney samples:
 
 ```{r:venn kidney}
 
-k_Ids <- list(HPA_k,GTEx_k,Atlas_k)
-draw.triple.venn(100, 100, 100, 
-                 length(intersect(HPA_k,GTEx_k)),
-                 length(intersect(GTEx_k,Atlas_k)),
-                 length(intersect(HPA_k,Atlas_k)),
-                 length(intersect(intersect(HPA_k,GTEx_k),Atlas_k)),
-                 category = c("HPA","GTEx","Atlas"), lwd = rep(0, 3), lty = rep("solid", 3),
-                 fill = c("steelblue","lightgoldenrod","darkseagreen")
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(EoGE_k,Atlas_k)),
+               length(intersect(EoGE_k,BodyMap_k)),
+               length(intersect(EoGE_k,HPA_k)),
+               length(intersect(Atlas_k,BodyMap_k)),
+               length(intersect(Atlas_k,HPA_k)),
+               length(intersect(BodyMap_k,HPA_k)),
+               length(intersect(intersect(EoGE_k,Atlas_k),BodyMap_k)),
+               length(intersect(intersect(EoGE_k,Atlas_k),HPA_k)),
+               length(intersect(intersect(EoGE_k,BodyMap_k),HPA_k)),
+               length(intersect(intersect(Atlas_k,BodyMap_k),HPA_k)),
+               length(intersect(intersect(EoGE_k,Atlas_k),intersect(BodyMap_k,HPA_k))),
+               category = c("EoGE","Atlas","BodyMap","HPA"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
 )
-
 
 ```
