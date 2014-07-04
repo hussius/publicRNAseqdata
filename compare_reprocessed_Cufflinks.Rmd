@@ -4,7 +4,6 @@ Comparing FPKMs for FASTQ files reprocessed with TopHat and Cufflinks
 Preliminaries (libraries etc.)
 
 ```{r}
-
 library(pheatmap)
 library(calibrate)
 
@@ -78,7 +77,6 @@ pc <- subset(gene_type[,1],gene_type[,2]=="protein_coding")
 
 f_pc <- f[match(pc,f[,1]),]
 
-
 ```
 
 And let's remove all lines where FPKM is close to zero in all samples before we proceed with this version of the data set:
@@ -110,7 +108,7 @@ pseudo <- 1
 logs <- log2(f_pc_nozero[,3:16] + pseudo)
 fpkms.log <- cbind(f_pc_nozero[,1:2],logs) 
 
-pheatmap(cor(fpkms.log[,]))
+pheatmap(cor(fpkms.log[,3:16]))
 ```
 
 What if we drop the genes that have less than FPKM 1 on average? (not shown in paper):
@@ -164,9 +162,9 @@ Let's see how the PCA plots look for log2-FPKM values:
 
 ```{r}
 
-plotPC(fpkms.log, 1, 2, desc="Reprocessed F/RPKM values, log2 \n SVD \n n=19475", colors=colors)
+plotPC(fpkms.log[,3:16], 1, 2, desc="Reprocessed F/RPKM values, log2 \n SVD \n n=19475", colors=colors)
 
-plotPC(fpkms.log, 2, 3, desc="Reprocessed FPKM values, log2 \n SVD \n n=19475", colors=colors)
+plotPC(fpkms.log[,3:16], 2, 3, desc="Reprocessed FPKM values, log2 \n SVD \n n=19475", colors=colors)
 
 ```
 

@@ -267,11 +267,11 @@ f <- read.delim("published_rpkms.txt",sep=" ")
 ```
 
 This looks much better. 
-Let's remove all lines where FPKM=0 in all samples before we proceed with this version of the data set:
+Let's remove all lines where FPKM is close to zero in all samples before we proceed with this version of the data set:
 
 ```{r}
 
-f.nozero <- f[-which(rowSums(f[,])==0),]
+f.nozero <- f[-which(rowSums(f[,])<=0.01),]
 
 ```
 
