@@ -24,7 +24,6 @@ library(calibrate)
 ```r
 f <- read.delim("fpkm_table_tophat.txt")
 
-
 do.SVD = function(m, comp.1=1, comp.2=2){ # returns eig.cell
   s <- svd(m)
   ev <- s$d^2 / sum(s$d^2)
@@ -130,7 +129,9 @@ pheatmap(cor(fpkms.log[,]))
 ```
 
 ![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6.png) 
+
 What if we drop the genes that have less than FPKM 1 on average? (not shown in paper):
+
 
 ```r
 f.nolow <- f_pc_nozero[-which(rowMeans(f_pc_nozero[,3:16])<1),]
@@ -181,7 +182,9 @@ for (i in 1:6){
 ```
 
 ![plot of chunk unnamed-chunk-10](figure/unnamed-chunk-10.png) 
+
 Let's see how the PCA plots look for log2-FPKM values:
+
 
 ```r
 plotPC(fpkms.log, 1, 2, desc="Reprocessed F/RPKM values, log2 \n SVD \n n=19475", colors=colors)
@@ -229,29 +232,35 @@ combat <- ComBat(dat=fpkms.log[,],batch=batch,mod=design,numCovs=NULL,par.prior=
 
 ```r
 write.table(combat, file="reprocessed_rpkms_combat_log2.txt", quote=F)
+```
 
+Let's see how the correlation heatmap and PCA plots look after correction for batch effects with combat:
+
+
+```r
 pheatmap(cor(combat))
 ```
 
-![plot of chunk :combat](figure/:combat1.png) 
+![plot of chunk unnamed-chunk-12](figure/unnamed-chunk-121.png) 
 
 ```r
 plotPC(combat,1,2,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
 ```
 
-![plot of chunk :combat](figure/:combat2.png) 
+![plot of chunk unnamed-chunk-12](figure/unnamed-chunk-122.png) 
 
 ```r
 plotPC(combat,2,3,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
 ```
 
-![plot of chunk :combat](figure/:combat3.png) 
+![plot of chunk unnamed-chunk-12](figure/unnamed-chunk-123.png) 
 
+Anova analysis of different batch factors:
 
 
 ```r
 library(reshape)
-m <- melt(f)
+m <- melt(f_pc_nozero)
 ```
 
 ```
@@ -259,245 +268,76 @@ m <- melt(f)
 ```
 
 ```r
-colnames(m) <- c("sample_ID","Cuff_FPKM")
+colnames(m) <- c("ENSG","Gene","sample_ID","Cuff_FPKM")
 meta <- data.frame(tissue=c("brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
-rownames(meta) <- colnames(f)
-```
-
-```
-## Error: invalid 'row.names' length
-```
-
-```r
-tissue <- rep(meta$tissue, each=nrow(f))
-study <- rep(meta$study, each=nrow(f))
-prep <- rep(meta$prep, each=nrow(f))
-layout <- rep(meta$layout, each=nrow(f))
+rownames(meta) <- colnames(f_pc_nozero)[3:16]
+tissue <- rep(meta$tissue, each=nrow(f_pc_nozero))
+study <- rep(meta$study, each=nrow(f_pc_nozero))
+prep <- rep(meta$prep, each=nrow(f_pc_nozero))
+layout <- rep(meta$layout, each=nrow(f_pc_nozero))
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(Cuff_FPKM ~ prep + layout + study + tissue, data=data)
-```
-
-```
-## Warning: using type = "numeric" with a factor response will be ignored
-## Warning: - not meaningful for factors
-```
-
-```r
 a <- anova(fit)
-```
-
-```
-## Warning: ^ not meaningful for factors
-```
-
-```
-## Error: missing value where TRUE/FALSE needed
-```
-
-```r
 maxval = 100
 ```
 
-**Figure 4C (?)**
+**Figure 4C**
 
 
 ```r
 barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Cufflinks FPKM",ylim=c(0,maxval))
 ```
 
-```
-## Error: object 'a' not found
-```
+![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13.png) 
 
 **Figure 4D (?)**
 
-
-```r
-colors <- c(1,2,3,1,2,3,1,2,3,1,2,3,1,2)
-plotPC(f, 1, 2, "Reprocessed Cufflinks FPKM values \n SVD \n n=22674", colors=colors)
 ```
 
-```
-## Error: infinite or missing values in 'x'
-```
-
-```r
-plotPC(f, 2, 3, "Reprocessed Cufflinks FPKM values \n SVD \n n=22674", colors=colors)
-```
-
-```
-## Error: infinite or missing values in 'x'
-```
-
-```r
-p <- prcomp(t(f))
-```
-
-```
-## Error: 'x' must be numeric
-```
-
-```r
-plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values \n PCA \n n=22674")
-```
-
-```
-## Error: object 'p' not found
-```
-
-```r
-plot(p$x[,2],p$x[,3],pch=20,col=colors,xlab=paste("PC", 2),ylab=paste("PC", 3),main="Reprocessed Cufflinks FPKM values \n PCA \n n=22674")
-```
-
-```
-## Error: object 'p' not found
-```
-
-PC plots for log transform, mean FPKM > 1, TMM, ComBat
-
+ANOVA analyseson logged values:
 
 
 ```r
-f.log.nolow <- log2.cpm(f.nolow)
+m <- melt(fpkms.log[,])
 ```
 
 ```
-## Error: could not find function "log2.cpm"
-```
-
-```r
-plotPC(f.log.nolow, 1, 2, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
-```
-
-```
-## Error: object 'f.log.nolow' not found
+## Using  as id variables
 ```
 
 ```r
-plotPC(f.log.nolow, 2, 3, "log2-cpm Cufflinks FPKM (mean>1) values \n SVD \n n=22674", colors=colors)
-```
+colnames(m) <- c("sample_ID","log2FPKM")
 
-```
-## Error: object 'f.log.nolow' not found
-```
-
-```r
-p <- prcomp(t(f.log.nolow))
-```
-
-```
-## Error: object 'f.log.nolow' not found
-```
-
-```r
-plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC", 1),ylab=paste("PC", 2),main="Reprocessed Cufflinks FPKM values (log2, FPKM>1) \n PCA \n n=22674")
-```
-
-```
-## Error: object 'p' not found
-```
-
-ANOVA analyses
-
-
-```r
-m <- melt(f.log)
-```
-
-```
-## Error: object 'f.log' not found
-```
-
-```r
-colnames(m) <- c("gene_ID","sample_ID","log2FPKM")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(log2FPKM ~ + prep + layout + study + tissue, data=data)
-```
-
-```
-## Warning: using type = "numeric" with a factor response will be ignored
-## Warning: - not meaningful for factors
-```
-
-```r
 b <- anova(fit)
-```
 
-```
-## Warning: ^ not meaningful for factors
-```
-
-```
-## Error: missing value where TRUE/FALSE needed
-```
-
-```r
 barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM",ylim=c(0,3000))
 ```
 
-```
-## Error: object 'b' not found
-```
+![plot of chunk :anova-log](figure/:anova-log.png) 
 
 ```r
 print(b)
 ```
 
 ```
-## Error: object 'b' not found
+## Analysis of Variance Table
+## 
+## Response: log2FPKM
+##               Df  Sum Sq Mean Sq F value Pr(>F)    
+## prep           1    2256    2256     496 <2e-16 ***
+## layout         1     898     898     198 <2e-16 ***
+## study          2    3155    1577     347 <2e-16 ***
+## tissue         2    9847    4924    1083 <2e-16 ***
+## Residuals 272643 1239928       5                   
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ```
 
-
-```r
-m <- melt(f.log.tmm)
-```
-
-```
-## Error: object 'f.log.tmm' not found
-```
-
-```r
-colnames(m) <- c("gene_ID","sample_ID","log2FPKM")
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(log2FPKM ~ + prep + layout + study + tissue, data=data)
-```
-
-```
-## Warning: using type = "numeric" with a factor response will be ignored
-## Warning: - not meaningful for factors
-```
-
-```r
-b <- anova(fit)
-```
-
-```
-## Warning: ^ not meaningful for factors
-```
-
-```
-## Error: missing value where TRUE/FALSE needed
-```
-
-```r
-barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
-```
-
-```
-## Error: object 'b' not found
-```
-
-```r
-print(b)
-```
-
-```
-## Error: object 'b' not found
-```
 
 Finally, ANOVA on ComBat.
 
@@ -511,54 +351,178 @@ m <- melt(combat)
 ```
 
 ```r
-colnames(m) <- c("gene_ID","sample_ID","combat")
-```
-
-```
-## Error: 'names' attribute [3] must be the same length as the vector [2]
-```
-
-```r
+colnames(m) <- c("sample_ID","combat")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
-```
-
-```
-## Error: arguments imply differing number of rows: 272650, 867552
-```
-
-```r
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(combat ~ + prep + layout + study + tissue, data=data)
+c <- anova(fit)
+
+barplot(c$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
+```
+
+![plot of chunk :anova-combat](figure/:anova-combat.png) 
+
+```r
+print(c)
 ```
 
 ```
-## Error: invalid type (list) for variable 'combat'
+## Analysis of Variance Table
+## 
+## Response: combat
+##               Df  Sum Sq Mean Sq F value  Pr(>F)    
+## prep           1       3       3    0.73    0.39    
+## layout         1      77      77   18.64 1.6e-05 ***
+## study          2       0       0    0.02    0.98    
+## tissue         2   10013    5007 1212.67 < 2e-16 ***
+## Residuals 272643 1125649       4                    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+**Figure X**
+
+
+Let's have a look at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies
+
+
+
+```r
+library(VennDiagram)
+```
+
+```
+## Loading required package: grid
 ```
 
 ```r
-b <- anova(fit)
+EoGE_b <- rownames(f_pc[order(f_pc$EoGE_brain,decreasing=T),][1:100,])
+EoGE_h <- rownames(f_pc[order(f_pc$EoGE_heart,decreasing=T),][1:100,])
+EoGE_k <- rownames(f_pc[order(f_pc$EoGE_kidney,decreasing=T),][1:100,])
+
+Atlas_b <- rownames(f_pc[order(f_pc$Atlas_brain,decreasing=T),][1:100,])
+Atlas_h <- rownames(f_pc[order(f_pc$Atlas_heart,decreasing=T),][1:100,])
+Atlas_k <- rownames(f_pc[order(f_pc$Atlas_kidney,decreasing=T),][1:100,])
+
+BodyMap_b <- rownames(f_pc[order(f_pc$BodyMap_brain,decreasing=T),][1:100,])
+BodyMap_h <- rownames(f_pc[order(f_pc$BodyMap_heart,decreasing=T),][1:100,])
+BodyMap_k <- rownames(f_pc[order(f_pc$BodyMap_kidney,decreasing=T),][1:100,])
+
+HPA_b <- rownames(f_pc[order(f_pc$HPA_brain,decreasing=T),][1:100,])
+HPA_h <- rownames(f_pc[order(f_pc$HPA_heart,decreasing=T),][1:100,])
+HPA_k <- rownames(f_pc[order(f_pc$HPA_kidney,decreasing=T),][1:100,])
+
+AltIso_b <- rownames(f_pc[order(f_pc$AltIso_brain,decreasing=T),][1:100,])
+AltIso_h <- rownames(f_pc[order(f_pc$AltIso_heart,decreasing=T),][1:100,])
 ```
 
-```
-## Warning: ^ not meaningful for factors
-```
+Let's start with the five brain samples:
 
-```
-## Error: missing value where TRUE/FALSE needed
-```
 
 ```r
-barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_b,Atlas_b)),
+               length(intersect(EoGE_b,BodyMap_b)),
+               length(intersect(EoGE_b,HPA_b)),
+               length(intersect(EoGE_b,AltIso_b)),
+               length(intersect(Atlas_b,BodyMap_b)),
+               length(intersect(Atlas_b,HPA_b)),
+               length(intersect(Atlas_b,AltIso_b)),
+               length(intersect(BodyMap_b,HPA_b)),
+               length(intersect(BodyMap_b,AltIso_b)),
+               length(intersect(HPA_b,AltIso_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),BodyMap_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),HPA_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),AltIso_b)),
+               length(intersect(intersect(EoGE_b,BodyMap_b),HPA_b)),
+               length(intersect(intersect(EoGE_b,BodyMap_b),AltIso_b)),
+               length(intersect(intersect(EoGE_b,HPA_b),AltIso_b)),
+               length(intersect(intersect(Atlas_b,BodyMap_b),HPA_b)),
+               length(intersect(intersect(Atlas_b,BodyMap_b),AltIso_b)),
+               length(intersect(intersect(Atlas_b,HPA_b),AltIso_b)),
+               length(intersect(intersect(BodyMap_b,HPA_b),AltIso_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,HPA_b))),
+               length(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,AltIso_b))),
+               length(intersect(intersect(EoGE_b,Atlas_b),intersect(HPA_b,AltIso_b))),
+               length(intersect(intersect(EoGE_b,BodyMap_b),intersect(HPA_b,AltIso_b))),
+               length(intersect(intersect(Atlas_b,BodyMap_b),intersect(HPA_b,AltIso_b))),
+               length(intersect(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,HPA_b)),AltIso_b)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
+)
 ```
 
+![plot of chunk :venn brain](figure/:venn brain.png) 
+
 ```
-## Error: object 'b' not found
+## (polygon[GRID.polygon.516], polygon[GRID.polygon.517], polygon[GRID.polygon.518], polygon[GRID.polygon.519], polygon[GRID.polygon.520], polygon[GRID.polygon.521], polygon[GRID.polygon.522], polygon[GRID.polygon.523], polygon[GRID.polygon.524], polygon[GRID.polygon.525], text[GRID.text.526], text[GRID.text.527], text[GRID.text.528], text[GRID.text.529], text[GRID.text.530], text[GRID.text.531], text[GRID.text.532], text[GRID.text.533], text[GRID.text.534], text[GRID.text.535], text[GRID.text.536], text[GRID.text.537], text[GRID.text.538], text[GRID.text.539], text[GRID.text.540], text[GRID.text.541], text[GRID.text.542], text[GRID.text.543], text[GRID.text.544], text[GRID.text.545], text[GRID.text.546], text[GRID.text.547], text[GRID.text.548], text[GRID.text.549], text[GRID.text.550], text[GRID.text.551], text[GRID.text.552], text[GRID.text.553], text[GRID.text.554], text[GRID.text.555], text[GRID.text.556], text[GRID.text.557], text[GRID.text.558], text[GRID.text.559], text[GRID.text.560], text[GRID.text.561])
 ```
+
+and the five heart samples:
+
 
 ```r
-print(b)
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_h,Atlas_h)),
+               length(intersect(EoGE_h,BodyMap_h)),
+               length(intersect(EoGE_h,HPA_h)),
+               length(intersect(EoGE_h,AltIso_h)),
+               length(intersect(Atlas_h,BodyMap_h)),
+               length(intersect(Atlas_h,HPA_h)),
+               length(intersect(Atlas_h,AltIso_h)),
+               length(intersect(BodyMap_h,HPA_h)),
+               length(intersect(BodyMap_h,AltIso_h)),
+               length(intersect(HPA_h,AltIso_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),BodyMap_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),HPA_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),AltIso_h)),
+               length(intersect(intersect(EoGE_h,BodyMap_h),HPA_h)),
+               length(intersect(intersect(EoGE_h,BodyMap_h),AltIso_h)),
+               length(intersect(intersect(EoGE_h,HPA_h),AltIso_h)),
+               length(intersect(intersect(Atlas_h,BodyMap_h),HPA_h)),
+               length(intersect(intersect(Atlas_h,BodyMap_h),AltIso_h)),
+               length(intersect(intersect(Atlas_h,HPA_h),AltIso_h)),
+               length(intersect(intersect(BodyMap_h,HPA_h),AltIso_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,HPA_h))),
+               length(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,AltIso_h))),
+               length(intersect(intersect(EoGE_h,Atlas_h),intersect(HPA_h,AltIso_h))),
+               length(intersect(intersect(EoGE_h,BodyMap_h),intersect(HPA_h,AltIso_h))),
+               length(intersect(intersect(Atlas_h,BodyMap_h),intersect(HPA_h,AltIso_h))),
+               length(intersect(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,HPA_h)),AltIso_h)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
+)
 ```
 
+![plot of chunk :venn heart](figure/:venn heart.png) 
+
 ```
-## Error: object 'b' not found
+## (polygon[GRID.polygon.562], polygon[GRID.polygon.563], polygon[GRID.polygon.564], polygon[GRID.polygon.565], polygon[GRID.polygon.566], polygon[GRID.polygon.567], polygon[GRID.polygon.568], polygon[GRID.polygon.569], polygon[GRID.polygon.570], polygon[GRID.polygon.571], text[GRID.text.572], text[GRID.text.573], text[GRID.text.574], text[GRID.text.575], text[GRID.text.576], text[GRID.text.577], text[GRID.text.578], text[GRID.text.579], text[GRID.text.580], text[GRID.text.581], text[GRID.text.582], text[GRID.text.583], text[GRID.text.584], text[GRID.text.585], text[GRID.text.586], text[GRID.text.587], text[GRID.text.588], text[GRID.text.589], text[GRID.text.590], text[GRID.text.591], text[GRID.text.592], text[GRID.text.593], text[GRID.text.594], text[GRID.text.595], text[GRID.text.596], text[GRID.text.597], text[GRID.text.598], text[GRID.text.599], text[GRID.text.600], text[GRID.text.601], text[GRID.text.602], text[GRID.text.603], text[GRID.text.604], text[GRID.text.605], text[GRID.text.606], text[GRID.text.607])
+```
+
+...and the four kidney samples:
+
+
+```r
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(EoGE_k,Atlas_k)),
+               length(intersect(EoGE_k,BodyMap_k)),
+               length(intersect(EoGE_k,HPA_k)),
+               length(intersect(Atlas_k,BodyMap_k)),
+               length(intersect(Atlas_k,HPA_k)),
+               length(intersect(BodyMap_k,HPA_k)),
+               length(intersect(intersect(EoGE_k,Atlas_k),BodyMap_k)),
+               length(intersect(intersect(EoGE_k,Atlas_k),HPA_k)),
+               length(intersect(intersect(EoGE_k,BodyMap_k),HPA_k)),
+               length(intersect(intersect(Atlas_k,BodyMap_k),HPA_k)),
+               length(intersect(intersect(EoGE_k,Atlas_k),intersect(BodyMap_k,HPA_k))),
+               category = c("EoGE","Atlas","BodyMap","HPA"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+)
+```
+
+![plot of chunk :venn kidney](figure/:venn kidney.png) 
+
+```
+## (polygon[GRID.polygon.608], polygon[GRID.polygon.609], polygon[GRID.polygon.610], polygon[GRID.polygon.611], polygon[GRID.polygon.612], polygon[GRID.polygon.613], polygon[GRID.polygon.614], polygon[GRID.polygon.615], text[GRID.text.616], text[GRID.text.617], text[GRID.text.618], text[GRID.text.619], text[GRID.text.620], text[GRID.text.621], text[GRID.text.622], text[GRID.text.623], text[GRID.text.624], text[GRID.text.625], text[GRID.text.626], text[GRID.text.627], text[GRID.text.628], text[GRID.text.629], text[GRID.text.630], text[GRID.text.631], text[GRID.text.632], text[GRID.text.633], text[GRID.text.634])
 ```

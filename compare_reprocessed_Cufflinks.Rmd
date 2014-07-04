@@ -6,7 +6,6 @@ Preliminaries (libraries etc.)
 ```{r}
 
 library(pheatmap)
-library(edgeR)
 library(calibrate)
 
 f <- read.delim("fpkm_table_tophat.txt")
@@ -108,7 +107,9 @@ Sometimes the linear (Pearson) correlation works better on log values.  (not sho
 
 ```{r}
 pseudo <- 1
-fpkms.log <- log2(f_pc_nozero[,3:16] + pseudo)
+logs <- log2(f_pc_nozero[,3:16] + pseudo)
+fpkms.log <- cbind(f_pc_nozero[,1:2],logs) 
+
 pheatmap(cor(fpkms.log[,]))
 ```
 
@@ -179,7 +180,7 @@ meta <- data.frame(study=c(rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HP
 batch <- meta$study
 design <- model.matrix(~as.factor(tissue),data=meta)
 
-combat <- ComBat(dat=fpkms.log[,],batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+combat <- ComBat(dat=fpkms.log[,3:16],batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
 
 write.table(combat, file="reprocessed_rpkms_combat_log2.txt", quote=F)
 
@@ -383,3 +384,221 @@ draw.quad.venn(100, 100, 100, 100,
 )
 
 ```
+
+Let's have a look again at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies, but this time looking at the values after the ComBat run:
+
+```{r:combatVenn}
+
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_b,Atlas_b)),
+               length(intersect(EoGE_b,BodyMap_b)),
+               length(intersect(EoGE_b,HPA_b)),
+               length(intersect(EoGE_b,AltIso_b)),
+               length(intersect(Atlas_b,BodyMap_b)),
+               length(intersect(Atlas_b,HPA_b)),
+               length(intersect(Atlas_b,AltIso_b)),
+               length(intersect(BodyMap_b,HPA_b)),
+               length(intersect(BodyMap_b,AltIso_b)),
+               length(intersect(HPA_b,AltIso_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),BodyMap_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),HPA_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),AltIso_b)),
+               length(intersect(intersect(EoGE_b,BodyMap_b),HPA_b)),
+               length(intersect(intersect(EoGE_b,BodyMap_b),AltIso_b)),
+               length(intersect(intersect(EoGE_b,HPA_b),AltIso_b)),
+               length(intersect(intersect(Atlas_b,BodyMap_b),HPA_b)),
+               length(intersect(intersect(Atlas_b,BodyMap_b),AltIso_b)),
+               length(intersect(intersect(Atlas_b,HPA_b),AltIso_b)),
+               length(intersect(intersect(BodyMap_b,HPA_b),AltIso_b)),
+               length(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,HPA_b))),
+               length(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,AltIso_b))),
+               length(intersect(intersect(EoGE_b,Atlas_b),intersect(HPA_b,AltIso_b))),
+               length(intersect(intersect(EoGE_b,BodyMap_b),intersect(HPA_b,AltIso_b))),
+               length(intersect(intersect(Atlas_b,BodyMap_b),intersect(HPA_b,AltIso_b))),
+               length(intersect(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,HPA_b)),AltIso_b)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
+)
+
+```
+
+and the five heart samples:
+
+```{r:venn heart}
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_h,Atlas_h)),
+               length(intersect(EoGE_h,BodyMap_h)),
+               length(intersect(EoGE_h,HPA_h)),
+               length(intersect(EoGE_h,AltIso_h)),
+               length(intersect(Atlas_h,BodyMap_h)),
+               length(intersect(Atlas_h,HPA_h)),
+               length(intersect(Atlas_h,AltIso_h)),
+               length(intersect(BodyMap_h,HPA_h)),
+               length(intersect(BodyMap_h,AltIso_h)),
+               length(intersect(HPA_h,AltIso_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),BodyMap_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),HPA_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),AltIso_h)),
+               length(intersect(intersect(EoGE_h,BodyMap_h),HPA_h)),
+               length(intersect(intersect(EoGE_h,BodyMap_h),AltIso_h)),
+               length(intersect(intersect(EoGE_h,HPA_h),AltIso_h)),
+               length(intersect(intersect(Atlas_h,BodyMap_h),HPA_h)),
+               length(intersect(intersect(Atlas_h,BodyMap_h),AltIso_h)),
+               length(intersect(intersect(Atlas_h,HPA_h),AltIso_h)),
+               length(intersect(intersect(BodyMap_h,HPA_h),AltIso_h)),
+               length(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,HPA_h))),
+               length(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,AltIso_h))),
+               length(intersect(intersect(EoGE_h,Atlas_h),intersect(HPA_h,AltIso_h))),
+               length(intersect(intersect(EoGE_h,BodyMap_h),intersect(HPA_h,AltIso_h))),
+               length(intersect(intersect(Atlas_h,BodyMap_h),intersect(HPA_h,AltIso_h))),
+               length(intersect(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,HPA_h)),AltIso_h)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
+)
+
+
+
+```
+
+...and the four kidney samples:
+
+```{r:venn kidney}
+
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(EoGE_k,Atlas_k)),
+               length(intersect(EoGE_k,BodyMap_k)),
+               length(intersect(EoGE_k,HPA_k)),
+               length(intersect(Atlas_k,BodyMap_k)),
+               length(intersect(Atlas_k,HPA_k)),
+               length(intersect(BodyMap_k,HPA_k)),
+               length(intersect(intersect(EoGE_k,Atlas_k),BodyMap_k)),
+               length(intersect(intersect(EoGE_k,Atlas_k),HPA_k)),
+               length(intersect(intersect(EoGE_k,BodyMap_k),HPA_k)),
+               length(intersect(intersect(Atlas_k,BodyMap_k),HPA_k)),
+               length(intersect(intersect(EoGE_k,Atlas_k),intersect(BodyMap_k,HPA_k))),
+               category = c("EoGE","Atlas","BodyMap","HPA"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+)
+
+```
+TRYING VENN FOR COMBAT!
+```{r:venn:combat}
+
+combat_data <- cbind(fpkms.log[,1:2],combat)
+
+EoGE_bc <- rownames(combat_data[order(combat_data$EoGE_brain,decreasing=T),][1:100,])
+EoGE_hc <- rownames(combat_data[order(combat_data$EoGE_heart,decreasing=T),][1:100,])
+EoGE_kc <- rownames(combat_data[order(combat_data$EoGE_kidney,decreasing=T),][1:100,])
+
+Atlas_bc <- rownames(combat_data[order(combat_data$Atlas_brain,decreasing=T),][1:100,])
+Atlas_hc <- rownames(combat_data[order(combat_data$Atlas_heart,decreasing=T),][1:100,])
+Atlas_kc <- rownames(combat_data[order(combat_data$Atlas_kidney,decreasing=T),][1:100,])
+
+BodyMap_bc <- rownames(combat_data[order(combat_data$BodyMap_brain,decreasing=T),][1:100,])
+BodyMap_hc <- rownames(combat_data[order(combat_data$BodyMap_heart,decreasing=T),][1:100,])
+BodyMap_kc <- rownames(combat_data[order(combat_data$BodyMap_kidney,decreasing=T),][1:100,])
+
+HPA_bc <- rownames(combat_data[order(combat_data$HPA_brain,decreasing=T),][1:100,])
+HPA_hc <- rownames(combat_data[order(combat_data$HPA_heart,decreasing=T),][1:100,])
+HPA_kc <- rownames(combat_data[order(combat_data$HPA_kidney,decreasing=T),][1:100,])
+
+AltIso_bc <- rownames(combat_data[order(combat_data$AltIso_brain,decreasing=T),][1:100,])
+AltIso_hc <- rownames(combat_data[order(combat_data$AltIso_heart,decreasing=T),][1:100,])
+
+```
+
+Let's have a look again at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies, but this time looking at the values after the ComBat run:
+
+```{r:combatVennBrain}
+
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_bc,Atlas_bc)),
+               length(intersect(EoGE_bc,BodyMap_bc)),
+               length(intersect(EoGE_bc,HPA_bc)),
+               length(intersect(EoGE_bc,AltIso_bc)),
+               length(intersect(Atlas_bc,BodyMap_bc)),
+               length(intersect(Atlas_bc,HPA_bc)),
+               length(intersect(Atlas_bc,AltIso_bc)),
+               length(intersect(BodyMap_bc,HPA_bc)),
+               length(intersect(BodyMap_bc,AltIso_bc)),
+               length(intersect(HPA_bc,AltIso_bc)),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),BodyMap_bc)),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),HPA_bc)),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),AltIso_bc)),
+               length(intersect(intersect(EoGE_bc,BodyMap_bc),HPA_bc)),
+               length(intersect(intersect(EoGE_bc,BodyMap_bc),AltIso_bc)),
+               length(intersect(intersect(EoGE_bc,HPA_bc),AltIso_bc)),
+               length(intersect(intersect(Atlas_bc,BodyMap_bc),HPA_bc)),
+               length(intersect(intersect(Atlas_bc,BodyMap_bc),AltIso_bc)),
+               length(intersect(intersect(Atlas_bc,HPA_bc),AltIso_bc)),
+               length(intersect(intersect(BodyMap_bc,HPA_bc),AltIso_bc)),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),intersect(BodyMap_bc,HPA_bc))),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),intersect(BodyMap_bc,AltIso_bc))),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),intersect(HPA_bc,AltIso_bc))),
+               length(intersect(intersect(EoGE_bc,BodyMap_bc),intersect(HPA_bc,AltIso_bc))),
+               length(intersect(intersect(Atlas_bc,BodyMap_bc),intersect(HPA_bc,AltIso_bc))),
+               length(intersect(intersect(intersect(EoGE_bc,Atlas_bc),intersect(BodyMap_bc,HPA_bc)),AltIso_bc)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
+)
+
+```
+
+And for the five heart samples:
+
+```{r:combatVennHeart}
+
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_hc,Atlas_hc)),
+               length(intersect(EoGE_hc,BodyMap_hc)),
+               length(intersect(EoGE_hc,HPA_hc)),
+               length(intersect(EoGE_hc,AltIso_hc)),
+               length(intersect(Atlas_hc,BodyMap_hc)),
+               length(intersect(Atlas_hc,HPA_hc)),
+               length(intersect(Atlas_hc,AltIso_hc)),
+               length(intersect(BodyMap_hc,HPA_hc)),
+               length(intersect(BodyMap_hc,AltIso_hc)),
+               length(intersect(HPA_hc,AltIso_hc)),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),BodyMap_hc)),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),HPA_hc)),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),AltIso_hc)),
+               length(intersect(intersect(EoGE_hc,BodyMap_hc),HPA_hc)),
+               length(intersect(intersect(EoGE_hc,BodyMap_hc),AltIso_hc)),
+               length(intersect(intersect(EoGE_hc,HPA_hc),AltIso_hc)),
+               length(intersect(intersect(Atlas_hc,BodyMap_hc),HPA_hc)),
+               length(intersect(intersect(Atlas_hc,BodyMap_hc),AltIso_hc)),
+               length(intersect(intersect(Atlas_hc,HPA_hc),AltIso_hc)),
+               length(intersect(intersect(BodyMap_hc,HPA_hc),AltIso_hc)),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),intersect(BodyMap_hc,HPA_hc))),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),intersect(BodyMap_hc,AltIso_hc))),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),intersect(HPA_hc,AltIso_hc))),
+               length(intersect(intersect(EoGE_hc,BodyMap_hc),intersect(HPA_hc,AltIso_hc))),
+               length(intersect(intersect(Atlas_hc,BodyMap_hc),intersect(HPA_hc,AltIso_hc))),
+               length(intersect(intersect(intersect(EoGE_hc,Atlas_hc),intersect(BodyMap_hc,HPA_hc)),AltIso_hc)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
+)
+
+```
+
+And for the four kidney samples:
+
+```{r:combatVennKidney}
+
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(EoGE_kc,Atlas_kc)),
+               length(intersect(EoGE_kc,BodyMap_kc)),
+               length(intersect(EoGE_kc,HPA_kc)),
+               length(intersect(Atlas_kc,BodyMap_kc)),
+               length(intersect(Atlas_kc,HPA_kc)),
+               length(intersect(BodyMap_kc,HPA_kc)),
+               length(intersect(intersect(EoGE_kc,Atlas_kc),BodyMap_kc)),
+               length(intersect(intersect(EoGE_kc,Atlas_kc),HPA_kc)),
+               length(intersect(intersect(EoGE_kc,BodyMap_kc),HPA_kc)),
+               length(intersect(intersect(Atlas_kc,BodyMap_kc),HPA_kc)),
+               length(intersect(intersect(EoGE_kc,Atlas_kc),intersect(BodyMap_kc,HPA_kc))),
+               category = c("EoGE","Atlas","BodyMap","HPA"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+)
+
+

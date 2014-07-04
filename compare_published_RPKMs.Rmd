@@ -3,26 +3,11 @@ Downloading the F/RPKM data
 
 Prepare by defining functions etc.
 ```{r prepare}
-library(edgeR)
 library(pheatmap)
 library(gplots)
 library(ops)
 library(calibrate)
 
-normalize.voom <- function(counts){
-  require(limma)
-  return(voom(counts)$E)
-}
- 
-
-log2.cpm <- function(x){
-  x.pseud <- x + 0.5
-  libsizes = colSums(x)
-  libsize.pseud <- libsizes + 1.0
-  new.mtx <- log2(1e6 * mapply("/",as.data.frame(x.pseud),libsize.pseud))
-  rownames(new.mtx) <- rownames(x)
-  return(as.matrix(new.mtx))
-}
 
 do.SVD = function(m, comp.1=1, comp.2=2){ # returns eig.cell
   s <- svd(m)
@@ -297,7 +282,9 @@ Start by a few correlation heat maps:
 Heatmap of Spearman correlations between published expression profiles (# genes = 13,333)
 
 ```{r}
+
 pheatmap(cor(f.nozero, method="spearman")) 
+
 ```
 
 The brain samples are in a separate cluster, whereas the heart and kidney ones are intermixed.
@@ -305,7 +292,9 @@ The brain samples are in a separate cluster, whereas the heart and kidney ones a
 Alternatively, one could use Pearson correlation (not shown in paper):
 
 ```{r}
+
 pheatmap(cor(f.nozero))
+
 ```
 
 Sometimes the linear (Pearson) correlation works better on log values.  (not shown in paper):
@@ -321,35 +310,34 @@ What if we drop the genes that have less than FPKM 1 on average? (not shown in p
 
 ```{r}
 f.nolow <- f.nozero[-which(rowMeans(f.nozero)<1),]
-#pheatmap(cor(log2(f.nolow+pseudo)))
-fpkms.log.nolow <- log2(f.nolow + pseudo)
-pheatmap(cor(fpkms.log.nolow))
+pheatmap(cor(log2(f.nolow+pseudo)))
 ```
 
 Try Anova on a "melted" expression matrix with some metadata:
 
 ```{r:anova}
 library(reshape)
-m <- melt(f.nolow)
+m <- melt(f.nozero)
 colnames(m) <- c("sample_ID","RPKM")
 meta <- data.frame(tissue=c("heart","brain","kidney","heart","brain","heart","brain","kidney","heart","brain","kidney"),study=c("HPA","HPA","HPA","AltIso","AltIso","GTex","GTex","GTex","Atlas","Atlas","Atlas"),prep=c(rep("poly-A",8),rep("rRNA-depl",3)),layout=c(rep("PE",3),rep("SE",2),rep("PE",3),rep("SE",3)))
-rownames(meta) <- colnames(f)
-tissue <- rep(meta$tissue, each=nrow(f))
-study <- rep(meta$study, each=nrow(f))
-prep <- rep(meta$prep, each=nrow(f))
-layout <- rep(meta$layout, each=nrow(f))
+rownames(meta) <- colnames(f.nozero)
+tissue <- rep(meta$tissue, each=nrow(f.nozero))
+study <- rep(meta$study, each=nrow(f.nozero))
+prep <- rep(meta$prep, each=nrow(f.nozero))
+layout <- rep(meta$layout, each=nrow(f.nozero))
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(RPKM ~ prep + layout + study + tissue, data=data)
 a <- anova(fit)
-maxval = 3200
+maxval = 3000
 ```
 
 **Figure 1X**
 
 ```{r}
 barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Raw RPKM",ylim=c(0,maxval))
+print(a)
 ```
 
 Let's look at a few SVD plots. 
@@ -388,8 +376,6 @@ for (i in 1:6){
 **Code for figure 2**
 
 Figure 2 deals with log-transformed F/RPKM values from published data sets. 
-
-First we remove all rows where FPKM is zero in all samples and then add a pseudo count 1
 
 PCA on log2-FPKM values:
 
@@ -457,7 +443,6 @@ Let's start with the four brain samples:
 
 ```{r:venn brain}
 
-b_Ids <- list(HPA_b,AltIso_b,GTEx_b,Atlas_b)
 draw.quad.venn(100, 100, 100, 100, 
                length(intersect(HPA_b,AltIso_b)),
                length(intersect(HPA_b,GTEx_b)),
@@ -519,29 +504,16 @@ draw.triple.venn(100, 100, 100,
 **Figure 2D**
 
 ```{r:anova-log}
-m <- melt(f.log)
+m <- melt(fpkms.log)
 colnames(m) <- c("gene_ID","sample_ID","log2RPKM")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(log2RPKM ~ + prep + layout + study + tissue, data=data)
 b <- anova(fit)
 
+maxval=3000
 barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM",ylim=c(0,maxval))
 print(b)
-```
-
-ANOVA for TMM scaled values. (no figure)
-
-```{r:anova-tmm}
-m <- melt(f.tmm)
-colnames(m) <- c("gene_ID","sample_ID","TMM_RPKM")
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(TMM_RPKM ~ + prep + layout + study + tissue, data=data)
-a.tmm <- anova(fit)
-
-barplot(a.tmm$"F value"[-5],names.arg=rownames(a.tmm)[-5],main="Anova F score, TMM",ylim=c(0,maxval))
-print(a.tmm)
 ```
 
 **Code for figure 3**
@@ -565,20 +537,11 @@ write.table(combat, file="published_rpkms_combat_log2.txt", quote=F)
 
 pheatmap(cor(combat))
 
-plotPC(combat,1,2,colors=colors,desc="Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13333")
+colors <- c(1,2,3,1,2,1,2,3,1,2,3)
 
+plotPC(combat,1,2,colors=colors,desc="Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13333")
 plotPC(combat,2,3,colors=colors,desc="Published F/RPKM values, ComBat adjusted log2 TMM values \n SVD \n n=13333")
 
-par(mfrow=c(4,4))
-for (i in 1:6){
-  for(j in 1:6){
-		if (i<j){ 
-      eig.cell <- s$u[,c(i, j)]
-      proj <- t(combat) %*% eig.cell
-		  plot(proj[,1],proj[,2],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
-		}
-	}
-}
 ```
 
 Let's have a look again at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies, but this time looking at the values after the ComBat run:
@@ -668,36 +631,19 @@ draw.triple.venn(100, 100, 100,
 
 ```
 
-Revisit Anova with log-TMMed and combated values.
+Revisit Anova with combated values.
 
-```{r:anova2}
-m <- melt(f.log.tmm)
-colnames(m) <- c("gene_ID","sample_ID","logTMMRPKM")
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
-
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(logTMMRPKM ~ + prep + layout + study + tissue, data=data)
-b <- anova(fit)
-barplot(b$"F value",names.arg=rownames(b),main="Anova F score, log2-TMM")
+```{r:anova-combat}
 
 m <- melt(combat)
-colnames(m) <- c("gene_ID","sample_ID","combatlogTMMRPKM")
+colnames(m) <- c("sample_ID","combat")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+fit <- lm(combat ~ + prep + layout + study + tissue, data=data)
+c <- anova(fit)
 
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(combatlogTMMRPKM ~ prep + layout + study + tissue, data=data)
-d <- anova(fit)
-barplot(d$"F value",names.arg=rownames(d),main="Anova F score, ComBat on voom-TMM")
+barplot(c$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, Combat",ylim=c(0,maxval))
 
+print(c)
 ```
 
-Plot results
-```{r:plot-anova}
-pdf("anova.pdf")
-par(mfrow=c(3,1))
-barplot(a$"F value",names.arg=rownames(a),main="Anova F score, Raw RPKM")
-barplot(b$"F value",names.arg=rownames(b),main="Anova F score, voom-TMM")
-barplot(d$"F value",names.arg=rownames(d),main="Anova F score, ComBat on voom-TMM")
-dev.off()
-```
 
