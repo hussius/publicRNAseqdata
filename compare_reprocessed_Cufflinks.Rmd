@@ -188,7 +188,6 @@ Let's see how the correlation heatmap and PCA plots look after correction for ba
 
 ```{r}
 
-
 pheatmap(cor(combat))
 plotPC(combat,1,2,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
 plotPC(combat,2,3,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
@@ -251,7 +250,7 @@ data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 fit <- lm(combat ~ + prep + layout + study + tissue, data=data)
 c <- anova(fit)
 
-barplot(c$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
+barplot(c$"F value"[-5],names.arg=rownames(c)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
 print(c)
 ```
 
@@ -387,101 +386,6 @@ Let's have a look again at the 100 most highly expressed genes in each sample an
 
 ```{r:combatVenn}
 
-draw.quintuple.venn(100, 100, 100, 100, 100, 
-               length(intersect(EoGE_b,Atlas_b)),
-               length(intersect(EoGE_b,BodyMap_b)),
-               length(intersect(EoGE_b,HPA_b)),
-               length(intersect(EoGE_b,AltIso_b)),
-               length(intersect(Atlas_b,BodyMap_b)),
-               length(intersect(Atlas_b,HPA_b)),
-               length(intersect(Atlas_b,AltIso_b)),
-               length(intersect(BodyMap_b,HPA_b)),
-               length(intersect(BodyMap_b,AltIso_b)),
-               length(intersect(HPA_b,AltIso_b)),
-               length(intersect(intersect(EoGE_b,Atlas_b),BodyMap_b)),
-               length(intersect(intersect(EoGE_b,Atlas_b),HPA_b)),
-               length(intersect(intersect(EoGE_b,Atlas_b),AltIso_b)),
-               length(intersect(intersect(EoGE_b,BodyMap_b),HPA_b)),
-               length(intersect(intersect(EoGE_b,BodyMap_b),AltIso_b)),
-               length(intersect(intersect(EoGE_b,HPA_b),AltIso_b)),
-               length(intersect(intersect(Atlas_b,BodyMap_b),HPA_b)),
-               length(intersect(intersect(Atlas_b,BodyMap_b),AltIso_b)),
-               length(intersect(intersect(Atlas_b,HPA_b),AltIso_b)),
-               length(intersect(intersect(BodyMap_b,HPA_b),AltIso_b)),
-               length(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,HPA_b))),
-               length(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,AltIso_b))),
-               length(intersect(intersect(EoGE_b,Atlas_b),intersect(HPA_b,AltIso_b))),
-               length(intersect(intersect(EoGE_b,BodyMap_b),intersect(HPA_b,AltIso_b))),
-               length(intersect(intersect(Atlas_b,BodyMap_b),intersect(HPA_b,AltIso_b))),
-               length(intersect(intersect(intersect(EoGE_b,Atlas_b),intersect(BodyMap_b,HPA_b)),AltIso_b)),
-               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
-               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
-)
-
-```
-
-and the five heart samples:
-
-```{r:venn heart}
-draw.quintuple.venn(100, 100, 100, 100, 100, 
-               length(intersect(EoGE_h,Atlas_h)),
-               length(intersect(EoGE_h,BodyMap_h)),
-               length(intersect(EoGE_h,HPA_h)),
-               length(intersect(EoGE_h,AltIso_h)),
-               length(intersect(Atlas_h,BodyMap_h)),
-               length(intersect(Atlas_h,HPA_h)),
-               length(intersect(Atlas_h,AltIso_h)),
-               length(intersect(BodyMap_h,HPA_h)),
-               length(intersect(BodyMap_h,AltIso_h)),
-               length(intersect(HPA_h,AltIso_h)),
-               length(intersect(intersect(EoGE_h,Atlas_h),BodyMap_h)),
-               length(intersect(intersect(EoGE_h,Atlas_h),HPA_h)),
-               length(intersect(intersect(EoGE_h,Atlas_h),AltIso_h)),
-               length(intersect(intersect(EoGE_h,BodyMap_h),HPA_h)),
-               length(intersect(intersect(EoGE_h,BodyMap_h),AltIso_h)),
-               length(intersect(intersect(EoGE_h,HPA_h),AltIso_h)),
-               length(intersect(intersect(Atlas_h,BodyMap_h),HPA_h)),
-               length(intersect(intersect(Atlas_h,BodyMap_h),AltIso_h)),
-               length(intersect(intersect(Atlas_h,HPA_h),AltIso_h)),
-               length(intersect(intersect(BodyMap_h,HPA_h),AltIso_h)),
-               length(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,HPA_h))),
-               length(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,AltIso_h))),
-               length(intersect(intersect(EoGE_h,Atlas_h),intersect(HPA_h,AltIso_h))),
-               length(intersect(intersect(EoGE_h,BodyMap_h),intersect(HPA_h,AltIso_h))),
-               length(intersect(intersect(Atlas_h,BodyMap_h),intersect(HPA_h,AltIso_h))),
-               length(intersect(intersect(intersect(EoGE_h,Atlas_h),intersect(BodyMap_h,HPA_h)),AltIso_h)),
-               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
-               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
-)
-
-
-
-```
-
-...and the four kidney samples:
-
-```{r:venn kidney}
-
-draw.quad.venn(100, 100, 100, 100, 
-               length(intersect(EoGE_k,Atlas_k)),
-               length(intersect(EoGE_k,BodyMap_k)),
-               length(intersect(EoGE_k,HPA_k)),
-               length(intersect(Atlas_k,BodyMap_k)),
-               length(intersect(Atlas_k,HPA_k)),
-               length(intersect(BodyMap_k,HPA_k)),
-               length(intersect(intersect(EoGE_k,Atlas_k),BodyMap_k)),
-               length(intersect(intersect(EoGE_k,Atlas_k),HPA_k)),
-               length(intersect(intersect(EoGE_k,BodyMap_k),HPA_k)),
-               length(intersect(intersect(Atlas_k,BodyMap_k),HPA_k)),
-               length(intersect(intersect(EoGE_k,Atlas_k),intersect(BodyMap_k,HPA_k))),
-               category = c("EoGE","Atlas","BodyMap","HPA"), lwd = rep(0, 4), lty = rep("solid", 4),
-               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
-)
-
-```
-TRYING VENN FOR COMBAT!
-```{r:venn:combat}
-
 combat_data <- cbind(fpkms.log[,1:2],combat)
 
 EoGE_bc <- rownames(combat_data[order(combat_data$EoGE_brain,decreasing=T),][1:100,])
@@ -503,9 +407,10 @@ HPA_kc <- rownames(combat_data[order(combat_data$HPA_kidney,decreasing=T),][1:10
 AltIso_bc <- rownames(combat_data[order(combat_data$AltIso_brain,decreasing=T),][1:100,])
 AltIso_hc <- rownames(combat_data[order(combat_data$AltIso_heart,decreasing=T),][1:100,])
 
+
 ```
 
-Let's have a look again at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies, but this time looking at the values after the ComBat run:
+First the five brain samples:
 
 ```{r:combatVennBrain}
 

@@ -899,4 +899,187 @@ print(c)
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ```
 
+Let's look at the correlations between the principal components and some sample features
 
+
+```r
+pca <- prcomp(t(f.nozero[,]))
+
+var.percent <- ((pca$sdev)^2)/sum(pca$sdev^2) *100
+#var.percent <- (pca$d^2 / sum(pca$d^2) ) *100
+
+barplot(var.percent[1:5], xlab="PC", ylab="Percent Variance",names.arg=1:length(var.percent[1:5]), las=1,ylim=c(0,max(var.percent[1:5])+10), col="gray")
+```
+
+![plot of chunk :PC-correlation](figure/:PC-correlation1.png) 
+
+```r
+rot <- pca$r
+x <- pca$x
+plot(pca)
+```
+
+![plot of chunk :PC-correlation](figure/:PC-correlation2.png) 
+
+```r
+summary(pca)
+```
+
+```
+## Importance of components:
+##                             PC1      PC2      PC3      PC4      PC5
+## Standard deviation     8890.681 4191.480 3.62e+03 3.21e+03 2.40e+03
+## Proportion of Variance    0.577    0.128 9.56e-02 7.53e-02 4.22e-02
+## Cumulative Proportion     0.577    0.705 8.01e-01 8.76e-01 9.19e-01
+##                             PC6      PC7      PC8      PC9     PC10
+## Standard deviation     1.95e+03 1.68e+03 1.52e+03 1.14e+03 9.70e+02
+## Proportion of Variance 2.78e-02 2.05e-02 1.68e-02 9.48e-03 6.87e-03
+## Cumulative Proportion  9.46e-01 9.67e-01 9.84e-01 9.93e-01 1.00e+00
+##                            PC11
+## Standard deviation     1.09e-11
+## Proportion of Variance 0.00e+00
+## Cumulative Proportion  1.00e+00
+```
+
+```r
+screeplot(pca,type=c("lines"))
+```
+
+![plot of chunk :PC-correlation](figure/:PC-correlation3.png) 
+
+```r
+sampleinfo <- read.table("sample_info_published.txt",header=TRUE)
+
+patientsample_NRaw<-cbind(as.character(sampleinfo$Study_labels),
+                          as.numeric(sampleinfo$NumberRaw),
+                          as.character(sampleinfo$Tissue),
+                          as.character(sampleinfo$Preparation),
+                          as.character(sampleinfo$readlength),
+                          as.numeric(sampleinfo$Numbermapped),
+                          as.character(sampleinfo$Readtype))
+
+samplenames <- patientsample_NRaw[,-1]
+rownames(samplenames) <- patientsample_NRaw[,1]
+pca_comps<-x[,0:7]
+
+
+Nraw_pca.comp_na <- as.matrix(merge(samplenames,pca_comps,by="row.names",all=TRUE))
+Nraw_pca.comp<-na.omit(data.frame(Nraw_pca.comp_na))
+
+
+#NumberRaw
+plot(as.numeric(Nraw_pca.comp[,8]),Nraw_pca.comp[,2],xlab="NRaw",ylab="PCA_C1")
+```
+
+![plot of chunk :PC-correlation](figure/:PC-correlation4.png) 
+
+```r
+pval_Nraw_pc1<-cor.test(as.numeric(Nraw_pca.comp[,8]),as.numeric(Nraw_pca.comp[,2]),method = "spearman")$p.value
+pval_Nraw_pc2<-cor.test(as.numeric(Nraw_pca.comp[,9]),as.numeric(Nraw_pca.comp[,2]),method = "spearman")$p.value
+pval_Nraw_pc3<-cor.test(as.numeric(Nraw_pca.comp[,10]),as.numeric(Nraw_pca.comp[,2]),method = "spearman")$p.value
+pval_Nraw_pc4<-cor.test(as.numeric(Nraw_pca.comp[,11]),as.numeric(Nraw_pca.comp[,2]),method = "spearman")$p.value
+pval_Nraw_pc5<-cor.test(as.numeric(Nraw_pca.comp[,12]),as.numeric(Nraw_pca.comp[,2]),method = "spearman")$p.value
+pval_Nraw_pc6<-cor.test(as.numeric(Nraw_pca.comp[,13]),as.numeric(Nraw_pca.comp[,2]),method = "spearman")$p.value
+pval_Nraw_pc7<-cor.test(as.numeric(Nraw_pca.comp[,14]),as.numeric(Nraw_pca.comp[,2]),method = "spearman")$p.value
+
+cat(sprintf("Number_of_rawreads~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\"PCA5=\"%f\"PCA6=\"%f\"\n", pval_Nraw_pc1,pval_Nraw_pc2,pval_Nraw_pc3,pval_Nraw_pc4,pval_Nraw_pc5,pval_Nraw_pc6,pval_Nraw_pc7))
+```
+
+```
+## Number_of_rawreads~PCAs: PCA1="0.619097"PCA2="0.045833"PCA3="0.934871"PCA4="0.083085"PCA5="0.004563"PCA6="0.299206"
+```
+
+```r
+#print(pval_agecorr_pc1)
+
+
+#NumberMapped
+plot(as.numeric(Nraw_pca.comp[,8]),Nraw_pca.comp[,6],xlab="NRaw",ylab="PCA_C1")
+```
+
+![plot of chunk :PC-correlation](figure/:PC-correlation5.png) 
+
+```r
+pval_Nmap_pc1<-cor.test(as.numeric(Nraw_pca.comp[,8]),as.numeric(Nraw_pca.comp[,6]),method = "spearman")$p.value
+pval_Nmap_pc2<-cor.test(as.numeric(Nraw_pca.comp[,9]),as.numeric(Nraw_pca.comp[,6]),method = "spearman")$p.value
+pval_Nmap_pc3<-cor.test(as.numeric(Nraw_pca.comp[,10]),as.numeric(Nraw_pca.comp[,6]),method = "spearman")$p.value
+pval_Nmap_pc4<-cor.test(as.numeric(Nraw_pca.comp[,11]),as.numeric(Nraw_pca.comp[,6]),method = "spearman")$p.value
+pval_Nmap_pc5<-cor.test(as.numeric(Nraw_pca.comp[,12]),as.numeric(Nraw_pca.comp[,6]),method = "spearman")$p.value
+pval_Nmap_pc6<-cor.test(as.numeric(Nraw_pca.comp[,13]),as.numeric(Nraw_pca.comp[,6]),method = "spearman")$p.value
+pval_Nmap_pc7<-cor.test(as.numeric(Nraw_pca.comp[,14]),as.numeric(Nraw_pca.comp[,6]),method = "spearman")$p.value
+
+cat(sprintf("Number_of_mapped_reads~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\"PCA5=\"%f\"PCA6=\"%f\"\n", pval_Nmap_pc1,pval_Nmap_pc2,pval_Nmap_pc3,pval_Nmap_pc4,pval_Nmap_pc5,pval_Nmap_pc6,pval_Nmap_pc7))
+```
+
+```
+## Number_of_mapped_reads~PCAs: PCA1="0.461806"PCA2="0.151141"PCA3="0.881994"PCA4="0.027927"PCA5="0.010714"PCA6="0.664583"
+```
+
+```r
+#Tissue
+pval_tissue_pc1<-kruskal.test(as.numeric(Nraw_pca.comp[,8]) ~ as.factor(Nraw_pca.comp[,3]))$p.value
+pval_tissue_pc2<-kruskal.test(as.numeric(Nraw_pca.comp[,9]) ~ as.factor(Nraw_pca.comp[,3]))$p.value
+pval_tissue_pc3<-kruskal.test(as.numeric(Nraw_pca.comp[,10]) ~ as.factor(Nraw_pca.comp[,3]))$p.value
+pval_tissue_pc4<-kruskal.test(as.numeric(Nraw_pca.comp[,11]) ~ as.factor(Nraw_pca.comp[,3]))$p.value
+pval_tissue_pc5<-kruskal.test(as.numeric(Nraw_pca.comp[,12]) ~ as.factor(Nraw_pca.comp[,3]))$p.value
+pval_tissue_pc6<-kruskal.test(as.numeric(Nraw_pca.comp[,13]) ~ as.factor(Nraw_pca.comp[,3]))$p.value
+pval_tissue_pc7<-kruskal.test(as.numeric(Nraw_pca.comp[,14]) ~ as.factor(Nraw_pca.comp[,3]))$p.value
+
+cat(sprintf("Tissues~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\"PCA5=\"%f\"PCA6=\"%f\"\n", pval_tissue_pc1,pval_tissue_pc2,pval_tissue_pc3,pval_tissue_pc4,pval_tissue_pc5,pval_tissue_pc6,pval_tissue_pc7))
+```
+
+```
+## Tissues~PCAs: PCA1="0.706648"PCA2="0.133469"PCA3="0.405442"PCA4="0.573753"PCA5="0.757465"PCA6="0.789693"
+```
+
+```r
+#Library_preparation
+pval_tissue_pc1<-kruskal.test(as.numeric(Nraw_pca.comp[,8]) ~ as.factor(Nraw_pca.comp[,4]))$p.value
+pval_tissue_pc2<-kruskal.test(as.numeric(Nraw_pca.comp[,9]) ~ as.factor(Nraw_pca.comp[,4]))$p.value
+pval_tissue_pc3<-kruskal.test(as.numeric(Nraw_pca.comp[,10]) ~ as.factor(Nraw_pca.comp[,4]))$p.value
+pval_tissue_pc4<-kruskal.test(as.numeric(Nraw_pca.comp[,11]) ~ as.factor(Nraw_pca.comp[,4]))$p.value
+pval_tissue_pc5<-kruskal.test(as.numeric(Nraw_pca.comp[,12]) ~ as.factor(Nraw_pca.comp[,4]))$p.value
+pval_tissue_pc6<-kruskal.test(as.numeric(Nraw_pca.comp[,13]) ~ as.factor(Nraw_pca.comp[,4]))$p.value
+pval_tissue_pc7<-kruskal.test(as.numeric(Nraw_pca.comp[,14]) ~ as.factor(Nraw_pca.comp[,4]))$p.value
+
+cat(sprintf("Library_prep~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\"PCA5=\"%f\"PCA6=\"%f\"\n", pval_tissue_pc1,pval_tissue_pc2,pval_tissue_pc3,pval_tissue_pc4,pval_tissue_pc5,pval_tissue_pc6,pval_tissue_pc7))
+```
+
+```
+## Library_prep~PCAs: PCA1="0.456057"PCA2="0.654721"PCA3="0.456057"PCA4="0.025347"PCA5="0.179712"PCA6="0.456057"
+```
+
+```r
+#pval_interferoncorr_pc1<-kruskal.test(interferon_pca.comp[complete.cases(interferon_pca.comp),][,2]  ~ interferon_pca.comp[complete.cases(interferon_pca.comp),][,9])$p.value
+#sequence_type-paired/single
+pval_seqtype_pc1<-kruskal.test(as.numeric(Nraw_pca.comp[,8]) ~ as.factor(Nraw_pca.comp[,7]))$p.value
+pval_seqtype_pc2<-kruskal.test(as.numeric(Nraw_pca.comp[,9]) ~ as.factor(Nraw_pca.comp[,7]))$p.value
+pval_seqtype_pc3<-kruskal.test(as.numeric(Nraw_pca.comp[,10]) ~ as.factor(Nraw_pca.comp[,7]))$p.value
+pval_seqtype_pc4<-kruskal.test(as.numeric(Nraw_pca.comp[,11]) ~ as.factor(Nraw_pca.comp[,7]))$p.value
+pval_seqtype_pc5<-kruskal.test(as.numeric(Nraw_pca.comp[,12]) ~ as.factor(Nraw_pca.comp[,7]))$p.value
+pval_seqtype_pc6<-kruskal.test(as.numeric(Nraw_pca.comp[,13]) ~ as.factor(Nraw_pca.comp[,7]))$p.value
+pval_seqtype_pc7<-kruskal.test(as.numeric(Nraw_pca.comp[,14]) ~ as.factor(Nraw_pca.comp[,7]))$p.value
+
+cat(sprintf("Sequence_type~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\"PCA5=\"%f\"PCA6=\"%f\"\n", pval_seqtype_pc1,pval_seqtype_pc2,pval_seqtype_pc3,pval_seqtype_pc4,pval_seqtype_pc5,pval_seqtype_pc6,pval_seqtype_pc7))
+```
+
+```
+## Sequence_type~PCAs: PCA1="0.654721"PCA2="0.296718"PCA3="0.296718"PCA4="0.052632"PCA5="0.456057"PCA6="0.179712"
+```
+
+```r
+#readlength- 1x32/1x35/1x76/2x100/2x76 
+pval_readlength_pc1<-kruskal.test(as.numeric(Nraw_pca.comp[,8]) ~ as.factor(Nraw_pca.comp[,5]))$p.value
+pval_readlength_pc2<-kruskal.test(as.numeric(Nraw_pca.comp[,9]) ~ as.factor(Nraw_pca.comp[,5]))$p.value
+pval_readlength_pc3<-kruskal.test(as.numeric(Nraw_pca.comp[,10]) ~ as.factor(Nraw_pca.comp[,5]))$p.value
+pval_readlength_pc4<-kruskal.test(as.numeric(Nraw_pca.comp[,11]) ~ as.factor(Nraw_pca.comp[,5]))$p.value
+pval_readlength_pc5<-kruskal.test(as.numeric(Nraw_pca.comp[,12]) ~ as.factor(Nraw_pca.comp[,5]))$p.value
+pval_readlength_pc6<-kruskal.test(as.numeric(Nraw_pca.comp[,13]) ~ as.factor(Nraw_pca.comp[,5]))$p.value
+pval_readlength_pc7<-kruskal.test(as.numeric(Nraw_pca.comp[,14]) ~ as.factor(Nraw_pca.comp[,5]))$p.value
+
+cat(sprintf("readlength~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\"PCA5=\"%f\"PCA6=\"%f\"\n", pval_readlength_pc1,pval_readlength_pc2,pval_readlength_pc3,pval_readlength_pc4,pval_readlength_pc5,pval_readlength_pc6,pval_readlength_pc7))
+```
+
+```
+## readlength~PCAs: PCA1="0.757465"PCA2="0.565840"PCA3="0.133469"PCA4="0.062177"PCA5="0.405442"PCA6="0.405442"
+```
