@@ -335,11 +335,11 @@ f <- read.delim("published_rpkms.txt",sep=" ")
 ```
 
 This looks much better. 
-Let's remove all lines where FPKM=0 in all samples before we proceed with this version of the data set:
+Let's remove all lines where FPKM is close to zero in all samples before we proceed with this version of the data set:
 
 
 ```r
-f.nozero <- f[-which(rowSums(f[,])==0),]
+f.nozero <- f[-which(rowSums(f[,])<=0.01),]
 ```
 
 Start by a few correlation heat maps:
@@ -427,6 +427,24 @@ barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Raw RPKM"
 ```
 
 ![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18.png) 
+
+```r
+print(a)
+```
+
+```
+## Analysis of Variance Table
+## 
+## Response: RPKM
+##               Df   Sum Sq Mean Sq F value  Pr(>F)    
+## prep           1 2.20e+06 2202806  164.98 < 2e-16 ***
+## layout         1 6.41e+03    6410    0.48    0.49    
+## study          1 1.90e+06 1900110  142.31 < 2e-16 ***
+## tissue         2 4.45e+05  222603   16.67 5.8e-08 ***
+## Residuals 146547 1.96e+09   13352                    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
 
 Let's look at a few SVD plots. 
 
@@ -671,11 +689,11 @@ print(b)
 ## 
 ## Response: RPKM
 ##               Df   Sum Sq Mean Sq F value  Pr(>F)    
-## prep           1 2.20e+06 2201154  164.98 < 2e-16 ***
-## layout         1 6.40e+03    6405    0.48    0.49    
-## study          1 1.90e+06 1898685  142.31 < 2e-16 ***
-## tissue         2 4.45e+05  222436   16.67 5.8e-08 ***
-## Residuals 146657 1.96e+09   13342                    
+## prep           1 2.20e+06 2202806  164.98 < 2e-16 ***
+## layout         1 6.41e+03    6410    0.48    0.49    
+## study          1 1.90e+06 1900110  142.31 < 2e-16 ***
+## tissue         2 4.45e+05  222603   16.67 5.8e-08 ***
+## Residuals 146547 1.96e+09   13352                    
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ```
@@ -874,9 +892,9 @@ print(c)
 ##               Df Sum Sq Mean Sq F value Pr(>F)    
 ## prep           1      1       1    0.36   0.55    
 ## layout         1      3       3    1.08   0.30    
-## study          1      1       1    0.32   0.57    
-## tissue         2   1348     674  209.46 <2e-16 ***
-## Residuals 146657 472052       3                   
+## study          1      1       1    0.33   0.57    
+## tissue         2   1349     675  209.71 <2e-16 ***
+## Residuals 146547 471462       3                   
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ```

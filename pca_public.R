@@ -6,33 +6,41 @@ head(pca_study_public)
 dim(pca_study_public)
 
 #Filter not used,Zeros count values can be specific to tissues 
-
 filter <- apply(pca_study_public[,2:11], 1, function(row) all(row !=0 ))
-pca_study_public_nonzero<-pca_study_public[filter,]
+pca_study_public_nonzero <- pca_study_public[filter,]
 
-pca <- svd(pca_study_public[,2:11])
-var.percent <- (pca$d^2 / sum(pca$d^2) ) *100
+pca <- prcomp(t(pca_study_public[,]))
+#pca <- svd(pca_study_public[,])
+
+var.percent <- ((pca$sdev)^2)/sum(pca$sdev^2) *100
+#var.percent <- (pca$d^2 / sum(pca$d^2) ) *100
+
 barplot(var.percent[1:5], xlab="PC", ylab="Percent Variance",names.arg=1:length(var.percent[1:5]), las=1,ylim=c(0,max(var.percent[1:5])+10), col="gray")
 
-#jämför med prcomp
-#pca <- prcomp(pca_study_public)
-#rot <- pca$r
-#x <- pca$x
-#plot(pca)
-#summary(pca)
+
+x <- pca$x
+plot(pca)
+summary(pca)
 screeplot(pca,type=c("lines"))
 
+sampleinfo <- read.table("sample_info_published.txt",header=TRUE)
 
-sampleinfo <- read.table("information_sample.txt",header=TRUE)
-patientsample < -sampleinfo[,1:8]
+patientsample_NRaw<-cbind(as.character(sampleinfo$Study_labels),
+                          as.numeric(sampleinfo$NumberRaw),
+                          as.character(sampleinfo$Tissue),
+                          as.character(sampleinfo$Preparation),
+                          as.character(sampleinfo$readlength),
+                          as.numeric(sampleinfo$Numbermapped),
+                          as.character(sampleinfo$Readtype))
 
-patientsample_NRaw<-cbind(as.character(patientsample$study_labels),as.numeric(patientsample$NumberRaw),as.character(patientsample$Tissue),as.character(patientsample$Preparation),as.character(patientsample$readlength),as.numeric(patientsample$Numbermapped),as.character(patientsample$Readtype))
-samplenames<-patientsample_NRaw[,-1]
-rownames(samplenames)<-patientsample_NRaw[,1]
+samplenames <- patientsample_NRaw[,-1]
+rownames(samplenames) <- patientsample_NRaw[,1]
 pca_comps<-x[,0:7]
 
 
-Nraw_pca.comp<-as.matrix(merge(samplenames,pca_comps,by="row.names",all=TRUE))
+Nraw_pca.comp_na <- as.matrix(merge(samplenames,pca_comps,by="row.names",all=TRUE))
+Nraw_pca.comp<-na.omit(data.frame(Nraw_pca.comp_na))
+
 
 #NumberRaw
 plot(as.numeric(Nraw_pca.comp[,8]),Nraw_pca.comp[,2],xlab="NRaw",ylab="PCA_C1")
@@ -106,6 +114,4 @@ pval_readlength_pc6<-kruskal.test(as.numeric(Nraw_pca.comp[,13]) ~ as.factor(Nra
 pval_readlength_pc7<-kruskal.test(as.numeric(Nraw_pca.comp[,14]) ~ as.factor(Nraw_pca.comp[,5]))$p.value
 
 cat(sprintf("readlength~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\"PCA5=\"%f\"PCA6=\"%f\"\n", pval_readlength_pc1,pval_readlength_pc2,pval_readlength_pc3,pval_readlength_pc4,pval_readlength_pc5,pval_readlength_pc6,pval_readlength_pc7))
-
-
 
