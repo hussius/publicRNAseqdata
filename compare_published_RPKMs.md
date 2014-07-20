@@ -231,24 +231,62 @@ library(org.Hs.eg.db) # for transferring gene identifiers
 ```
 
 ```
-## Error: there is no package called 'org.Hs.eg.db'
+## Loading required package: AnnotationDbi
+## Loading required package: BiocGenerics
+## Loading required package: parallel
+## 
+## Attaching package: 'BiocGenerics'
+## 
+## The following objects are masked from 'package:parallel':
+## 
+##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+##     clusterExport, clusterMap, parApply, parCapply, parLapply,
+##     parLapplyLB, parRapply, parSapply, parSapplyLB
+## 
+## The following object is masked from 'package:stats':
+## 
+##     xtabs
+## 
+## The following objects are masked from 'package:base':
+## 
+##     anyDuplicated, append, as.data.frame, as.vector, cbind,
+##     colnames, duplicated, eval, evalq, Filter, Find, get,
+##     intersect, is.unsorted, lapply, Map, mapply, match, mget,
+##     order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+##     rbind, Reduce, rep.int, rownames, sapply, setdiff, sort,
+##     table, tapply, union, unique, unlist
+## 
+## Loading required package: Biobase
+## Welcome to Bioconductor
+## 
+##     Vignettes contain introductory material; view with
+##     'browseVignettes()'. To cite Bioconductor, see
+##     'citation("Biobase")', and for packages 'citation("pkgname")'.
+## 
+## 
+## Attaching package: 'AnnotationDbi'
+## 
+## The following object is masked from 'package:MASS':
+## 
+##     select
+## 
+## Loading required package: DBI
 ```
 
 ```r
 library(data.table) # for collapsing transcript RPKMs
-```
-
-```
-## Error: there is no package called 'data.table'
-```
-
-```r
 library(pheatmap) # for nicer visualization
 library(edgeR) # for TMM normalization
 ```
 
 ```
 ## Loading required package: limma
+## 
+## Attaching package: 'limma'
+## 
+## The following object is masked from 'package:BiocGenerics':
+## 
+##     plotMA
 ```
 
 ```r
@@ -654,27 +692,13 @@ m <- melt(fpkms.log)
 ```
 
 ```r
-colnames(m) <- c("gene_ID","sample_ID","log2RPKM")
-```
-
-```
-## Error: 'names' attribute [3] must be the same length as the vector [2]
-```
-
-```r
+colnames(m) <- c("sample_ID","log2RPKM")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(log2RPKM ~ + prep + layout + study + tissue, data=data)
-```
-
-```
-## Error: object 'log2RPKM' not found
-```
-
-```r
 b <- anova(fit)
 
-maxval=3000
+maxval=4000
 barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM",ylim=c(0,maxval))
 ```
 
@@ -687,13 +711,13 @@ print(b)
 ```
 ## Analysis of Variance Table
 ## 
-## Response: RPKM
-##               Df   Sum Sq Mean Sq F value  Pr(>F)    
-## prep           1 2.20e+06 2202806  164.98 < 2e-16 ***
-## layout         1 6.41e+03    6410    0.48    0.49    
-## study          1 1.90e+06 1900110  142.31 < 2e-16 ***
-## tissue         2 4.45e+05  222603   16.67 5.8e-08 ***
-## Residuals 146547 1.96e+09   13352                    
+## Response: log2RPKM
+##               Df Sum Sq Mean Sq F value Pr(>F)    
+## prep           1  13206   13206    3611 <2e-16 ***
+## layout         1   3613    3613     988 <2e-16 ***
+## study          1  12135   12135    3319 <2e-16 ***
+## tissue         2   1368     684     187 <2e-16 ***
+## Residuals 146547 535868       4                   
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ```
@@ -714,7 +738,7 @@ library(sva)
 ## Loading required package: corpcor
 ## Loading required package: mgcv
 ## Loading required package: nlme
-## This is mgcv 1.7-29. For overview type 'help("mgcv-package")'.
+## This is mgcv 1.8-1. For overview type 'help("mgcv-package")'.
 ```
 
 ```r

@@ -6,14 +6,6 @@ Preliminaries (libraries etc.)
 
 ```r
 library(pheatmap)
-library(edgeR)
-```
-
-```
-## Loading required package: limma
-```
-
-```r
 library(calibrate)
 ```
 
@@ -124,8 +116,10 @@ Sometimes the linear (Pearson) correlation works better on log values.  (not sho
 
 ```r
 pseudo <- 1
-fpkms.log <- log2(f_pc_nozero[,3:16] + pseudo)
-pheatmap(cor(fpkms.log[,]))
+logs <- log2(f_pc_nozero[,3:16] + pseudo)
+fpkms.log <- cbind(f_pc_nozero[,1:2],logs) 
+
+pheatmap(cor(fpkms.log[,3:16]))
 ```
 
 ![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6.png) 
@@ -187,13 +181,13 @@ Let's see how the PCA plots look for log2-FPKM values:
 
 
 ```r
-plotPC(fpkms.log, 1, 2, desc="Reprocessed F/RPKM values, log2 \n SVD \n n=19475", colors=colors)
+plotPC(fpkms.log[,3:16], 1, 2, desc="Reprocessed F/RPKM values, log2 \n SVD \n n=19475", colors=colors)
 ```
 
 ![plot of chunk unnamed-chunk-11](figure/unnamed-chunk-111.png) 
 
 ```r
-plotPC(fpkms.log, 2, 3, desc="Reprocessed FPKM values, log2 \n SVD \n n=19475", colors=colors)
+plotPC(fpkms.log[,3:16], 2, 3, desc="Reprocessed FPKM values, log2 \n SVD \n n=19475", colors=colors)
 ```
 
 ![plot of chunk unnamed-chunk-11](figure/unnamed-chunk-112.png) 
@@ -218,7 +212,7 @@ meta <- data.frame(study=c(rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HP
 batch <- meta$study
 design <- model.matrix(~as.factor(tissue),data=meta)
 
-combat <- ComBat(dat=fpkms.log[,],batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+combat <- ComBat(dat=fpkms.log[,3:16],batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
 ```
 
 ```
@@ -304,7 +298,7 @@ m <- melt(fpkms.log[,])
 ```
 
 ```
-## Using  as id variables
+## Using ENSEMBL_ID, Gene_ID as id variables
 ```
 
 ```r
@@ -313,29 +307,39 @@ colnames(m) <- c("sample_ID","log2FPKM")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(log2FPKM ~ + prep + layout + study + tissue, data=data)
-b <- anova(fit)
+```
 
+```
+## Warning: using type = "numeric" with a factor response will be ignored
+## Warning: - not meaningful for factors
+```
+
+```r
+b <- anova(fit)
+```
+
+```
+## Warning: ^ not meaningful for factors
+```
+
+```
+## Error: missing value where TRUE/FALSE needed
+```
+
+```r
 barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM",ylim=c(0,3000))
 ```
 
-![plot of chunk :anova-log](figure/:anova-log.png) 
+```
+## Error: object 'b' not found
+```
 
 ```r
 print(b)
 ```
 
 ```
-## Analysis of Variance Table
-## 
-## Response: log2FPKM
-##               Df  Sum Sq Mean Sq F value Pr(>F)    
-## prep           1    2256    2256     496 <2e-16 ***
-## layout         1     898     898     198 <2e-16 ***
-## study          2    3155    1577     347 <2e-16 ***
-## tissue         2    9847    4924    1083 <2e-16 ***
-## Residuals 272643 1239928       5                   
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## Error: object 'b' not found
 ```
 
 
@@ -357,7 +361,7 @@ data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 fit <- lm(combat ~ + prep + layout + study + tissue, data=data)
 c <- anova(fit)
 
-barplot(c$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
+barplot(c$"F value"[-5],names.arg=rownames(c)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
 ```
 
 ![plot of chunk :anova-combat](figure/:anova-combat.png) 
@@ -525,4 +529,141 @@ draw.quad.venn(100, 100, 100, 100,
 
 ```
 ## (polygon[GRID.polygon.608], polygon[GRID.polygon.609], polygon[GRID.polygon.610], polygon[GRID.polygon.611], polygon[GRID.polygon.612], polygon[GRID.polygon.613], polygon[GRID.polygon.614], polygon[GRID.polygon.615], text[GRID.text.616], text[GRID.text.617], text[GRID.text.618], text[GRID.text.619], text[GRID.text.620], text[GRID.text.621], text[GRID.text.622], text[GRID.text.623], text[GRID.text.624], text[GRID.text.625], text[GRID.text.626], text[GRID.text.627], text[GRID.text.628], text[GRID.text.629], text[GRID.text.630], text[GRID.text.631], text[GRID.text.632], text[GRID.text.633], text[GRID.text.634])
+```
+
+Let's have a look again at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies, but this time looking at the values after the ComBat run:
+
+
+```r
+combat_data <- cbind(fpkms.log[,1:2],combat)
+
+EoGE_bc <- rownames(combat_data[order(combat_data$EoGE_brain,decreasing=T),][1:100,])
+EoGE_hc <- rownames(combat_data[order(combat_data$EoGE_heart,decreasing=T),][1:100,])
+EoGE_kc <- rownames(combat_data[order(combat_data$EoGE_kidney,decreasing=T),][1:100,])
+
+Atlas_bc <- rownames(combat_data[order(combat_data$Atlas_brain,decreasing=T),][1:100,])
+Atlas_hc <- rownames(combat_data[order(combat_data$Atlas_heart,decreasing=T),][1:100,])
+Atlas_kc <- rownames(combat_data[order(combat_data$Atlas_kidney,decreasing=T),][1:100,])
+
+BodyMap_bc <- rownames(combat_data[order(combat_data$BodyMap_brain,decreasing=T),][1:100,])
+BodyMap_hc <- rownames(combat_data[order(combat_data$BodyMap_heart,decreasing=T),][1:100,])
+BodyMap_kc <- rownames(combat_data[order(combat_data$BodyMap_kidney,decreasing=T),][1:100,])
+
+HPA_bc <- rownames(combat_data[order(combat_data$HPA_brain,decreasing=T),][1:100,])
+HPA_hc <- rownames(combat_data[order(combat_data$HPA_heart,decreasing=T),][1:100,])
+HPA_kc <- rownames(combat_data[order(combat_data$HPA_kidney,decreasing=T),][1:100,])
+
+AltIso_bc <- rownames(combat_data[order(combat_data$AltIso_brain,decreasing=T),][1:100,])
+AltIso_hc <- rownames(combat_data[order(combat_data$AltIso_heart,decreasing=T),][1:100,])
+```
+
+First the five brain samples:
+
+
+```r
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_bc,Atlas_bc)),
+               length(intersect(EoGE_bc,BodyMap_bc)),
+               length(intersect(EoGE_bc,HPA_bc)),
+               length(intersect(EoGE_bc,AltIso_bc)),
+               length(intersect(Atlas_bc,BodyMap_bc)),
+               length(intersect(Atlas_bc,HPA_bc)),
+               length(intersect(Atlas_bc,AltIso_bc)),
+               length(intersect(BodyMap_bc,HPA_bc)),
+               length(intersect(BodyMap_bc,AltIso_bc)),
+               length(intersect(HPA_bc,AltIso_bc)),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),BodyMap_bc)),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),HPA_bc)),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),AltIso_bc)),
+               length(intersect(intersect(EoGE_bc,BodyMap_bc),HPA_bc)),
+               length(intersect(intersect(EoGE_bc,BodyMap_bc),AltIso_bc)),
+               length(intersect(intersect(EoGE_bc,HPA_bc),AltIso_bc)),
+               length(intersect(intersect(Atlas_bc,BodyMap_bc),HPA_bc)),
+               length(intersect(intersect(Atlas_bc,BodyMap_bc),AltIso_bc)),
+               length(intersect(intersect(Atlas_bc,HPA_bc),AltIso_bc)),
+               length(intersect(intersect(BodyMap_bc,HPA_bc),AltIso_bc)),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),intersect(BodyMap_bc,HPA_bc))),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),intersect(BodyMap_bc,AltIso_bc))),
+               length(intersect(intersect(EoGE_bc,Atlas_bc),intersect(HPA_bc,AltIso_bc))),
+               length(intersect(intersect(EoGE_bc,BodyMap_bc),intersect(HPA_bc,AltIso_bc))),
+               length(intersect(intersect(Atlas_bc,BodyMap_bc),intersect(HPA_bc,AltIso_bc))),
+               length(intersect(intersect(intersect(EoGE_bc,Atlas_bc),intersect(BodyMap_bc,HPA_bc)),AltIso_bc)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
+)
+```
+
+![plot of chunk :combatVennBrain](figure/:combatVennBrain.png) 
+
+```
+## (polygon[GRID.polygon.635], polygon[GRID.polygon.636], polygon[GRID.polygon.637], polygon[GRID.polygon.638], polygon[GRID.polygon.639], polygon[GRID.polygon.640], polygon[GRID.polygon.641], polygon[GRID.polygon.642], polygon[GRID.polygon.643], polygon[GRID.polygon.644], text[GRID.text.645], text[GRID.text.646], text[GRID.text.647], text[GRID.text.648], text[GRID.text.649], text[GRID.text.650], text[GRID.text.651], text[GRID.text.652], text[GRID.text.653], text[GRID.text.654], text[GRID.text.655], text[GRID.text.656], text[GRID.text.657], text[GRID.text.658], text[GRID.text.659], text[GRID.text.660], text[GRID.text.661], text[GRID.text.662], text[GRID.text.663], text[GRID.text.664], text[GRID.text.665], text[GRID.text.666], text[GRID.text.667], text[GRID.text.668], text[GRID.text.669], text[GRID.text.670], text[GRID.text.671], text[GRID.text.672], text[GRID.text.673], text[GRID.text.674], text[GRID.text.675], text[GRID.text.676], text[GRID.text.677], text[GRID.text.678], text[GRID.text.679], text[GRID.text.680])
+```
+
+And for the five heart samples:
+
+
+```r
+draw.quintuple.venn(100, 100, 100, 100, 100, 
+               length(intersect(EoGE_hc,Atlas_hc)),
+               length(intersect(EoGE_hc,BodyMap_hc)),
+               length(intersect(EoGE_hc,HPA_hc)),
+               length(intersect(EoGE_hc,AltIso_hc)),
+               length(intersect(Atlas_hc,BodyMap_hc)),
+               length(intersect(Atlas_hc,HPA_hc)),
+               length(intersect(Atlas_hc,AltIso_hc)),
+               length(intersect(BodyMap_hc,HPA_hc)),
+               length(intersect(BodyMap_hc,AltIso_hc)),
+               length(intersect(HPA_hc,AltIso_hc)),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),BodyMap_hc)),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),HPA_hc)),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),AltIso_hc)),
+               length(intersect(intersect(EoGE_hc,BodyMap_hc),HPA_hc)),
+               length(intersect(intersect(EoGE_hc,BodyMap_hc),AltIso_hc)),
+               length(intersect(intersect(EoGE_hc,HPA_hc),AltIso_hc)),
+               length(intersect(intersect(Atlas_hc,BodyMap_hc),HPA_hc)),
+               length(intersect(intersect(Atlas_hc,BodyMap_hc),AltIso_hc)),
+               length(intersect(intersect(Atlas_hc,HPA_hc),AltIso_hc)),
+               length(intersect(intersect(BodyMap_hc,HPA_hc),AltIso_hc)),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),intersect(BodyMap_hc,HPA_hc))),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),intersect(BodyMap_hc,AltIso_hc))),
+               length(intersect(intersect(EoGE_hc,Atlas_hc),intersect(HPA_hc,AltIso_hc))),
+               length(intersect(intersect(EoGE_hc,BodyMap_hc),intersect(HPA_hc,AltIso_hc))),
+               length(intersect(intersect(Atlas_hc,BodyMap_hc),intersect(HPA_hc,AltIso_hc))),
+               length(intersect(intersect(intersect(EoGE_hc,Atlas_hc),intersect(BodyMap_hc,HPA_hc)),AltIso_hc)),
+               category = c("EoGE","Atlas","BodyMap","HPA","AltIso"), lwd = rep(0, 5), lty = rep("solid", 5),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen","lightblue")
+)
+```
+
+![plot of chunk :combatVennHeart](figure/:combatVennHeart.png) 
+
+```
+## (polygon[GRID.polygon.681], polygon[GRID.polygon.682], polygon[GRID.polygon.683], polygon[GRID.polygon.684], polygon[GRID.polygon.685], polygon[GRID.polygon.686], polygon[GRID.polygon.687], polygon[GRID.polygon.688], polygon[GRID.polygon.689], polygon[GRID.polygon.690], text[GRID.text.691], text[GRID.text.692], text[GRID.text.693], text[GRID.text.694], text[GRID.text.695], text[GRID.text.696], text[GRID.text.697], text[GRID.text.698], text[GRID.text.699], text[GRID.text.700], text[GRID.text.701], text[GRID.text.702], text[GRID.text.703], text[GRID.text.704], text[GRID.text.705], text[GRID.text.706], text[GRID.text.707], text[GRID.text.708], text[GRID.text.709], text[GRID.text.710], text[GRID.text.711], text[GRID.text.712], text[GRID.text.713], text[GRID.text.714], text[GRID.text.715], text[GRID.text.716], text[GRID.text.717], text[GRID.text.718], text[GRID.text.719], text[GRID.text.720], text[GRID.text.721], text[GRID.text.722], text[GRID.text.723], text[GRID.text.724], text[GRID.text.725], text[GRID.text.726])
+```
+
+And for the four kidney samples:
+
+
+```r
+draw.quad.venn(100, 100, 100, 100, 
+               length(intersect(EoGE_kc,Atlas_kc)),
+               length(intersect(EoGE_kc,BodyMap_kc)),
+               length(intersect(EoGE_kc,HPA_kc)),
+               length(intersect(Atlas_kc,BodyMap_kc)),
+               length(intersect(Atlas_kc,HPA_kc)),
+               length(intersect(BodyMap_kc,HPA_kc)),
+               length(intersect(intersect(EoGE_kc,Atlas_kc),BodyMap_kc)),
+               length(intersect(intersect(EoGE_kc,Atlas_kc),HPA_kc)),
+               length(intersect(intersect(EoGE_kc,BodyMap_kc),HPA_kc)),
+               length(intersect(intersect(Atlas_kc,BodyMap_kc),HPA_kc)),
+               length(intersect(intersect(EoGE_kc,Atlas_kc),intersect(BodyMap_kc,HPA_kc))),
+               category = c("EoGE","Atlas","BodyMap","HPA"), lwd = rep(0, 4), lty = rep("solid", 4),
+               fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
+)
+```
+
+![plot of chunk :combatVennKidney](figure/:combatVennKidney.png) 
+
+```
+## (polygon[GRID.polygon.727], polygon[GRID.polygon.728], polygon[GRID.polygon.729], polygon[GRID.polygon.730], polygon[GRID.polygon.731], polygon[GRID.polygon.732], polygon[GRID.polygon.733], polygon[GRID.polygon.734], text[GRID.text.735], text[GRID.text.736], text[GRID.text.737], text[GRID.text.738], text[GRID.text.739], text[GRID.text.740], text[GRID.text.741], text[GRID.text.742], text[GRID.text.743], text[GRID.text.744], text[GRID.text.745], text[GRID.text.746], text[GRID.text.747], text[GRID.text.748], text[GRID.text.749], text[GRID.text.750], text[GRID.text.751], text[GRID.text.752], text[GRID.text.753])
 ```

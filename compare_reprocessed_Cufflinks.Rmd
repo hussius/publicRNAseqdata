@@ -222,9 +222,7 @@ barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Cufflinks
 
 **Figure 4D (?)**
 
-```
-
-ANOVA analyseson logged values:
+ANOVA analyses on logged values:
 
 ```{r:anova-log}
 m <- melt(fpkms.log[,])

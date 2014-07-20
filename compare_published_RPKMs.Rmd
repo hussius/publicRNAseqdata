@@ -505,13 +505,13 @@ draw.triple.venn(100, 100, 100,
 
 ```{r:anova-log}
 m <- melt(fpkms.log)
-colnames(m) <- c("gene_ID","sample_ID","log2RPKM")
+colnames(m) <- c("sample_ID","log2RPKM")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
 fit <- lm(log2RPKM ~ + prep + layout + study + tissue, data=data)
 b <- anova(fit)
 
-maxval=3000
+maxval=4000
 barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM",ylim=c(0,maxval))
 print(b)
 ```
