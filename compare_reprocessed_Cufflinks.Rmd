@@ -8,7 +8,8 @@ library(pheatmap)
 library(calibrate)
 
 f <- read.delim("fpkm_table_tophat.txt")
-
+sampleinfo <- read.delim("sample_info_reprocessed.txt")
+  
 do.SVD = function(m, comp.1=1, comp.2=2){ # returns eig.cell
   s <- svd(m)
   ev <- s$d^2 / sum(s$d^2)
@@ -84,6 +85,7 @@ And let's remove all lines where FPKM is close to zero in all samples before we 
 ```{r}
 
 f_pc_nozero <- f_pc[-which(rowSums(f_pc[,3:16])<=0.01),]
+write.table(f_pc_nozero, file="cufflinks_fpkm_proteincoding_nozero.txt", quote=F)
 
 ```
 
@@ -502,4 +504,108 @@ draw.quad.venn(100, 100, 100, 100,
                fill = c("mistyrose","steelblue","lightgoldenrod","darkseagreen")
 )
 
+```{r:PC-correlation}
+print_PCA_SVD_corrs <- function(data){
+pca <- prcomp(t(data[,]))
+
+#var.percent <- ((pca$sdev)^2)/sum(pca$sdev^2) *100
+#var.percent <- (pca$d^2 / sum(pca$d^2) ) *100
+#barplot(var.percent[1:5], xlab="PC", ylab="Percent Variance",names.arg=1:length(var.percent[1:5]), las=1,ylim=c(0,max(var.percent[1:5])+10), col="gray")
+
+rot <- pca$r
+x <- pca$x
+#plot(pca)
+#summary(pca)
+#screeplot(pca,type=c("lines"))
+# Test correlations between number of seq'd reads and PCs 1-4 from prcomp
+pval.nraw.pc1 <- cor.test(x[,1], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.pc2 <- cor.test(x[,2], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.pc3 <- cor.test(x[,3], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.pc4 <- cor.test(x[,4], sampleinfo$NumberRaw,method="spearman")$p.value
+
+cat(sprintf("Number_of_rawreads~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\n", pval.nraw.pc1,pval.nraw.pc2,pval.nraw.pc3,pval.nraw.pc4))
+
+# Thus no significant correlations between no of seq'd reads and PCs 1-4
+
+pval.nmapped.pc1 <- cor.test(x[,1], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.pc2 <- cor.test(x[,2], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.pc3 <- cor.test(x[,3], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.pc4 <- cor.test(x[,4], sampleinfo$Numbermapped,method="spearman")$p.value
+
+cat(sprintf("Number_of_mappedreads~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\n", pval.nmapped.pc1,pval.nmapped.pc2,pval.nmapped.pc3,pval.nmapped.pc4))
+
+# For tissue, use kruskal.test which handles ordinal variables 
+pval.tissue.pc1<-kruskal.test(x[,1], sampleinfo$Tissue)$p.value
+pval.tissue.pc2<-kruskal.test(x[,2], sampleinfo$Tissue)$p.value
+pval.tissue.pc3<-kruskal.test(x[,3], sampleinfo$Tissue)$p.value
+pval.tissue.pc4<-kruskal.test(x[,4], sampleinfo$Tissue)$p.value
+
+cat(sprintf("Tissues~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.tissue.pc1,pval.tissue.pc2,pval.tissue.pc3,pval.tissue.pc4))
+
+# Library prep 
+pval.prep.pc1<-kruskal.test(x[,1], sampleinfo$Preparation)$p.value
+pval.prep.pc2<-kruskal.test(x[,2], sampleinfo$Preparation)$p.value
+pval.prep.pc3<-kruskal.test(x[,3], sampleinfo$Preparation)$p.value
+pval.prep.pc4<-kruskal.test(x[,4], sampleinfo$Preparation)$p.value
+
+cat(sprintf("LibPrep~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.prep.pc1,pval.prep.pc2,pval.prep.pc3,pval.prep.pc4))
+
+# Study  
+pval.study.pc1<-kruskal.test(x[,1], sampleinfo$Study)$p.value
+pval.study.pc2<-kruskal.test(x[,2], sampleinfo$Study)$p.value
+pval.study.pc3<-kruskal.test(x[,3], sampleinfo$Study)$p.value
+pval.study.pc4<-kruskal.test(x[,4], sampleinfo$Study)$p.value
+
+cat(sprintf("Study~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.study.pc1,pval.study.pc2,pval.study.pc3,pval.study.pc4))
+
+# Layout
+pval.layout.pc1<-kruskal.test(x[,1], sampleinfo$readlength)$p.value
+pval.layout.pc2<-kruskal.test(x[,2], sampleinfo$readlength)$p.value
+pval.layout.pc3<-kruskal.test(x[,3], sampleinfo$readlength)$p.value
+pval.layout.pc4<-kruskal.test(x[,4], sampleinfo$readlengt)$p.value
+
+cat(sprintf("ReadType~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.layout.pc1,pval.layout.pc2,pval.layout.pc3,pval.layout.pc4))
+
+# To test:
+# same for logged values
+# same for ComBat
+# svd() without mean subtraction instead
+
+#svd.12 <- do.SVD(f.nozero, comp.1=1, comp.2=2)
+#svd.scores.12 <- project.SVD(f.nozero, svd.12)
+svd.12 <- do.SVD(data, comp.1=1, comp.2=2)
+svd.scores.12 <- project.SVD(data, svd.12)
+# Number of raw reads
+pval.nraw.svd1 <- cor.test(svd.scores.12[,1], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.svd2 <- cor.test(svd.scores.12[,2], sampleinfo$NumberRaw,method="spearman")$p.value
+cat(sprintf("RawReads~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.nraw.svd1,pval.nraw.svd2))
+# Number of mapped reads
+pval.nmapped.svd1 <- cor.test(svd.scores.12[,1], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.svd2 <- cor.test(svd.scores.12[,2], sampleinfo$Numbermapped,method="spearman")$p.value
+cat(sprintf("MappedReads~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.nmapped.svd1,pval.nmapped.svd2))
+# Layout / read length
+pval.layout.svd1 <- kruskal.test(svd.scores.12[,1], sampleinfo$Readtype)$p.value
+pval.layout.svd2 <- kruskal.test(svd.scores.12[,2], sampleinfo$Readtype)$p.value
+cat(sprintf("Layout~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.layout.svd1,pval.layout.svd2))
+# Prep
+pval.prep.svd1 <- kruskal.test(svd.scores.12[,1], sampleinfo$Preparation)$p.value
+pval.prep.svd2 <- kruskal.test(svd.scores.12[,2], sampleinfo$Preparation)$p.value
+cat(sprintf("Prep~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.prep.svd1,pval.prep.svd2))
+# Study
+pval.study.svd1 <- kruskal.test(svd.scores.12[,1], sampleinfo$Study)$p.value
+pval.study.svd2 <- kruskal.test(svd.scores.12[,2], sampleinfo$Study)$p.value
+cat(sprintf("Study~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.study.svd1,pval.study.svd2))
+# Tissue
+pval.tissue.svd1 <- kruskal.test(svd.scores.12[,1], sampleinfo$Tissue)$p.value
+pval.tissue.svd2 <- kruskal.test(svd.scores.12[,2], sampleinfo$Tissue)$p.value
+cat(sprintf("Tissue~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.tissue.svd1,pval.tissue.svd2))
+}
+```
+
+Test raw values, logged values and ComBat-processed values.
+```{r:testPCcorrelations}
+print_PCA_SVD_corrs(f_pc_nozero)
+print_PCA_SVD_corrs(fpkms.log)
+print_PCA_SVD_corrs(combat)
+```
 
