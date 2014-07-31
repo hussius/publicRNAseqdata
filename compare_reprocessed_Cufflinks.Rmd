@@ -67,16 +67,16 @@ library(biomaRt)
 
 f_ids <- as.vector(f[,1])
 
-ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
+#ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
 
-gene_type <- getBM(attributes=c("ensembl_gene_id", "gene_biotype"), 
-                   filters = "ensembl_gene_id",
-                   values=f_ids,
-                   mart=ensembl)
+#gene_type <- getBM(attributes=c("ensembl_gene_id", "gene_biotype"), 
+                  # filters = "ensembl_gene_id",
+                  # values=f_ids,
+                  # mart=ensembl)
 
-pc <- subset(gene_type[,1],gene_type[,2]=="protein_coding")
+#pc <- subset(gene_type[,1],gene_type[,2]=="protein_coding")
 
-f_pc <- f[match(pc,f[,1]),]
+#f_pc <- f[match(pc,f[,1]),]
 
 ```
 
@@ -84,8 +84,10 @@ And let's remove all lines where FPKM is close to zero in all samples before we 
 
 ```{r}
 
-f_pc_nozero <- f_pc[-which(rowSums(f_pc[,3:16])<=0.01),]
-write.table(f_pc_nozero, file="cufflinks_fpkm_proteincoding_nozero.txt", quote=F)
+#f_pc_nozero <- f_pc[-which(rowSums(f_pc[,3:16])<=0.01),]
+#write.table(f_pc_nozero, file="cufflinks_fpkm_proteincoding_nozero.txt", quote=F)
+
+f_pc_nozero <- read.table(file="cufflinks_fpkm_proteincoding_nozero.txt")
 
 ```
 
@@ -146,7 +148,6 @@ We can plot all pairwise combinations of principal components 1 to 5. (not shown
 Start with SVD on the "raw" F/RPKMs.
 
 ```{r}
-
 colors <- c(2,1,3,2,1,3,2,1,3,2,1,3,2,1)
 
 par(mfrow=c(4,4))
@@ -157,7 +158,6 @@ for (i in 1:6){
 		}
 	}
 }
-
 ```
 
 Let's see how the PCA plots look for log2-FPKM values:
@@ -169,6 +169,23 @@ plotPC(fpkms.log[,3:16], 1, 2, desc="Reprocessed F/RPKM values, log2 \n SVD \n n
 plotPC(fpkms.log[,3:16], 2, 3, desc="Reprocessed FPKM values, log2 \n SVD \n n=19475", colors=colors)
 
 ```
+
+Or all combinations for log2-FPKM and regular PCA (prcomp())
+```{r}
+colors <- c(2,1,3,2,1,3,2,1,3,2,1,3,2,1)
+
+p <- prcomp(t(fpkms.log[,3:16]),scale.=T)
+
+par(mfrow=c(4,4))
+for (i in 1:6){
+  for(j in 1:6){
+    if (i<j){ 
+    	plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
+		}
+	}
+}
+```
+
 
 Combat analysis for removal of batch effects (n=19475):
 
@@ -227,18 +244,17 @@ barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Cufflinks
 ANOVA analyses on logged values:
 
 ```{r:anova-log}
-m <- melt(fpkms.log[,])
+m <- melt(fpkms.log[,3:ncol(fpkms.log)])
 colnames(m) <- c("sample_ID","log2FPKM")
 
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(log2FPKM ~ + prep + layout + study + tissue, data=data)
+fit <- lm(log2FPKM ~ prep + layout + study + tissue, data=data)
 b <- anova(fit)
 
 barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM",ylim=c(0,3000))
 print(b)
 ```
-
 
 Finally, ANOVA on ComBat.
 
@@ -250,7 +266,7 @@ data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 fit <- lm(combat ~ + prep + layout + study + tissue, data=data)
 c <- anova(fit)
 
-barplot(c$"F value"[-5],names.arg=rownames(c)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
+barplot(c$"F value"[-5],names.arg=rownames(c)[-5],main="Anova F score, ComBat/log2-FPKM",ylim=c(0,5000))
 print(c)
 ```
 
@@ -604,8 +620,8 @@ cat(sprintf("Tissue~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.tissue.svd1,
 
 Test raw values, logged values and ComBat-processed values.
 ```{r:testPCcorrelations}
-print_PCA_SVD_corrs(f_pc_nozero)
-print_PCA_SVD_corrs(fpkms.log)
+print_PCA_SVD_corrs(f_pc_nozero[,3:16])
+print_PCA_SVD_corrs(fpkms.log[,3:16])
 print_PCA_SVD_corrs(combat)
 ```
 

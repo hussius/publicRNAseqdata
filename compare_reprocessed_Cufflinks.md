@@ -15,7 +15,8 @@ library(calibrate)
 
 ```r
 f <- read.delim("fpkm_table_tophat.txt")
-
+sampleinfo <- read.delim("sample_info_reprocessed.txt")
+  
 do.SVD = function(m, comp.1=1, comp.2=2){ # returns eig.cell
   s <- svd(m)
   ev <- s$d^2 / sum(s$d^2)
@@ -72,23 +73,26 @@ library(biomaRt)
 
 f_ids <- as.vector(f[,1])
 
-ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
+#ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
 
-gene_type <- getBM(attributes=c("ensembl_gene_id", "gene_biotype"), 
-                   filters = "ensembl_gene_id",
-                   values=f_ids,
-                   mart=ensembl)
+#gene_type <- getBM(attributes=c("ensembl_gene_id", "gene_biotype"), 
+                  # filters = "ensembl_gene_id",
+                  # values=f_ids,
+                  # mart=ensembl)
 
-pc <- subset(gene_type[,1],gene_type[,2]=="protein_coding")
+#pc <- subset(gene_type[,1],gene_type[,2]=="protein_coding")
 
-f_pc <- f[match(pc,f[,1]),]
+#f_pc <- f[match(pc,f[,1]),]
 ```
 
 And let's remove all lines where FPKM is close to zero in all samples before we proceed with this version of the data set:
 
 
 ```r
-f_pc_nozero <- f_pc[-which(rowSums(f_pc[,3:16])<=0.01),]
+#f_pc_nozero <- f_pc[-which(rowSums(f_pc[,3:16])<=0.01),]
+#write.table(f_pc_nozero, file="cufflinks_fpkm_proteincoding_nozero.txt", quote=F)
+
+f_pc_nozero <- read.table(file="cufflinks_fpkm_proteincoding_nozero.txt")
 ```
 
 **Figure 4A**
@@ -192,6 +196,26 @@ plotPC(fpkms.log[,3:16], 2, 3, desc="Reprocessed FPKM values, log2 \n SVD \n n=1
 
 ![plot of chunk unnamed-chunk-11](figure/unnamed-chunk-112.png) 
 
+Or all combinations for log2-FPKM and regular PCA (prcomp())
+
+```r
+colors <- c(2,1,3,2,1,3,2,1,3,2,1,3,2,1)
+
+p <- prcomp(t(fpkms.log[,3:16]),scale.=T)
+
+par(mfrow=c(4,4))
+for (i in 1:6){
+  for(j in 1:6){
+    if (i<j){ 
+    	plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC", i),ylab=paste("PC", j))
+		}
+	}
+}
+```
+
+![plot of chunk unnamed-chunk-12](figure/unnamed-chunk-12.png) 
+
+
 Combat analysis for removal of batch effects (n=19475):
 
 
@@ -203,7 +227,7 @@ library(sva)
 ## Loading required package: corpcor
 ## Loading required package: mgcv
 ## Loading required package: nlme
-## This is mgcv 1.7-29. For overview type 'help("mgcv-package")'.
+## This is mgcv 1.8-1. For overview type 'help("mgcv-package")'.
 ```
 
 ```r
@@ -235,19 +259,19 @@ Let's see how the correlation heatmap and PCA plots look after correction for ba
 pheatmap(cor(combat))
 ```
 
-![plot of chunk unnamed-chunk-12](figure/unnamed-chunk-121.png) 
+![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-131.png) 
 
 ```r
 plotPC(combat,1,2,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
 ```
 
-![plot of chunk unnamed-chunk-12](figure/unnamed-chunk-122.png) 
+![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-132.png) 
 
 ```r
 plotPC(combat,2,3,colors=colors,desc="Reprocessed F/RPKM values, ComBat on log2 values \n SVD \n n=19475")
 ```
 
-![plot of chunk unnamed-chunk-12](figure/unnamed-chunk-123.png) 
+![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-133.png) 
 
 Anova analysis of different batch factors:
 
@@ -284,21 +308,19 @@ maxval = 100
 barplot(a$"F value"[-5],names.arg=rownames(a)[-5],main="Anova F score, Cufflinks FPKM",ylim=c(0,maxval))
 ```
 
-![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13.png) 
+![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14.png) 
 
 **Figure 4D (?)**
 
-```
-
-ANOVA analyseson logged values:
+ANOVA analyses on logged values:
 
 
 ```r
-m <- melt(fpkms.log[,])
+m <- melt(fpkms.log[,3:ncol(fpkms.log)])
 ```
 
 ```
-## Using ENSEMBL_ID, Gene_ID as id variables
+## Using  as id variables
 ```
 
 ```r
@@ -306,42 +328,31 @@ colnames(m) <- c("sample_ID","log2FPKM")
 
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 #subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(log2FPKM ~ + prep + layout + study + tissue, data=data)
-```
-
-```
-## Warning: using type = "numeric" with a factor response will be ignored
-## Warning: - not meaningful for factors
-```
-
-```r
+fit <- lm(log2FPKM ~ prep + layout + study + tissue, data=data)
 b <- anova(fit)
-```
 
-```
-## Warning: ^ not meaningful for factors
-```
-
-```
-## Error: missing value where TRUE/FALSE needed
-```
-
-```r
 barplot(b$"F value"[-5],names.arg=rownames(b)[-5],main="Anova F score, log2-RPKM",ylim=c(0,3000))
 ```
 
-```
-## Error: object 'b' not found
-```
+![plot of chunk :anova-log](figure/:anova-log.png) 
 
 ```r
 print(b)
 ```
 
 ```
-## Error: object 'b' not found
+## Analysis of Variance Table
+## 
+## Response: log2FPKM
+##               Df  Sum Sq Mean Sq F value Pr(>F)    
+## prep           1    2256    2256     496 <2e-16 ***
+## layout         1     898     898     198 <2e-16 ***
+## study          2    3155    1577     347 <2e-16 ***
+## tissue         2    9847    4924    1083 <2e-16 ***
+## Residuals 272643 1239928       5                   
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ```
-
 
 Finally, ANOVA on ComBat.
 
@@ -361,7 +372,7 @@ data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 fit <- lm(combat ~ + prep + layout + study + tissue, data=data)
 c <- anova(fit)
 
-barplot(c$"F value"[-5],names.arg=rownames(c)[-5],main="Anova F score, log2-TMM-FPKM",ylim=c(0,5000))
+barplot(c$"F value"[-5],names.arg=rownames(c)[-5],main="Anova F score, ComBat/log2-FPKM",ylim=c(0,5000))
 ```
 
 ![plot of chunk :anova-combat](figure/:anova-combat.png) 
@@ -401,23 +412,114 @@ library(VennDiagram)
 
 ```r
 EoGE_b <- rownames(f_pc[order(f_pc$EoGE_brain,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 EoGE_h <- rownames(f_pc[order(f_pc$EoGE_heart,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 EoGE_k <- rownames(f_pc[order(f_pc$EoGE_kidney,decreasing=T),][1:100,])
+```
 
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 Atlas_b <- rownames(f_pc[order(f_pc$Atlas_brain,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 Atlas_h <- rownames(f_pc[order(f_pc$Atlas_heart,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 Atlas_k <- rownames(f_pc[order(f_pc$Atlas_kidney,decreasing=T),][1:100,])
+```
 
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 BodyMap_b <- rownames(f_pc[order(f_pc$BodyMap_brain,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 BodyMap_h <- rownames(f_pc[order(f_pc$BodyMap_heart,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 BodyMap_k <- rownames(f_pc[order(f_pc$BodyMap_kidney,decreasing=T),][1:100,])
+```
 
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 HPA_b <- rownames(f_pc[order(f_pc$HPA_brain,decreasing=T),][1:100,])
-HPA_h <- rownames(f_pc[order(f_pc$HPA_heart,decreasing=T),][1:100,])
-HPA_k <- rownames(f_pc[order(f_pc$HPA_kidney,decreasing=T),][1:100,])
+```
 
+```
+## Error: object 'f_pc' not found
+```
+
+```r
+HPA_h <- rownames(f_pc[order(f_pc$HPA_heart,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
+```
+
+```r
+HPA_k <- rownames(f_pc[order(f_pc$HPA_kidney,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 AltIso_b <- rownames(f_pc[order(f_pc$AltIso_brain,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
+```
+
+```r
 AltIso_h <- rownames(f_pc[order(f_pc$AltIso_heart,decreasing=T),][1:100,])
+```
+
+```
+## Error: object 'f_pc' not found
 ```
 
 Let's start with the five brain samples:
@@ -456,10 +558,8 @@ draw.quintuple.venn(100, 100, 100, 100, 100,
 )
 ```
 
-![plot of chunk :venn brain](figure/:venn brain.png) 
-
 ```
-## (polygon[GRID.polygon.516], polygon[GRID.polygon.517], polygon[GRID.polygon.518], polygon[GRID.polygon.519], polygon[GRID.polygon.520], polygon[GRID.polygon.521], polygon[GRID.polygon.522], polygon[GRID.polygon.523], polygon[GRID.polygon.524], polygon[GRID.polygon.525], text[GRID.text.526], text[GRID.text.527], text[GRID.text.528], text[GRID.text.529], text[GRID.text.530], text[GRID.text.531], text[GRID.text.532], text[GRID.text.533], text[GRID.text.534], text[GRID.text.535], text[GRID.text.536], text[GRID.text.537], text[GRID.text.538], text[GRID.text.539], text[GRID.text.540], text[GRID.text.541], text[GRID.text.542], text[GRID.text.543], text[GRID.text.544], text[GRID.text.545], text[GRID.text.546], text[GRID.text.547], text[GRID.text.548], text[GRID.text.549], text[GRID.text.550], text[GRID.text.551], text[GRID.text.552], text[GRID.text.553], text[GRID.text.554], text[GRID.text.555], text[GRID.text.556], text[GRID.text.557], text[GRID.text.558], text[GRID.text.559], text[GRID.text.560], text[GRID.text.561])
+## Error: object 'AltIso_b' not found
 ```
 
 and the five heart samples:
@@ -498,10 +598,8 @@ draw.quintuple.venn(100, 100, 100, 100, 100,
 )
 ```
 
-![plot of chunk :venn heart](figure/:venn heart.png) 
-
 ```
-## (polygon[GRID.polygon.562], polygon[GRID.polygon.563], polygon[GRID.polygon.564], polygon[GRID.polygon.565], polygon[GRID.polygon.566], polygon[GRID.polygon.567], polygon[GRID.polygon.568], polygon[GRID.polygon.569], polygon[GRID.polygon.570], polygon[GRID.polygon.571], text[GRID.text.572], text[GRID.text.573], text[GRID.text.574], text[GRID.text.575], text[GRID.text.576], text[GRID.text.577], text[GRID.text.578], text[GRID.text.579], text[GRID.text.580], text[GRID.text.581], text[GRID.text.582], text[GRID.text.583], text[GRID.text.584], text[GRID.text.585], text[GRID.text.586], text[GRID.text.587], text[GRID.text.588], text[GRID.text.589], text[GRID.text.590], text[GRID.text.591], text[GRID.text.592], text[GRID.text.593], text[GRID.text.594], text[GRID.text.595], text[GRID.text.596], text[GRID.text.597], text[GRID.text.598], text[GRID.text.599], text[GRID.text.600], text[GRID.text.601], text[GRID.text.602], text[GRID.text.603], text[GRID.text.604], text[GRID.text.605], text[GRID.text.606], text[GRID.text.607])
+## Error: object 'AltIso_h' not found
 ```
 
 ...and the four kidney samples:
@@ -525,10 +623,8 @@ draw.quad.venn(100, 100, 100, 100,
 )
 ```
 
-![plot of chunk :venn kidney](figure/:venn kidney.png) 
-
 ```
-## (polygon[GRID.polygon.608], polygon[GRID.polygon.609], polygon[GRID.polygon.610], polygon[GRID.polygon.611], polygon[GRID.polygon.612], polygon[GRID.polygon.613], polygon[GRID.polygon.614], polygon[GRID.polygon.615], text[GRID.text.616], text[GRID.text.617], text[GRID.text.618], text[GRID.text.619], text[GRID.text.620], text[GRID.text.621], text[GRID.text.622], text[GRID.text.623], text[GRID.text.624], text[GRID.text.625], text[GRID.text.626], text[GRID.text.627], text[GRID.text.628], text[GRID.text.629], text[GRID.text.630], text[GRID.text.631], text[GRID.text.632], text[GRID.text.633], text[GRID.text.634])
+## Error: object 'HPA_k' not found
 ```
 
 Let's have a look again at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies, but this time looking at the values after the ComBat run:
@@ -596,7 +692,7 @@ draw.quintuple.venn(100, 100, 100, 100, 100,
 ![plot of chunk :combatVennBrain](figure/:combatVennBrain.png) 
 
 ```
-## (polygon[GRID.polygon.635], polygon[GRID.polygon.636], polygon[GRID.polygon.637], polygon[GRID.polygon.638], polygon[GRID.polygon.639], polygon[GRID.polygon.640], polygon[GRID.polygon.641], polygon[GRID.polygon.642], polygon[GRID.polygon.643], polygon[GRID.polygon.644], text[GRID.text.645], text[GRID.text.646], text[GRID.text.647], text[GRID.text.648], text[GRID.text.649], text[GRID.text.650], text[GRID.text.651], text[GRID.text.652], text[GRID.text.653], text[GRID.text.654], text[GRID.text.655], text[GRID.text.656], text[GRID.text.657], text[GRID.text.658], text[GRID.text.659], text[GRID.text.660], text[GRID.text.661], text[GRID.text.662], text[GRID.text.663], text[GRID.text.664], text[GRID.text.665], text[GRID.text.666], text[GRID.text.667], text[GRID.text.668], text[GRID.text.669], text[GRID.text.670], text[GRID.text.671], text[GRID.text.672], text[GRID.text.673], text[GRID.text.674], text[GRID.text.675], text[GRID.text.676], text[GRID.text.677], text[GRID.text.678], text[GRID.text.679], text[GRID.text.680])
+## (polygon[GRID.polygon.516], polygon[GRID.polygon.517], polygon[GRID.polygon.518], polygon[GRID.polygon.519], polygon[GRID.polygon.520], polygon[GRID.polygon.521], polygon[GRID.polygon.522], polygon[GRID.polygon.523], polygon[GRID.polygon.524], polygon[GRID.polygon.525], text[GRID.text.526], text[GRID.text.527], text[GRID.text.528], text[GRID.text.529], text[GRID.text.530], text[GRID.text.531], text[GRID.text.532], text[GRID.text.533], text[GRID.text.534], text[GRID.text.535], text[GRID.text.536], text[GRID.text.537], text[GRID.text.538], text[GRID.text.539], text[GRID.text.540], text[GRID.text.541], text[GRID.text.542], text[GRID.text.543], text[GRID.text.544], text[GRID.text.545], text[GRID.text.546], text[GRID.text.547], text[GRID.text.548], text[GRID.text.549], text[GRID.text.550], text[GRID.text.551], text[GRID.text.552], text[GRID.text.553], text[GRID.text.554], text[GRID.text.555], text[GRID.text.556], text[GRID.text.557], text[GRID.text.558], text[GRID.text.559], text[GRID.text.560], text[GRID.text.561])
 ```
 
 And for the five heart samples:
@@ -638,7 +734,7 @@ draw.quintuple.venn(100, 100, 100, 100, 100,
 ![plot of chunk :combatVennHeart](figure/:combatVennHeart.png) 
 
 ```
-## (polygon[GRID.polygon.681], polygon[GRID.polygon.682], polygon[GRID.polygon.683], polygon[GRID.polygon.684], polygon[GRID.polygon.685], polygon[GRID.polygon.686], polygon[GRID.polygon.687], polygon[GRID.polygon.688], polygon[GRID.polygon.689], polygon[GRID.polygon.690], text[GRID.text.691], text[GRID.text.692], text[GRID.text.693], text[GRID.text.694], text[GRID.text.695], text[GRID.text.696], text[GRID.text.697], text[GRID.text.698], text[GRID.text.699], text[GRID.text.700], text[GRID.text.701], text[GRID.text.702], text[GRID.text.703], text[GRID.text.704], text[GRID.text.705], text[GRID.text.706], text[GRID.text.707], text[GRID.text.708], text[GRID.text.709], text[GRID.text.710], text[GRID.text.711], text[GRID.text.712], text[GRID.text.713], text[GRID.text.714], text[GRID.text.715], text[GRID.text.716], text[GRID.text.717], text[GRID.text.718], text[GRID.text.719], text[GRID.text.720], text[GRID.text.721], text[GRID.text.722], text[GRID.text.723], text[GRID.text.724], text[GRID.text.725], text[GRID.text.726])
+## (polygon[GRID.polygon.562], polygon[GRID.polygon.563], polygon[GRID.polygon.564], polygon[GRID.polygon.565], polygon[GRID.polygon.566], polygon[GRID.polygon.567], polygon[GRID.polygon.568], polygon[GRID.polygon.569], polygon[GRID.polygon.570], polygon[GRID.polygon.571], text[GRID.text.572], text[GRID.text.573], text[GRID.text.574], text[GRID.text.575], text[GRID.text.576], text[GRID.text.577], text[GRID.text.578], text[GRID.text.579], text[GRID.text.580], text[GRID.text.581], text[GRID.text.582], text[GRID.text.583], text[GRID.text.584], text[GRID.text.585], text[GRID.text.586], text[GRID.text.587], text[GRID.text.588], text[GRID.text.589], text[GRID.text.590], text[GRID.text.591], text[GRID.text.592], text[GRID.text.593], text[GRID.text.594], text[GRID.text.595], text[GRID.text.596], text[GRID.text.597], text[GRID.text.598], text[GRID.text.599], text[GRID.text.600], text[GRID.text.601], text[GRID.text.602], text[GRID.text.603], text[GRID.text.604], text[GRID.text.605], text[GRID.text.606], text[GRID.text.607])
 ```
 
 And for the four kidney samples:
@@ -665,5 +761,163 @@ draw.quad.venn(100, 100, 100, 100,
 ![plot of chunk :combatVennKidney](figure/:combatVennKidney.png) 
 
 ```
-## (polygon[GRID.polygon.727], polygon[GRID.polygon.728], polygon[GRID.polygon.729], polygon[GRID.polygon.730], polygon[GRID.polygon.731], polygon[GRID.polygon.732], polygon[GRID.polygon.733], polygon[GRID.polygon.734], text[GRID.text.735], text[GRID.text.736], text[GRID.text.737], text[GRID.text.738], text[GRID.text.739], text[GRID.text.740], text[GRID.text.741], text[GRID.text.742], text[GRID.text.743], text[GRID.text.744], text[GRID.text.745], text[GRID.text.746], text[GRID.text.747], text[GRID.text.748], text[GRID.text.749], text[GRID.text.750], text[GRID.text.751], text[GRID.text.752], text[GRID.text.753])
+## (polygon[GRID.polygon.608], polygon[GRID.polygon.609], polygon[GRID.polygon.610], polygon[GRID.polygon.611], polygon[GRID.polygon.612], polygon[GRID.polygon.613], polygon[GRID.polygon.614], polygon[GRID.polygon.615], text[GRID.text.616], text[GRID.text.617], text[GRID.text.618], text[GRID.text.619], text[GRID.text.620], text[GRID.text.621], text[GRID.text.622], text[GRID.text.623], text[GRID.text.624], text[GRID.text.625], text[GRID.text.626], text[GRID.text.627], text[GRID.text.628], text[GRID.text.629], text[GRID.text.630], text[GRID.text.631], text[GRID.text.632], text[GRID.text.633], text[GRID.text.634])
 ```
+
+```r
+print_PCA_SVD_corrs <- function(data){
+pca <- prcomp(t(data[,]))
+
+#var.percent <- ((pca$sdev)^2)/sum(pca$sdev^2) *100
+#var.percent <- (pca$d^2 / sum(pca$d^2) ) *100
+#barplot(var.percent[1:5], xlab="PC", ylab="Percent Variance",names.arg=1:length(var.percent[1:5]), las=1,ylim=c(0,max(var.percent[1:5])+10), col="gray")
+
+rot <- pca$r
+x <- pca$x
+#plot(pca)
+#summary(pca)
+#screeplot(pca,type=c("lines"))
+# Test correlations between number of seq'd reads and PCs 1-4 from prcomp
+pval.nraw.pc1 <- cor.test(x[,1], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.pc2 <- cor.test(x[,2], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.pc3 <- cor.test(x[,3], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.pc4 <- cor.test(x[,4], sampleinfo$NumberRaw,method="spearman")$p.value
+
+cat(sprintf("Number_of_rawreads~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\n", pval.nraw.pc1,pval.nraw.pc2,pval.nraw.pc3,pval.nraw.pc4))
+
+# Thus no significant correlations between no of seq'd reads and PCs 1-4
+
+pval.nmapped.pc1 <- cor.test(x[,1], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.pc2 <- cor.test(x[,2], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.pc3 <- cor.test(x[,3], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.pc4 <- cor.test(x[,4], sampleinfo$Numbermapped,method="spearman")$p.value
+
+cat(sprintf("Number_of_mappedreads~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\n", pval.nmapped.pc1,pval.nmapped.pc2,pval.nmapped.pc3,pval.nmapped.pc4))
+
+# For tissue, use kruskal.test which handles ordinal variables 
+pval.tissue.pc1<-kruskal.test(x[,1], sampleinfo$Tissue)$p.value
+pval.tissue.pc2<-kruskal.test(x[,2], sampleinfo$Tissue)$p.value
+pval.tissue.pc3<-kruskal.test(x[,3], sampleinfo$Tissue)$p.value
+pval.tissue.pc4<-kruskal.test(x[,4], sampleinfo$Tissue)$p.value
+
+cat(sprintf("Tissues~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.tissue.pc1,pval.tissue.pc2,pval.tissue.pc3,pval.tissue.pc4))
+
+# Library prep 
+pval.prep.pc1<-kruskal.test(x[,1], sampleinfo$Preparation)$p.value
+pval.prep.pc2<-kruskal.test(x[,2], sampleinfo$Preparation)$p.value
+pval.prep.pc3<-kruskal.test(x[,3], sampleinfo$Preparation)$p.value
+pval.prep.pc4<-kruskal.test(x[,4], sampleinfo$Preparation)$p.value
+
+cat(sprintf("LibPrep~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.prep.pc1,pval.prep.pc2,pval.prep.pc3,pval.prep.pc4))
+
+# Study  
+pval.study.pc1<-kruskal.test(x[,1], sampleinfo$Study)$p.value
+pval.study.pc2<-kruskal.test(x[,2], sampleinfo$Study)$p.value
+pval.study.pc3<-kruskal.test(x[,3], sampleinfo$Study)$p.value
+pval.study.pc4<-kruskal.test(x[,4], sampleinfo$Study)$p.value
+
+cat(sprintf("Study~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.study.pc1,pval.study.pc2,pval.study.pc3,pval.study.pc4))
+
+# Layout
+pval.layout.pc1<-kruskal.test(x[,1], sampleinfo$readlength)$p.value
+pval.layout.pc2<-kruskal.test(x[,2], sampleinfo$readlength)$p.value
+pval.layout.pc3<-kruskal.test(x[,3], sampleinfo$readlength)$p.value
+pval.layout.pc4<-kruskal.test(x[,4], sampleinfo$readlengt)$p.value
+
+cat(sprintf("ReadType~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.layout.pc1,pval.layout.pc2,pval.layout.pc3,pval.layout.pc4))
+
+# To test:
+# same for logged values
+# same for ComBat
+# svd() without mean subtraction instead
+
+#svd.12 <- do.SVD(f.nozero, comp.1=1, comp.2=2)
+#svd.scores.12 <- project.SVD(f.nozero, svd.12)
+svd.12 <- do.SVD(data, comp.1=1, comp.2=2)
+svd.scores.12 <- project.SVD(data, svd.12)
+# Number of raw reads
+pval.nraw.svd1 <- cor.test(svd.scores.12[,1], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.svd2 <- cor.test(svd.scores.12[,2], sampleinfo$NumberRaw,method="spearman")$p.value
+cat(sprintf("RawReads~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.nraw.svd1,pval.nraw.svd2))
+# Number of mapped reads
+pval.nmapped.svd1 <- cor.test(svd.scores.12[,1], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.svd2 <- cor.test(svd.scores.12[,2], sampleinfo$Numbermapped,method="spearman")$p.value
+cat(sprintf("MappedReads~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.nmapped.svd1,pval.nmapped.svd2))
+# Layout / read length
+pval.layout.svd1 <- kruskal.test(svd.scores.12[,1], sampleinfo$Readtype)$p.value
+pval.layout.svd2 <- kruskal.test(svd.scores.12[,2], sampleinfo$Readtype)$p.value
+cat(sprintf("Layout~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.layout.svd1,pval.layout.svd2))
+# Prep
+pval.prep.svd1 <- kruskal.test(svd.scores.12[,1], sampleinfo$Preparation)$p.value
+pval.prep.svd2 <- kruskal.test(svd.scores.12[,2], sampleinfo$Preparation)$p.value
+cat(sprintf("Prep~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.prep.svd1,pval.prep.svd2))
+# Study
+pval.study.svd1 <- kruskal.test(svd.scores.12[,1], sampleinfo$Study)$p.value
+pval.study.svd2 <- kruskal.test(svd.scores.12[,2], sampleinfo$Study)$p.value
+cat(sprintf("Study~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.study.svd1,pval.study.svd2))
+# Tissue
+pval.tissue.svd1 <- kruskal.test(svd.scores.12[,1], sampleinfo$Tissue)$p.value
+pval.tissue.svd2 <- kruskal.test(svd.scores.12[,2], sampleinfo$Tissue)$p.value
+cat(sprintf("Tissue~SVDcomps: SVD-PC1=\"%f\"SVD-PC2=\"%f\"\n", pval.tissue.svd1,pval.tissue.svd2))
+}
+```
+
+Test raw values, logged values and ComBat-processed values.
+
+```r
+print_PCA_SVD_corrs(f_pc_nozero[,3:16])
+```
+
+```
+## Number_of_rawreads~PCAs: PCA1="0.542316"PCA2="0.615812"PCA3="0.252961"PCA4="0.659506
+## Number_of_mappedreads~PCAs: PCA1="0.583826"PCA2="0.382464"PCA3="0.552566"PCA4="0.273494
+## Tissues~PCAs: PCA1="0.824600"PCA2="0.012962"PCA3="0.945809"
+## LibPrep~PCAs: PCA1="0.015807"PCA2="0.242908"PCA3="0.139101"
+## Study~PCAs: PCA1="0.031955"PCA2="0.749770"PCA3="0.045886"
+## ReadType~PCAs: PCA1="0.031955"PCA2="0.749770"PCA3="0.045886"
+## RawReads~SVDcomps: SVD-PC1="0.715634"SVD-PC2="0.808314"
+## MappedReads~SVDcomps: SVD-PC1="0.637516"SVD-PC2="0.903515"
+## Layout~SVDcomps: SVD-PC1="0.366157"SVD-PC2="0.897279"
+## Prep~SVDcomps: SVD-PC1="0.023968"SVD-PC2="0.483522"
+## Study~SVDcomps: SVD-PC1="0.039949"SVD-PC2="0.323240"
+## Tissue~SVDcomps: SVD-PC1="0.605665"SVD-PC2="0.075666"
+```
+
+```r
+print_PCA_SVD_corrs(fpkms.log[,3:16])
+```
+
+```
+## Number_of_rawreads~PCAs: PCA1="0.615812"PCA2="0.197340"PCA3="0.773199"PCA4="0.287738
+## Number_of_mappedreads~PCAs: PCA1="0.532152"PCA2="0.061551"PCA3="0.435614"PCA4="0.208931
+## Tissues~PCAs: PCA1="0.003071"PCA2="0.153684"PCA3="0.017724"
+## LibPrep~PCAs: PCA1="0.483522"PCA2="0.015807"PCA3="0.035558"
+## Study~PCAs: PCA1="0.867005"PCA2="0.088488"PCA3="0.223881"
+## ReadType~PCAs: PCA1="0.867005"PCA2="0.088488"PCA3="0.223881"
+## RawReads~SVDcomps: SVD-PC1="0.239828"SVD-PC2="0.692996"
+## MappedReads~SVDcomps: SVD-PC1="0.108091"SVD-PC2="0.408572"
+## Layout~SVDcomps: SVD-PC1="0.897279"SVD-PC2="0.796253"
+## Prep~SVDcomps: SVD-PC1="0.073366"SVD-PC2="0.483522"
+## Study~SVDcomps: SVD-PC1="0.197025"SVD-PC2="0.908348"
+## Tissue~SVDcomps: SVD-PC1="0.047698"SVD-PC2="0.009895"
+```
+
+```r
+print_PCA_SVD_corrs(combat)
+```
+
+```
+## Number_of_rawreads~PCAs: PCA1="0.951677"PCA2="0.915532"PCA3="0.180764"PCA4="0.738503
+## Number_of_mappedreads~PCAs: PCA1="0.784861"PCA2="0.903515"PCA3="0.233428"PCA4="0.808314
+## Tissues~PCAs: PCA1="0.003071"PCA2="0.003071"PCA3="0.762290"
+## LibPrep~PCAs: PCA1="0.815335"PCA2="0.697092"PCA3="0.937947"
+## Study~PCAs: PCA1="0.998902"PCA2="0.930627"PCA3="0.940983"
+## ReadType~PCAs: PCA1="0.998902"PCA2="0.930627"PCA3="0.940983"
+## RawReads~SVDcomps: SVD-PC1="0.692996"SVD-PC2="0.808314"
+## MappedReads~SVDcomps: SVD-PC1="0.750018"SVD-PC2="0.542316"
+## Layout~SVDcomps: SVD-PC1="0.796253"SVD-PC2="1.000000"
+## Prep~SVDcomps: SVD-PC1="0.815335"SVD-PC2="0.697092"
+## Study~SVDcomps: SVD-PC1="0.996895"SVD-PC2="0.959836"
+## Tissue~SVDcomps: SVD-PC1="0.009895"SVD-PC2="0.009895"
+```
+

@@ -20,7 +20,12 @@ library(ops)
 ```
 
 ```
-## Error: there is no package called 'ops'
+## 
+## Attaching package: 'ops'
+## 
+## The following object is masked from 'package:stats':
+## 
+##     filter
 ```
 
 ```r
@@ -99,21 +104,7 @@ Make various preprocessed versions: OPS (optimal power space transform), voom (l
 
 ```r
 p<-findP(counts)$maxIQR
-```
-
-```
-## Error: could not find function "findP"
-```
-
-```r
 ops.counts <- counts^p
-```
-
-```
-## Error: object 'p' not found
-```
-
-```r
 tmm <- cpm.tmm(counts)
 voom <- normalize.voom(counts)
 dual <- normalize.voom(tmm)
@@ -134,94 +125,119 @@ plot(proj,pch=20,xlim=c(xminv,xmaxv),ylim=c(yminv,ymaxv),xaxt='n',yaxt='n',xlab=
 textxy(proj[,1],proj[,2],labs=rownames(proj))
 }
 
-plotPC(counts,1,2,"Raw counts PC1,2")
-```
-
-```
-## Error: argument "colors" is missing, with no default
+plotPC(counts,1,2,"Raw counts PC1,2",colors=colors)
 ```
 
 ![plot of chunk plot-svd](figure/plot-svd1.png) 
 
 ```r
-plotPC(counts,2,3,"Raw counts PC2,3")
-```
-
-```
-## Error: argument "colors" is missing, with no default
+plotPC(counts,2,3,"Raw counts PC2,3",colors=colors)
 ```
 
 ![plot of chunk plot-svd](figure/plot-svd2.png) 
 
 ```r
-plotPC(voom,1,2,"Log2 counts PC1,2")
-```
-
-```
-## Error: argument "colors" is missing, with no default
+plotPC(voom,1,2,"Log2 counts PC1,2",colors=colors)
 ```
 
 ![plot of chunk plot-svd](figure/plot-svd3.png) 
 
 ```r
-plotPC(voom,2,3,"Log2 counts PC2,3")
-```
-
-```
-## Error: argument "colors" is missing, with no default
+plotPC(voom,2,3,"Log2 counts PC2,3",colors=colors)
 ```
 
 ![plot of chunk plot-svd](figure/plot-svd4.png) 
 
 ```r
-plotPC(tmm,1,2,"CPM-TMM counts PC1,2")
-```
-
-```
-## Error: argument "colors" is missing, with no default
+plotPC(tmm,1,2,"CPM-TMM counts PC1,2",colors=colors)
 ```
 
 ![plot of chunk plot-svd](figure/plot-svd5.png) 
 
 ```r
-plotPC(tmm,2,3,"CPM-TMM counts PC2,3")
-```
-
-```
-## Error: argument "colors" is missing, with no default
+plotPC(tmm,2,3,"CPM-TMM counts PC2,3",colors=colors)
 ```
 
 ![plot of chunk plot-svd](figure/plot-svd6.png) 
 
 ```r
-plotPC(dual,1,2,"logCPM-TMM PC1,2")
-```
-
-```
-## Error: argument "colors" is missing, with no default
+plotPC(dual,1,2,"logCPM-TMM PC1,2",colors=colors)
 ```
 
 ![plot of chunk plot-svd](figure/plot-svd7.png) 
 
 ```r
-plotPC(dual,2,3,"logCPM-TMM PC2,3")
-```
-
-```
-## Error: argument "colors" is missing, with no default
+plotPC(dual,2,3,"logCPM-TMM PC2,3",colors=colors)
 ```
 
 ![plot of chunk plot-svd](figure/plot-svd8.png) 
 
 ```r
-plotPC(dual,3,4,"logCPM-TMM PC3,4")
-```
-
-```
-## Error: argument "colors" is missing, with no default
+plotPC(dual,3,4,"logCPM-TMM PC3,4",colors=colors)
 ```
 
 ![plot of chunk plot-svd](figure/plot-svd9.png) 
+
+```r
+p <- prcomp(t(voom))
+plot(p$x[,2],p$x[,3],pch=20,col=colors,main="prcomp, PCs 2 vs 3")
+```
+
+![plot of chunk plot-svd](figure/plot-svd10.png) 
+
+
+```r
+library(sva)
+```
+
+```
+## Loading required package: corpcor
+## Loading required package: mgcv
+## Loading required package: nlme
+## This is mgcv 1.8-1. For overview type 'help("mgcv-package")'.
+```
+
+```r
+meta <- data.frame(study=c(rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HPA",3),rep("AltIso",2)),tissue=c("Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart"))
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue),data=meta)
+# Combat fails unless we remove low/unexpressed genes
+combat <- ComBat(dat=dual,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+```
+
+```
+## Found 5 batches
+## Found 2  categorical covariate(s)
+## Standardizing Data across genes
+## Fitting L/S model and finding priors
+## Finding parametric adjustments
+## Adjusting the Data
+```
+
+```r
+plotPC(combat,1,2,"ComBat/dual",colors=colors)
+```
+
+![plot of chunk :combat](figure/:combat1.png) 
+
+```r
+combat <- ComBat(dat=voom,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+```
+
+```
+## Found 5 batches
+## Found 2  categorical covariate(s)
+## Standardizing Data across genes
+## Fitting L/S model and finding priors
+## Finding parametric adjustments
+## Adjusting the Data
+```
+
+```r
+plotPC(combat,1,2,"ComBat/voom",colors=colors)
+```
+
+![plot of chunk :combat](figure/:combat2.png) 
 
 ANOVA as for published RPKMs.
 
@@ -262,13 +278,6 @@ fit <- lm(logTMM ~ + prep + layout + study + tissue, data=data)
 b <- anova(fit)
 
 m <- melt(combat)
-```
-
-```
-## Error: object 'combat' not found
-```
-
-```r
 colnames(m) <- c("gene_ID","sample_ID","combatlogTMM")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 
@@ -293,153 +302,35 @@ dev.off()
 ##   2
 ```
 
-
-```r
-library(sva)
-```
-
-```
-## Loading required package: corpcor
-## Loading required package: mgcv
-## Loading required package: nlme
-## This is mgcv 1.7-29. For overview type 'help("mgcv-package")'.
-```
-
-```r
-meta <- data.frame(study=c(rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HPA",3),rep("AltIso",2)),tissue=c("Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart"))
-batch <- meta$study
-design <- model.matrix(~as.factor(tissue),data=meta)
-# Combat fails unless we remove low/unexpressed genes
-combat <- ComBat(dat=dual,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-```
-
-```
-## Found 5 batches
-## Found 2  categorical covariate(s)
-## Standardizing Data across genes
-## Fitting L/S model and finding priors
-## Finding parametric adjustments
-## Adjusting the Data
-```
-
-```r
-plotPC(combat,1,2,"ComBat/dual")
-```
-
-```
-## Error: argument "colors" is missing, with no default
-```
-
-![plot of chunk :combat](figure/:combat1.png) 
-
-```r
-combat <- ComBat(dat=voom,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-```
-
-```
-## Found 5 batches
-## Found 2  categorical covariate(s)
-## Standardizing Data across genes
-## Fitting L/S model and finding priors
-## Finding parametric adjustments
-## Adjusting the Data
-```
-
-```r
-plotPC(combat,1,2,"ComBat/voom")
-```
-
-```
-## Error: argument "colors" is missing, with no default
-```
-
-![plot of chunk :combat](figure/:combat2.png) 
-
 Calculate RPKM and TPM values. For this, we need an auxiliary file of feature lengths
 
 
 ```r
-lens <- read.delim("gene_lengths.tsv", header=F, row.names=1)
-```
+#lens <- read.delim("gene_lengths.tsv", header=F, row.names=1)
+#r <- rpkm(counts[,1], lens, normalized.lib.sizes=F)
+#for (i in 2:ncol(counts)){
+#  temp <- rpkm(counts[,i], lens, normalized.lib.sizes=F)
+#  r <- cbind(r, temp)
+#}
+#colnames(r)<-colnames(counts)
 
-```
-## Warning: cannot open file 'gene_lengths.tsv': No such file or directory
-```
+#tpm <- function(vec, feat.lens, rlens){
+#rg <- vec 
+#fl <- feat.lens # Feature lengths
+#rl <- rlens
+#T <- sum(rg*rl/fl)
+#tpm <- rg*rl*1e6/(fl*T)
+#return(tpm)
+#}
 
-```
-## Error: cannot open the connection
-```
-
-```r
-r <- rpkm(counts[,1], lens, normalized.lib.sizes=F)
-```
-
-```
-## Error: object 'lens' not found
-```
-
-```r
-for (i in 2:ncol(counts)){
-  temp <- rpkm(counts[,i], lens, normalized.lib.sizes=F)
-  r <- cbind(r, temp)
-}
-```
-
-```
-## Error: object 'lens' not found
-```
-
-```r
-colnames(r)<-colnames(counts)
-```
-
-```
-## Error: object 'r' not found
-```
-
-```r
-tpm <- function(vec, feat.lens, rlens){
-rg <- vec 
-fl <- feat.lens # Feature lengths
-rl <- rlens
-T <- sum(rg*rl/fl)
-tpm <- rg*rl*1e6/(fl*T)
-return(tpm)
-}
-
-readlengths <- c(76,76,76,35,35,35,152,152,152)
-featlens <- lens
-```
-
-```
-## Error: object 'lens' not found
-```
-
-```r
-d.tpm <- tpm(counts[,1], featlens, readlengths)
-```
-
-```
-## Error: object 'featlens' not found
-```
-
-```r
-for (i in 2:ncol(counts)){
-  temp <- tpm(counts[,i], featlens, readlengths)
-  d.tpm <- cbind(d.tpm, temp)
-}
-```
-
-```
-## Error: object 'featlens' not found
-```
-
-```r
-colnames(d.tpm)<-colnames(counts)
-```
-
-```
-## Error: object 'd.tpm' not found
+#readlengths <- c(76,76,76,35,35,35,152,152,152)
+#featlens <- lens
+#d.tpm <- tpm(counts[,1], featlens, readlengths)
+#for (i in 2:ncol(counts)){
+#  temp <- tpm(counts[,i], featlens, readlengths)
+ # d.tpm <- cbind(d.tpm, temp)
+#}
+#colnames(d.tpm)<-colnames(counts)
 ```
 
 Cufflinks FPKM based analysis
@@ -448,350 +339,107 @@ Cufflinks produces output which occasionally has duplicate entries for genes. We
 
 
 ```r
-fpkm <- read.delim("fpkm_table_tophat.txt", sep="\t")
+#fpkm <- read.delim("fpkm_table_tophat.txt", sep="\t")
 ```
 
 
 ```r
-library(data.table)
-```
-
-```
-## Error: there is no package called 'data.table'
-```
-
-```r
-data.dt <- data.table(fpkm)
-```
-
-```
-## Error: could not find function "data.table"
-```
-
-```r
-setkey(data.dt, ENSEMBL_ID)
-```
-
-```
-## Error: could not find function "setkey"
-```
-
-```r
-temp <- data.dt[, lapply(.SD, sum), by=ENSEMBL_ID]
-```
-
-```
-## Error: object 'data.dt' not found
-```
-
-```r
-collapsed <- as.data.frame(temp)
-```
-
-```
-## Error: object 'temp' not found
-```
-
-```r
-fpkms.summed <- collapsed[,3:ncol(collapsed)] 
-```
-
-```
-## Error: object 'collapsed' not found
-```
-
-```r
-rownames(fpkms.summed) <- collapsed[,1]
-```
-
-```
-## Error: object 'collapsed' not found
-```
-
-```r
-write.table(fpkms.summed, file="fpkm_table_tophat_summed.txt", quote=F, sep="\t")
-```
-
-```
-## Error: object 'fpkms.summed' not found
+#library(data.table)
+#data.dt <- data.table(fpkm)
+#setkey(data.dt, ENSEMBL_ID)
+#temp <- data.dt[, lapply(.SD, sum), by=ENSEMBL_ID]
+#collapsed <- as.data.frame(temp)
+#fpkms.summed <- collapsed[,3:ncol(collapsed)] 
+#rownames(fpkms.summed) <- collapsed[,1]
+#write.table(fpkms.summed, file="fpkm_table_tophat_summed.txt", quote=F, sep="\t")
 ```
 
 
 TMM normalization on FPKMs.
 
 ```r
-sizeF <- calcNormFactors(fpkms.summed, method="TMM") 
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-fpkm.tmm <- sizeF * fpkms.summed
-```
-
-```
-## Error: object 'sizeF' not found
-```
-
-```r
-fpkm.voom <- normalize.voom(fpkms.summed)
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-fpkm.dual <- normalize.voom(fpkm.tmm)
-```
-
-```
-## Error: object 'fpkm.tmm' not found
+#sizeF <- calcNormFactors(fpkms.summed, method="TMM") 
+#fpkm.tmm <- sizeF * fpkms.summed
+#fpkm.voom <- normalize.voom(fpkms.summed)
+#fpkm.dual <- normalize.voom(fpkm.tmm)
 ```
 
 Plot PCA/SVD for FPKMs.
 
 
 ```r
-plotPC(fpkms.summed,1,2,"Raw FPKM PC1,2")
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-plotPC(fpkms.summed,2,3,"Raw FPKM PC2,3")
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-plotPC(fpkms.summed,3,4,"Raw FPKM PC3,4")
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-plotPC(fpkm.tmm,3,4,"TMM-FPKM PC1,2")
-```
-
-```
-## Error: object 'fpkm.tmm' not found
-```
-
-```r
-plotPC(fpkm.tmm,3,4,"TMM-FPKM PC2,3")
-```
-
-```
-## Error: object 'fpkm.tmm' not found
-```
-
-```r
-plotPC(fpkm.voom,3,4,"Log2 FPKM PC1,2")
-```
-
-```
-## Error: object 'fpkm.voom' not found
-```
-
-```r
-plotPC(fpkm.voom,3,4,"Log2 FPKM PC2,3")
-```
-
-```
-## Error: object 'fpkm.voom' not found
-```
-
-```r
-plotPC(fpkm.dual,3,4,"Log2-TMM FPKM PC1,2")
-```
-
-```
-## Error: object 'fpkm.dual' not found
-```
-
-```r
-plotPC(fpkm.dual,3,4,"Log2-TMM FPKM PC2,3")
-```
-
-```
-## Error: object 'fpkm.dual' not found
+#plotPC(fpkms.summed,1,2,"Raw FPKM PC1,2")
+#plotPC(fpkms.summed,2,3,"Raw FPKM PC2,3")
+#plotPC(fpkms.summed,3,4,"Raw FPKM PC3,4")
+#plotPC(fpkm.tmm,3,4,"TMM-FPKM PC1,2")
+#plotPC(fpkm.tmm,3,4,"TMM-FPKM PC2,3")
+#plotPC(fpkm.voom,3,4,"Log2 FPKM PC1,2")
+#plotPC(fpkm.voom,3,4,"Log2 FPKM PC2,3")
+#plotPC(fpkm.dual,3,4,"Log2-TMM FPKM PC1,2")
+#plotPC(fpkm.dual,3,4,"Log2-TMM FPKM PC2,3")
 ```
 ANOVA on Cuff-FPKMs.
 
 
 ```r
-library(reshape)
-m <- melt(fpkms.summed)
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-colnames(m) <- c("sample_ID","FPKM")
-meta <- data.frame(tissue=c(rep(c("brain","heart","kidney"),4),"brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
-rownames(meta) <- colnames(fpkms.summed)
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-tissue <- rep(meta$tissue, each=nrow(fpkms.summed))
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-study <- rep(meta$study, each=nrow(fpkms.summed))
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-prep <- rep(meta$prep, each=nrow(fpkms.summed))
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-layout <- rep(meta$layout, each=nrow(fpkms.summed))
-```
-
-```
-## Error: object 'fpkms.summed' not found
-```
-
-```r
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+#library(reshape)
+#m <- melt(fpkms.summed)
+#colnames(m) <- c("sample_ID","FPKM")
+#meta <- data.frame(tissue=c(rep(c("brain","heart","kidney"),4),"brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
+#rownames(meta) <- colnames(fpkms.summed)
+#tissue <- rep(meta$tissue, each=nrow(fpkms.summed))
+#study <- rep(meta$study, each=nrow(fpkms.summed))
+#prep <- rep(meta$prep, each=nrow(fpkms.summed))
+#layout <- rep(meta$layout, each=nrow(fpkms.summed))
+#data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 
 #subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(FPKM ~ prep + layout + study + tissue, data=data)
-```
-
-```
-## Warning: using type = "numeric" with a factor response will be ignored
-## Warning: - not meaningful for factors
-```
-
-```r
-a <- anova(fit)
-```
-
-```
-## Warning: ^ not meaningful for factors
-```
-
-```
-## Error: missing value where TRUE/FALSE needed
+#fit <- lm(FPKM ~ prep + layout + study + tissue, data=data)
+#a <- anova(fit)
 ```
 Revisit Anova with log-TMMed and combated values.
 
 
 ```r
-m <- melt(fpkm.dual)
-```
-
-```
-## Error: object 'fpkm.dual' not found
-```
-
-```r
-colnames(m) <- c("gene_ID","sample_ID","logTMMFPKM")
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+#m <- melt(fpkm.dual)
+#colnames(m) <- c("gene_ID","sample_ID","logTMMFPKM")
+#data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 
 #subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(logTMMFPKM ~ + prep + layout + study + tissue, data=data)
-b <- anova(fit)
+#fit <- lm(logTMMFPKM ~ + prep + layout + study + tissue, data=data)
+#b <- anova(fit)
 
-batch <- meta$study
-design <- model.matrix(~as.factor(tissue),data=meta)
+#batch <- meta$study
+#design <- model.matrix(~as.factor(tissue),data=meta)
 # Combat fails unless we remove low/unexpressed genes
-combat <- ComBat(dat=fpkm.dual,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-```
-
-```
-## Found 5 batches
-## Found 2  categorical covariate(s)
-```
-
-```
-## Error: object 'fpkm.dual' not found
-```
-
-```r
-m <- melt(combat)
-colnames(m) <- c("gene_ID","sample_ID","combatlogTMMFPKM")
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
+#combat <- ComBat(dat=fpkm.dual,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+#m <- melt(combat)
+#colnames(m) <- c("gene_ID","sample_ID","combatlogTMMFPKM")
+#data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout)
 
 #subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(combatlogTMMFPKM ~ prep + layout + study + tissue, data=data)
-d <- anova(fit)
+#fit <- lm(combatlogTMMFPKM ~ prep + layout + study + tissue, data=data)
+#d <- anova(fit)
 ```
 
 Plot results
 
 ```r
-pdf("anova_repr_FPKM.pdf")
-par(mfrow=c(3,1))
-barplot(a$"F value",names.arg=rownames(a),main="Anova F score, Raw counts")
-barplot(b$"F value",names.arg=rownames(b),main="Anova F score, voom-TMM counts")
-barplot(d$"F value",names.arg=rownames(d),main="Anova F score, ComBat on voom-TMM")
-dev.off()
-```
-
-```
-## pdf 
-##   2
+#pdf("anova_repr_FPKM.pdf")
+#par(mfrow=c(3,1))
+#barplot(a$"F value",names.arg=rownames(a),main="Anova F score, Raw counts")
+#barplot(b$"F value",names.arg=rownames(b),main="Anova F score, voom-TMM counts")
+#barplot(d$"F value",names.arg=rownames(d),main="Anova F score, ComBat on voom-TMM")
+#dev.off()
 ```
 
 Cufflinks on protein coding genes only:
 
 
 ```r
-prot <- read.delim("cufflinks_data_protein_coding.txt")
-```
-
-```
-## Warning: cannot open file 'cufflinks_data_protein_coding.txt': No such
-## file or directory
-```
-
-```
-## Error: cannot open the connection
-```
-
-```r
-pnum <- prot[,3:ncol(prot)]
-```
-
-```
-## Error: object 'prot' not found
-```
-
-```r
-rownames(pnum) <- prot[,1]
-```
-
-```
-## Error: object 'prot' not found
+#prot <- read.delim("cufflinks_data_protein_coding.txt")
+#pnum <- prot[,3:ncol(prot)]
+#rownames(pnum) <- prot[,1]
 ```
 
 Some miscellaneous plots: heatmaps of various transformed counts, RPKMs, TPMs.
@@ -800,52 +448,13 @@ Heatmaps with linear corr and Spearman rank corr on raw count, optimal power spa
 
 
 ```r
-pheatmap(cor(counts),main="Raw counts, Pearson")
+#pheatmap(cor(counts),main="Raw counts, Pearson")
+#pheatmap(cor(counts,method="spearman"),main="Raw counts, Spearman")
+#pheatmap(cor(ops.counts),main= "OPS counts, Pearson")
+#pheatmap(cor(tmm),main="CPM-TMM, Pearson")
+#pheatmap(cor(tmm, method="spearman"),main="CPM-TMM, Spearman")
+#pheatmap(cor(voom),main="Log2 counts, Pearson")
+#pheatmap(cor(voom,method="spearman"),main="Log2 counts, Spearman")
+#pheatmap(cor(dual),main="log-CPM-TMM")
 ```
-
-![plot of chunk heatmaps](figure/heatmaps1.png) 
-
-```r
-pheatmap(cor(counts,method="spearman"),main="Raw counts, Spearman")
-```
-
-![plot of chunk heatmaps](figure/heatmaps2.png) 
-
-```r
-pheatmap(cor(ops.counts),main= "OPS counts, Pearson")
-```
-
-```
-## Error: object 'ops.counts' not found
-```
-
-```r
-pheatmap(cor(tmm),main="CPM-TMM, Pearson")
-```
-
-![plot of chunk heatmaps](figure/heatmaps3.png) 
-
-```r
-pheatmap(cor(tmm, method="spearman"),main="CPM-TMM, Spearman")
-```
-
-![plot of chunk heatmaps](figure/heatmaps4.png) 
-
-```r
-pheatmap(cor(voom),main="Log2 counts, Pearson")
-```
-
-![plot of chunk heatmaps](figure/heatmaps5.png) 
-
-```r
-pheatmap(cor(voom,method="spearman"),main="Log2 counts, Spearman")
-```
-
-![plot of chunk heatmaps](figure/heatmaps6.png) 
-
-```r
-pheatmap(cor(dual),main="log-CPM-TMM")
-```
-
-![plot of chunk heatmaps](figure/heatmaps7.png) 
 

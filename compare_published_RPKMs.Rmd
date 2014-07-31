@@ -330,7 +330,7 @@ raw <- rep(meta$NumberRaw, each=nrow(f.nozero))
 mapped <- rep(meta$Numbermapped, each=nrow(f.nozero))
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
 subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(RPKM ~ nraw + layout + prep + study + tissue, data=data)
+fit <- lm(RPKM ~ study + nraw + layout + prep + tissue, data=data)
 a <- anova(fit)
 maxval = 3000
 ```
@@ -341,7 +341,7 @@ maxval = 3000
 barplot(a$"F value"[-7],names.arg=rownames(a)[-7],main="Anova F score, Raw RPKM",ylim=c(0,maxval))
 print(a)
 ```
-
+the number of raw reads, the number of mapped reads, the layout (single-end or paired-end), the library preparation method, the study, and the tissue
 Let's look at a few SVD plots. 
 
 **Figure 1C**
@@ -510,7 +510,7 @@ m <- melt(fpkms.log)
 colnames(m) <- c("sample_ID","log2RPKM")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
 #subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(log2RPKM ~ nraw + layout + prep + study + tissue, data=data)
+fit <- lm(log2RPKM ~ study + nraw + layout + prep + tissue, data=data)
 b <- anova(fit)
 
 maxval=8000
@@ -640,7 +640,7 @@ Revisit Anova with combated values.
 m <- melt(combat)
 colnames(m) <- c("sample_ID","combat")
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-fit <- lm(combat ~ nraw  + layout + prep + study + tissue, data=data)
+fit <- lm(combat ~ study + nraw + layout + prep + tissue, data=data)
 c <- anova(fit)
 
 maxval <- 500
