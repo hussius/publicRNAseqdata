@@ -528,6 +528,25 @@ for (i in 1:6){
 
 ![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19.png) 
 
+Look a bit closer at PCs 1-3 in prcomp: (not shown in paper)
+
+
+```r
+      p <- prcomp(t(f.nozero))
+      expl.vars <- signif(100*p$sdev^2 / sum(p$sdev^2),2)
+      plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste0("PC1, ", expl.vars[1], "%"),ylab=paste0("PC2, ", expl.vars[2], "%"), main="prcomp")
+      textxy(p$x[,1],p$x[,2],labs=rownames(p$x))
+```
+
+![plot of chunk :prcomp1-3](figure/:prcomp1-31.png) 
+
+```r
+      load.pc1 <- p$rotation[,1][order(p$rotation[,1])]
+      barplot(tail(load.pc1),head(load.pc1))
+```
+
+![plot of chunk :prcomp1-3](figure/:prcomp1-32.png) 
+
 **Code for figure 2**
 
 Figure 2 deals with log-transformed F/RPKM values from published data sets. 
@@ -574,6 +593,16 @@ for (i in 1:6){
 ```
 
 ![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22.png) 
+
+Look a bit closer at PCs 1-3 in prcomp:
+
+
+```r
+      plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"))
+      textxy(p$x[,1],p$x[,2],labs=rownames(p$x))
+```
+
+![plot of chunk :prcomp1-3log](figure/:prcomp1-3log.png) 
 
 **Figure 2C**
 
