@@ -1,0 +1,194 @@
+Comparing published, reprocessed FPKMs and reprocessed counts
+========================================================
+
+```{r:preliminaries}
+library(pheatmap)
+library(calibrate)
+library(sva)
+
+normalize.voom <- function(counts){
+  require(limma)
+  return(voom(counts)$E)
+}
+
+do.SVD = function(m, comp.1=1, comp.2=2){ # returns eig.cell
+  s <- svd(m)
+  ev <- s$d^2 / sum(s$d^2)
+	return(s$u[,c(comp.1, comp.2)])
+}
+
+project.SVD <- function(m, eig.cell){
+	return(t(m) %*% eig.cell)
+}
+
+plot.SVD <- function(m, comp.1=1, comp.2=2, groups=rep("blue", ncol(m)), title=""){
+	eig <- do.SVD(m, comp.1, comp.2)
+	proj <- project.SVD(m, eig)
+	xminv <- min(proj[,1])  - .2 * abs(min(proj[,1]))
+	xmaxv <- max(proj[,1])  + .2 * abs(max(proj[,1]))
+	yminv <- min(proj[,2])  - .2 * abs(min(proj[,2]))
+	ymaxv <- max(proj[,2])  + .2 * abs(max(proj[,2]))
+	plot(proj,pch=20,col="white",xlim=c(xminv,xmaxv),ylim=c(yminv,ymaxv),xaxt='n',yaxt='n',xlab="PC1",ylab="PC2",main=title)
+	
+	points(proj, col=as.character(groups),pch=20) # , #pch=c(rep(15,3),rep(17,3),rep(19,3),rep(18,3),rep(20,2)), cex=2)
+	#textxy(proj[,1],proj[,2],labs=colnames(m))
+}
+```
+
+Load the three relevant base data sets:
+
+```{r:load-basedata}
+pub.merged <- read.delim("published_rpkms.txt",sep=" ")
+info.pub <- read.table("sample_info_published.txt",header=TRUE)
+repr.fpkm.nonzero <- read.table(file="cufflinks_fpkm_proteincoding_nozero.txt")
+ensg <- repr.fpkm.nonzero [,1]
+repr.fpkm.nonzero <- repr.fpkm.nonzero[,3:16]
+rownames(repr.fpkm.nonzero) <- ensg
+info.repr <- read.delim("sample_info_reprocessed.txt")
+repr.counts <- read.delim("count_table.txt",row.names=1)
+colnames(repr.counts)<-c("EoGE_brain","EoGE_heart","EoGE_kidney","Atlas_brain","Atlas_heart","Atlas_kidney","BodyMap_brain","BodyMap_heart","BodyMap_kidney","HPA_brain","HPA_heart","HPA_kidney","AltIso_brain","AltIso_heart")
+repr.counts.nonzero <- repr.counts[rowSums(repr.counts)>0,]
+```
+
+First join everything into a large matrix. We have to give the columns unique names to avoid collisions.
+
+```{r:join-datasets}
+new.colnames.published <- paste0("PUB-FPKM-",colnames(pub.merged))
+new.colnames.fpkm <- paste0("REPR-FPKM-",colnames(repr.fpkm.nonzero))
+new.colnames.counts <- paste0("REPR-CNTS-",colnames(repr.counts.nonzero))
+new.colnames <- c(new.colnames.published,new.colnames.fpkm,new.colnames.counts)
+
+common.ensg.temp <- intersect(rownames(pub.merged), rownames(repr.fpkm.nonzero))
+common.ensg <- intersect(common.ensg.temp, rownames(repr.counts.nonzero))
+
+data <- data.frame(pub.merged[common.ensg,], repr.fpkm.nonzero[common.ensg,], repr.counts.nonzero[common.ensg,])
+colnames(data) <- new.colnames
+```
+
+Visualize the matrix with all samples processed in different ways using a heatmap and PCA with various settings.
+
+Set the colors: heart is red, brain is blue, kidney is black.
+
+```{r:setcolors}
+colorvec <- rep("black", length(new.colnames))
+colorvec[grep("heart", new.colnames)] <- "red"
+colorvec[grep("brain", new.colnames)] <- "blue"
+```
+
+```{r:visualize-bigmatrix}
+pheatmap(cor(data))
+
+p <- prcomp(t(data))
+plot(p$x[,1],p$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="Default prcomp")
+plot(p$x[,2],p$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="Default prcomp")
+
+p.sc <- prcomp(t(data),scale.=TRUE)
+plot(p.sc$x[,1],p.sc$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="Scaled prcomp")
+plot(p.sc$x[,2],p.sc$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="Scaled prcomp")
+
+p.nm <- prcomp(t(data),center=FALSE)
+plot(p.nm$x[,1],p.nm$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="prcomp without centering") # This should be equal to the plot.SVD() function
+plot(p.nm$x[,2],p.nm$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="prcomp without centering") # This should be equal to the plot.SVD() function
+
+plot.SVD(data, groups=colorvec)
+```
+
+Log transforming the whole matrix.
+
+```{r:log-trafo}
+pseudo <- 1
+data.log <- log2((data + pseudo)/1e6)
+p <- prcomp(t(data.log))
+plot(p$x[,1],p$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="log2, Default prcomp")
+plot(p$x[,2],p$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="log2, Default prcomp")
+
+p.sc <- prcomp(t(data.log),scale.=TRUE)
+plot(p.sc$x[,1],p.sc$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="log2, Scaled prcomp")
+plot(p.sc$x[,2],p.sc$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="log2, Scaled prcomp")
+
+p.nm <- prcomp(t(data.log),center=F)
+plot(p.nm$x[,1],p.nm$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="log2, prcomp without centering") # This should be equal to the plot.SVD() function
+plot(p.nm$x[,2],p.nm$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="log2, prcomp without centering") # This should be equal to the plot.SVD() function
+```
+
+Doing PCA on each of the three data sets in turn (logged), looking at PCs 2 and 3.
+```{r:PCA-each}
+pub.merged.log <- log2(pub.merged + pseudo)
+repr.fpkm.nonzero.log <- log2(repr.fpkm.nonzero + pseudo)
+repr.counts.nonzero.log <- log2(repr.counts.nonzero + pseudo)
+repr.counts.log <- normalize.voom(repr.counts) # voom also normalizes by lib size
+#repr.counts.log <- log2( (repr.counts+0.5)/(1e6+1))
+
+p.pub <- prcomp(t(pub.merged.log))
+cols.pub <- rep("black", length(colnames(pub.merged.log)))
+cols.pub[grep("heart",colnames(pub.merged.log))] <- "red"
+cols.pub[grep("brain",colnames(pub.merged.log))] <- "blue"
+p.fpkm <- prcomp(t(repr.fpkm.nonzero.log))
+cols.fpkm <- rep("black", length(colnames(repr.fpkm.nonzero.log)))
+cols.fpkm[grep("heart",colnames(repr.fpkm.nonzero.log))] <- "red"
+cols.fpkm[grep("brain",colnames(repr.fpkm.nonzero.log))] <- "blue"
+p.counts <- prcomp(t(repr.counts.log))
+cols.counts <- rep("black", length(colnames(repr.counts.log)))
+cols.counts[grep("heart",colnames(repr.counts.log))] <- "red"
+cols.counts[grep("brain",colnames(repr.counts.log))] <- "blue"
+
+par(mfrow=c(3,1))
+plot(p.pub$x[,2],p.pub$x[,3],pch=20,xlab="PC2",ylab="PC3",col=cols.pub,main="Published RPKMs (log2), PC 2-3") 
+plot(p.fpkm$x[,2],p.fpkm$x[,3],pch=20,xlab="PC2",ylab="PC3",col=cols.fpkm,main="Reprocessed FPKMs (log2), PC 2-3") 
+plot(p.counts$x[,2],p.counts$x[,3],pch=20,xlab="PC2",ylab="PC3",col=cols.counts,main="Reprocessed counts (log2), PC 2-3") 
+```
+Other combinations of PCs
+
+```{r:combs}
+par(mfrow=c(3,3))
+for (i in 2:4){
+for (j in 2:4){
+if (i < j){
+plot(p.pub$x[,i],p.pub$x[,j],pch=20,xlab=paste0("PC", i),ylab=paste0("PC",j),col=cols.pub,main="Published RPKMs (log2)") 
+plot(p.fpkm$x[,i],p.fpkm$x[,j],pch=20,xlab=paste0("PC", i),ylab=paste0("PC",j),col=cols.fpkm,main="Reprocessed FPKMs (log2)") 
+plot(p.counts$x[,i],p.counts$x[,j],pch=20,xlab=paste0("PC", i),ylab=paste0("PC",j),col=cols.counts,main="Reprocessed counts (log2)") 
+}}}
+```
+
+Try "blind" SVA to see what features are pulled out (3x3 scenarios)
+
+```{r:blind-sva-published}
+pheno <- read.delim("sample_info_published.txt")
+expr.nozero <- pub.merged[which(rowSums(pub.merged)>0),] # required for SVA to work?
+mod <- model.matrix(~as.factor(Tissue), data=pheno)
+mod0 <- model.matrix(~1,data=pheno)
+n.sv <- num.sv(pub.merged.log,mod,method="leek") # 8 (!)
+svobj <- sva(as.matrix(pub.merged.log),mod,mod0,n.sv=n.sv)
+```
+
+The above did not work ... What about the reprocessed ones?
+```{r:blind-sva-reprocessed}
+pheno <- read.delim("sample_info_reprocessed.txt")
+mod <- model.matrix(~as.factor(Tissue), data=pheno)
+mod0 <- model.matrix(~1,data=pheno)
+n.sv <- num.sv(repr.fpkm.nonzero.log,mod,method="leek") 
+svobj <- sva(as.matrix(repr.fpkm.nonzero.log),mod,mod0,n.sv=n.sv)
+
+l <- svobj$sv # the matrix with 3 surrogate variables
+rownames(l) <- colnames(repr.fpkm.nonzero.log)
+heatmap(l,scale="none")
+```
+
+Seems like variable 1 is preparation (r~0.9), variable 2 is study (r~-0.8), variable 3 is read type (single/paired, r~0.97)
+
+```{r:blind-sva-reprocessed-counts}
+pheno <- read.delim("sample_info_reprocessed.txt")
+mod <- model.matrix(~as.factor(Tissue), data=pheno)
+mod0 <- model.matrix(~1,data=pheno)
+n.sv <- num.sv(repr.counts.nonzero.log,mod,method="leek") 
+svobj <- sva(as.matrix(repr.counts.nonzero.log),mod,mod0,n.sv=n.sv)
+
+l <- svobj$sv # the matrix with 3 surrogate variables
+rownames(l) <- colnames(repr.fpkm.nonzero.log)
+cor(l, as.numeric(pheno$Preparation))
+cor(l, as.numeric(pheno$Study))
+cor(l, as.numeric(pheno$readlength))
+cor(l, pheno$NumberRaw)
+heatmap(l,scale="none")
+```
+The first variable is apparently correlated to raw/mapped read number (r 0.97) or just BodyMap. Even though voom should correct for library size, the BodyMap samples somehow have higher log-CPMs. The second variable appears to be preparation, and the third seems to be study. 
