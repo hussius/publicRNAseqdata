@@ -377,14 +377,51 @@ for (i in 1:6){
 
 Look a bit closer at PCs 1-3 in prcomp: (not shown in paper)
 
-```{r:prcomp1-3}
-      p <- prcomp(t(f.nozero))
-      expl.vars <- signif(100*p$sdev^2 / sum(p$sdev^2),2)
-      plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste0("PC1, ", expl.vars[1], "%"),ylab=paste0("PC2, ", expl.vars[2], "%"), main="prcomp")
+```{r:prcomp1-3raw}
+    symbol <- read.table("ENSG_Symbol.txt",header=TRUE)
+    p <- prcomp(t(f.nozero))
+      plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"))
       textxy(p$x[,1],p$x[,2],labs=rownames(p$x))
       load.pc1 <- p$rotation[,1][order(p$rotation[,1])]
-      barplot(tail(load.pc1),head(load.pc1))
+      extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
+      symbs <- vector()
+      for (n in names(extreme.pc1)){
+        temp <- as.character(symbol[symbol[,1] == n,2])
+        if (length(temp)>1) temp <- temp[1]
+        symbs <- c(symbs, temp)
+        }
+      
+      barplot(extreme.pc1, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC1 (raw RPKM)")
+
+      load.pc2 <- p$rotation[,2][order(p$rotation[,2])]
+      extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
+      symbs <- vector()
+      for (n in names(extreme.pc2)){
+        temp <- as.character(symbol[symbol[,1] == n,2])
+        if (length(temp)>1) temp <- temp[1]
+        symbs <- c(symbs, temp)
+        }
+      
+      barplot(extreme.pc2, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC2 (raw RPKM)")
+
+      load.pc3 <- p$rotation[,3][order(p$rotation[,3])]
+      extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
+      symbs <- vector()
+      for (n in names(extreme.pc3)){
+        temp <- as.character(symbol[symbol[,1] == n,2])
+        if (length(temp)>1) temp <- temp[1]
+        symbs <- c(symbs, temp)
+        }
+      
+      barplot(extreme.pc3, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC3 (raw RPKM)")
+
 ```
+
+Despite what it might appear like from the plot, PC 1 seems to be about tissue specificity. MYL2, TNNT2, MB, DES, ACTC1, MYH7 are all heart genes. SPP1 and ALDOB are kidney genes and GFAP, CLU, PLP1 are brain genes.
+
+PC 2: Very high positive loadings for FTH1 (highly variable between tissues) and MYL2 (heart). But also high *negative* loading for TNNT2 (heart). 
+
+PC3: The same genes seem to be involved again (MYL2, TNNT2, FTH1 etc.)
 
 **Code for figure 2**
 
@@ -428,13 +465,60 @@ for (i in 1:6){
 Look a bit closer at PCs 1-3 in prcomp:
 
 ```{r:prcomp1-3log}
+  #    symbol <- read.table("ENSG_Symbol.txt",header=TRUE)
     p <- prcomp(t(fpkms.log))
-      plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"))
-      textxy(p$x[,1],p$x[,2],labs=rownames(p$x))
+    plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"))
+    textxy(p$x[,1],p$x[,2],labs=rownames(p$x))
+  
+      
       load.pc1 <- p$rotation[,1][order(p$rotation[,1])]
+      extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
+      symbs <- vector()
+      for (n in names(extreme.pc1)){
+        temp <- as.character(symbol[symbol[,1] == n,2])
+        if (length(temp)>1) temp <- temp[1]
+        symbs <- c(symbs, temp)
+        }
+      
+      barplot(extreme.pc1, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC1 (logRPKM)")
+
       load.pc2 <- p$rotation[,2][order(p$rotation[,2])]
+      extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
+      symbs <- vector()
+      for (n in names(extreme.pc2)){
+        temp <- as.character(symbol[symbol[,1] == n,2])
+        if (length(temp)>1) temp <- temp[1]
+        symbs <- c(symbs, temp)
+        }
+      
+      barplot(extreme.pc2, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC2 (logRPKM)")
+
+      load.pc3 <- p$rotation[,3][order(p$rotation[,3])]
+      extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
+      symbs <- vector()
+      for (n in names(extreme.pc3)){
+        temp <- as.character(symbol[symbol[,1] == n,2])
+        if (length(temp)>1) temp <- temp[1]
+        symbs <- c(symbs, temp)
+        }
+      
+      barplot(extreme.pc3, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC3 (logRPKM)")
+
 
 ```
+
+ENSG00000171560 - FGA - fibrinogen light chain. A bit inconsistent between studies. Mostly kidney specific but not in the Atlas.
+ENSG00000148677 - ANKRD1 - definitely heart gene.
+ENSG00000135218 - CD36 - heart gene.
+ENSG00000057593 - F7 - varies mostly across studies.
+ENSG00000118194 - TNNT2 - heart.
+ENSG00000188257 - PLA2G2A - heart.
+ENSG00000105372 - RPS19 - ribosomal - varies across studies. 
+ENSG00000063177 - RPL18 - ribosomal - varies across studies.
+ENSG00000100097 - LGALS1 - varies across studies / a bit heart specific
+ENSG00000105640 - RPL18A - varies across studies
+ENSG00000105583 - varies across studies
+ENSG00000087086 - FTL - kidney specific / large variation across studies
 
 **Figure 2C**
 
@@ -446,20 +530,20 @@ Let's have a look at the 100 most highly expressed genes in each sample and see 
 
 library(VennDiagram)
 
-HPA_b <- rownames(f[order(f$HPA_brain,decreasing=T),][1:100,])
-HPA_h <- rownames(f[order(f$HPA_heart,decreasing=T),][1:100,])
-HPA_k <- rownames(f[order(f$HPA_kidney,decreasing=T),][1:100,])
+HPA_b <- rownames(f[order(f$HPA_brain,decreasing=TRUE),][1:100,])
+HPA_h <- rownames(f[order(f$HPA_heart,decreasing=TRUE),][1:100,])
+HPA_k <- rownames(f[order(f$HPA_kidney,decreasing=TRUE),][1:100,])
 
-AltIso_b <- rownames(f[order(f$AltIso_brain,decreasing=T),][1:100,])
-AltIso_h <- rownames(f[order(f$AltIso_heart,decreasing=T),][1:100,])
+AltIso_b <- rownames(f[order(f$AltIso_brain,decreasing=TRUE),][1:100,])
+AltIso_h <- rownames(f[order(f$AltIso_heart,decreasing=TRUE),][1:100,])
 
-GTEx_b <- rownames(f[order(f$GTEx_brain,decreasing=T),][1:100,])
-GTEx_h <- rownames(f[order(f$GTEx_heart,decreasing=T),][1:100,])
-GTEx_k <- rownames(f[order(f$GTEx_kidney,decreasing=T),][1:100,])
+GTEx_b <- rownames(f[order(f$GTEx_brain,decreasing=TRUE),][1:100,])
+GTEx_h <- rownames(f[order(f$GTEx_heart,decreasing=TRUE),][1:100,])
+GTEx_k <- rownames(f[order(f$GTEx_kidney,decreasing=TRUE),][1:100,])
 
-Atlas_b <- rownames(f[order(f$Atlas_brain,decreasing=T),][1:100,])
-Atlas_h <- rownames(f[order(f$Atlas_heart,decreasing=T),][1:100,])
-Atlas_k <- rownames(f[order(f$Atlas_kidney,decreasing=T),][1:100,])
+Atlas_b <- rownames(f[order(f$Atlas_brain,decreasing=TRUE),][1:100,])
+Atlas_h <- rownames(f[order(f$Atlas_heart,decreasing=TRUE),][1:100,])
+Atlas_k <- rownames(f[order(f$Atlas_kidney,decreasing=TRUE),][1:100,])
 
 
 ```
@@ -568,24 +652,69 @@ plotPC(combat,2,3,colors=colors,desc="Published F/RPKM values, ComBat adjusted l
 
 ```
 
+Look a bit closer at PCs 1-3 in prcomp:
+
+```{r:prcomp1-3comb}
+    #symbol <- read.table("ENSG_Symbol.txt",header=TRUE)
+   #par(mfrow=c(3,1))
+    p <- prcomp(t(combat))
+   plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"))
+    textxy(p$x[,1],p$x[,2],labs=rownames(p$x))
+      
+      load.pc1 <- p$rotation[,1][order(p$rotation[,1])]
+      extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
+      symbs <- vector()
+      for (n in names(extreme.pc1)){
+        temp <- as.character(symbol[symbol[,1] == n,2])
+        if (length(temp)>1) temp <- temp[1]
+        symbs <- c(symbs, temp)
+        }
+      
+      barplot(extreme.pc1, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC1 (ComBat)")
+
+      load.pc2 <- p$rotation[,2][order(p$rotation[,2])]
+      extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
+      symbs <- vector()
+      for (n in names(extreme.pc2)){
+        temp <- as.character(symbol[symbol[,1] == n,2])
+        if (length(temp)>1) temp <- temp[1]
+        symbs <- c(symbs, temp)
+        }
+      
+      barplot(extreme.pc2, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC2 (ComBat)")
+
+      load.pc3 <- p$rotation[,3][order(p$rotation[,3])]
+      extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
+      symbs <- vector()
+      for (n in names(extreme.pc3)){
+        temp <- as.character(symbol[symbol[,1] == n,2])
+        if (length(temp)>1) temp <- temp[1]
+        symbs <- c(symbs, temp)
+        }
+      
+      barplot(extreme.pc3, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC3 (ComBat)")
+
+par(mfrow=c(1,1))
+```
+
 Let's have a look again at the 100 most highly expressed genes in each sample and see how many of these genes that are shared between the studies, but this time looking at the values after the ComBat run:
 
 ```{r:combatVenn}
 
-HPA_b_c <- rownames(combat[order(combat[,1],decreasing=T),][1:100,])
-HPA_h_c <- rownames(combat[order(combat[,2],decreasing=T),][1:100,])
-HPA_k_c <- rownames(combat[order(combat[,3],decreasing=T),][1:100,])
+HPA_b_c <- rownames(combat[order(combat[,1],decreasing=TRUE),][1:100,])
+HPA_h_c <- rownames(combat[order(combat[,2],decreasing=TRUE),][1:100,])
+HPA_k_c <- rownames(combat[order(combat[,3],decreasing=TRUE),][1:100,])
 
-AltIso_b_c <- rownames(combat[order(combat[,4],decreasing=T),][1:100,])
-AltIso_h_c <- rownames(combat[order(combat[,5],decreasing=T),][1:100,])
+AltIso_b_c <- rownames(combat[order(combat[,4],decreasing=TRUE),][1:100,])
+AltIso_h_c <- rownames(combat[order(combat[,5],decreasing=TRUE),][1:100,])
 
-GTEx_b_c <- rownames(combat[order(combat[,6],decreasing=T),][1:100,])
-GTEx_h_c <- rownames(combat[order(combat[,7],decreasing=T),][1:100,])
-GTEx_k_c <- rownames(combat[order(combat[,8],decreasing=T),][1:100,])
+GTEx_b_c <- rownames(combat[order(combat[,6],decreasing=TRUE),][1:100,])
+GTEx_h_c <- rownames(combat[order(combat[,7],decreasing=TRUE),][1:100,])
+GTEx_k_c <- rownames(combat[order(combat[,8],decreasing=TRUE),][1:100,])
 
-Atlas_b_c <- rownames(combat[order(combat[,9],decreasing=T),][1:100,])
-Atlas_h_c <- rownames(combat[order(combat[,10],decreasing=T),][1:100,])
-Atlas_k_c <- rownames(combat[order(combat[,11],decreasing=T),][1:100,])
+Atlas_b_c <- rownames(combat[order(combat[,9],decreasing=TRUE),][1:100,])
+Atlas_h_c <- rownames(combat[order(combat[,10],decreasing=TRUE),][1:100,])
+Atlas_k_c <- rownames(combat[order(combat[,11],decreasing=TRUE),][1:100,])
 ```
 Brain:
 ```{r:combatVennBrain}
