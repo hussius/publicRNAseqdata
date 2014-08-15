@@ -263,7 +263,7 @@ Check how many ENSG IDs we have left.
 ```{r}
 f <- read.delim("published_rpkms.txt",sep=" ")
 sampleinfo <- read.table("sample_info_published.txt",header=TRUE)
-#dim(f)
+dim(f)
 ```
 
 This looks much better. 
