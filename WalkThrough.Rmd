@@ -1,5 +1,5 @@
 Walkthrough with all data analyses that comes with the manuscript
-Comparing published, reprocessed FPKMs and reprocessed counts
+Comparing published FPKM/RPKM values and reprocessed FPKM values.
 ========================================================
 
 Prepare by loading packages etc.
@@ -52,7 +52,7 @@ AltIso:
 #unlink(temp)
 ```
 
-There is no kidney sample here, so just use heart + brain
+There is no kidney sample here, so just use heart and brain
 
 ```{r}
 #altiso.fpkms <- altiso[,c("X.Gene","heart","brain")]
@@ -224,10 +224,11 @@ Download the data from local file:
 
 ```{r:published download}
 published <- read.delim("published_rpkms.txt",sep=" ")
+
 sampleinfo_published <- read.table("sample_info_published.txt",header=TRUE)
 ```
 
-The published FPKM values are first filtered by removing all lines where FPKM is less or equal to 0.01 in all samples
+The published FPKM values are first filtered by removing all lines where FPKM is less or equal to 0.01 in all samples:
 
 ```{r:published filter zeros}
 
@@ -235,7 +236,7 @@ published.nozero <- published[-which(rowSums(published[,])<=0.01),]
 
 ```
 
-Heatmap of Spearman correlations between published expression profiles (# genes = 13,323)
+Heatmap of Spearman correlations between published expression profiles (# genes = 13,323):
 
 ```{r:published heatmap spearman}
 
@@ -243,9 +244,7 @@ pheatmap(cor(published.nozero, method="spearman"))
 
 ```
 
-The brain samples are in a separate cluster, whereas the heart and kidney ones are intermixed.
-
-Alternatively, one could use Pearson correlation:
+Alternatively, one could use Pearson correlation (not shown in paper):
 
 ```{r:published heatmap pearson}
 
@@ -257,15 +256,21 @@ PCA analysis of published FPKM values
 
 ```{r:published PCA}
 
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
-
+colors <- c("indianred", "dodgerblue", "forestgreen",
+            "indianred", "dodgerblue",
+            "indianred", "dodgerblue", "forestgreen", 
+            "indianred", "dodgerblue", "forestgreen")
+  
 p <- prcomp(t(published.nozero))
+rownames(p$x) <- c(rep("HPA",3),rep("AltIso",2),rep("GTEx",3),rep("Atlas",3))
 
-plot(p$x[,1],p$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"),main="Published FPKM values \n n=13323")
-textxy(p$x[,1],p$x[,2],labs=rownames(p$x))
+plot(p$x[,1],p$x[,2],pch=20,cex=1.5,col=colors,xlab=paste("PC1 58% of variance"),ylab=paste("PC2 13% of variance"),main="Published FPKM/RPKM values \n n=13,323")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 
-plot(p$x[,2],p$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM values \n n=13323")
-textxy(p$x[,2],p$x[,3],labs=rownames(p$x))
+#plotting PC2 vs PC3 (not shown in paper):
+plot(p$x[,2],p$x[,3],pch=20,cex=1.5,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM/RPKM values \n n=13,323")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+
 ```
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
@@ -276,14 +281,14 @@ par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
   	if (i<j){ 
-		plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Published FPKM values \n n=13323")
+		plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Published FPKM values \n n=13,323")
 		}
 	}
 }
 
 ```
 
-Look a bit closer at PCs 1-3 in prcomp: (not shown in paper)
+Look a bit closer at PCs 1-3 in prcomp:
 
 ```{r:published PC 1-3}
 
@@ -389,13 +394,11 @@ layout <- rep(meta$Readtype, each=nrow(published.nozero))
 raw <- rep(meta$NumberRaw, each=nrow(published.nozero))
 mapped <- rep(meta$Numbermapped, each=nrow(published.nozero))
 data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(RPKM ~ study + nraw + layout + prep + tissue, data=data)
+fit <- lm(RPKM ~ layout + prep + nraw + study + tissue, data=data)
 a <- anova(fit)
-maxval = 3000
+maxval = 100
 
-barplot(a$"F value"[-7],names.arg=rownames(a)[-7],main="Anova F score, Raw RPKM",ylim=c(0,maxval))
-print(a)
+barplot(100*a$"Sum Sq"[1:5]/sum(a$"Sum Sq"[1:5]),names.arg=rownames(a[1:5,]),main="Anova, published FPKM/RPKM values",ylim=c(0,maxval))
 
 ```
 
@@ -408,7 +411,7 @@ published.log <- log2(published.nozero + pseudo)
 
 ```
 
-Heatmap with log2 values:
+Heatmap of Spearman correlations between published expression profiles with log2 values:
 
 ```{r:published log heatmap spearman}
 
@@ -416,19 +419,22 @@ pheatmap(cor(published.log),method="spearman")
 
 ```
 
-PCA analysis of log2 published FPKM values
+PCA analysis of log2 published FPKM values:
 
 ```{r:published log PCA}
 
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+colors <- c("indianred", "dodgerblue", "forestgreen",
+            "indianred", "dodgerblue",
+            "indianred", "dodgerblue", "forestgreen", 
+            "indianred", "dodgerblue", "forestgreen")
 
 p.log <- prcomp(t(published.log))
 
-plot(p.log$x[,1],p.log$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"),main="log2 Published FPKM values \n n=13323")
-textxy(p.log$x[,1],p.log$x[,2],labs=rownames(p.log$x))
+plot(p.log$x[,1],p.log$x[,2],pch=20,col=colors,xlab=paste("PC1 31% of variance"),ylab=paste("PC2 27% of variance"),main="log2 Published FPKM/RPKM values \n n=13,323")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 
-plot(p.log$x[,2],p.log$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="log2 Published FPKM values \n n=13323")
-textxy(p.log$x[,2],p.log$x[,3],labs=rownames(p.log$x))
+plot(p.log$x[,2],p.log$x[,3],pch=20,col=colors,xlab=paste("PC2 27% of variance"),ylab=paste("PC3 19% of variance"),main="log2 Published FPKM values \n n=13,323")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 
 ```
 
@@ -536,19 +542,19 @@ ENSG00000175206        NPPA    6693.0       8.1        0.1       193.69         
 To further validate the above results, indicating that tissue specificity appears mainly in PC 2 and 3, we will extract the 500 genes with highest loadings in each component and plot the corresponding published FPKM values in a heatmap:
 
 ```{r:published log top 500 loadings heatmap}
-     
+    
      load.pc1 <- abs(p.log$rotation[,1])[order(abs(p.log$rotation[,1]),decreasing=TRUE)]
-     top.pc1 <- names(load.pc1[1:500])
-     pheatmap(cor(published[top.pc1,]),method="spearman")
+     top.pc1 <- names(load.pc1[1:500]) 
 
      load.pc2 <- abs(p.log$rotation[,2])[order(abs(p.log$rotation[,2]),decreasing=TRUE)]
      top.pc2 <- names(load.pc2[1:500])
-     pheatmap(cor(published[top.pc2,]),method="spearman")
-    
+
      load.pc3 <- abs(p.log$rotation[,3])[order(abs(p.log$rotation[,3]),decreasing=TRUE)]
      top.pc3 <- names(load.pc3[1:500])
-     pheatmap(cor(published[top.pc3,]),method="spearman")
 
+     pheatmap(cor(published[top.pc1,]),method="spearman")
+     pheatmap(cor(published[top.pc2,]),method="spearman")
+     pheatmap(cor(published[top.pc3,]),method="spearman")
 ```
 
 Try Anova on a "melted" expression matrix with logged values and some metadata:
@@ -565,17 +571,14 @@ layout <- rep(meta$Readtype, each=nrow(published.log))
 raw <- rep(meta$NumberRaw, each=nrow(published.log))
 mapped <- rep(meta$Numbermapped, each=nrow(published.log))
 data <- data.frame(n, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(RPKM ~ study + nraw + layout + prep + tissue, data=data)
-a <- anova(fit)
-maxval = 3000
+fit <- lm(RPKM ~ layout + prep + nraw + study + tissue, data=data)
+b <- anova(fit)
+maxval = 100
 
-barplot(a$"F value"[-7],names.arg=rownames(a)[-7],main="Anova F score, Raw RPKM",ylim=c(0,maxval))
-print(a)
-
+barplot(100*b$"Sum Sq"[1:5]/sum(b$"Sum Sq"[1:5]),names.arg=rownames(a[1:5,]),main="Anova, log2 published FPKM/RPKM values",ylim=c(0,maxval))
 ```
 
-Combat analysis is performed on logged values (n=13,323)
+Combat analysis is performed on log2 values (n=13,323):
 
 ```{r:published log combat}
 meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas",3)),tissue=c("Heart","Brain","Kidney","Heart","Brain","Heart","Brain","Kidney","Heart","Brain","Kidney"))
@@ -589,7 +592,7 @@ write.table(combat, file="published_rpkms_combat_log2.txt", quote=F)
 
 ```
 
-Heatmap of Spearman correlations between published expression profiles after combat run (# genes = 13,323)
+Heatmap of Spearman correlations between published expression profiles after combat run (# genes = 13,323):
 
 ```{r:published log combat heatmap spearman}
 
@@ -597,7 +600,7 @@ pheatmap(cor(combat, method="spearman"))
 
 ```
 
-Alternatively, one could use Pearson correlation:
+Alternatively, one could use Pearson correlation (not shown in paper):
 
 ```{r:published log combat heatmap pearson}
 
@@ -605,15 +608,20 @@ pheatmap(cor(combat))
 
 ```
 
-PCA analysis of published FPKM values after combat run
+PCA analysis of published FPKM values after combat run:
 
 ```{r:published log combat PCA}
 
-colors <- c(1, 2, 3, 1, 2, 1, 2, 3, 1, 2, 3)
+colors <- c("indianred", "dodgerblue", "forestgreen",
+            "indianred", "dodgerblue",
+            "indianred", "dodgerblue", "forestgreen", 
+            "indianred", "dodgerblue", "forestgreen")
 
 p.combat <- prcomp(t(combat))
 
-plot(p.combat$x[,1],p.combat$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"),main="Published FPKM values \n COMBAT \n n=13323")
+plot(p.combat$x[,1],p.combat$x[,2],pch=20,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 38% of variance"),main="Published FPKM values \n COMBAT \n n=13,323")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+
 
 plot(p.combat$x[,2],p.combat$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM values \n COMBAT \n n=13323")
 
@@ -681,20 +689,26 @@ Revisit Anova with combated values.
 
 ```{r:published log combat anova}
 
-m <- melt(combat)
-colnames(m) <- c("sample_ID","combat")
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-fit <- lm(combat ~ study + nraw + layout + prep + tissue, data=data)
+o <- melt(combat)
+colnames(o) <- c("sample_ID","combat")
+meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
+rownames(meta) <- colnames(combat)
+tissue <- rep(meta$Tissue, each=nrow(combat))
+study <- rep(meta$Study, each=nrow(combat))
+prep <- rep(meta$Preparation, each=nrow(combat))
+layout <- rep(meta$Readtype, each=nrow(combat))
+raw <- rep(meta$NumberRaw, each=nrow(combat))
+mapped <- rep(meta$Numbermapped, each=nrow(combat))
+data <- data.frame(o, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
+fit <- lm(combat ~ layout + prep + nraw + study + tissue, data=data)
 c <- anova(fit)
+maxval = 100
 
-maxval <- 500
-barplot(c$"F value"[-7],names.arg=rownames(c)[-7],main="Anova F score, Combat",ylim=c(0,maxval))
-
-print(c)
+barplot(100*c$"Sum Sq"[1:5]/sum(c$"Sum Sq"[1:5]),names.arg=rownames(c[1:5,]),main="Anova Combat",ylim=c(0,maxval))
 
 ```
 
-Comparing FPKMs for FASTQ files reprocessed with TopHat and Cufflinks
+Comparing FPKMs for FASTQ files reprocessed with TopHat and Cufflinks:
 
 ```{r:cufflinks download data}
 
@@ -704,7 +718,7 @@ sampleinfo_cufflinks <- read.delim("sample_info_reprocessed.txt")
 
 ```
 
-First, we will restrict the data set to only include protein coding genes using the ensembl based R package biomaRt
+First, we will restrict the data set to only include protein coding genes using the ensembl based R package biomaRt:
 
 ```{r:cufflinks filter protein coding}
 
@@ -729,31 +743,9 @@ Let's remove all lines where FPKM is close to zero in all samples before we proc
 
 cufflinks_pc_nozero <- cufflinks_pc[-which(rowSums(cufflinks_pc[,3:16])<=0.01),]
 
-#write.table(cufflinks_pc_nozero, file="cufflinks_pc_nozero.txt", quote=F)
-#cufflinks_pc_nozero <- read.table(file="cufflinks_fpkm_proteincoding_nozero.txt")
-
 ```
 
-And let's also restrict the data to not include mitochondrially encoded genes: 
-
-```{r:cufflinks filter mitochondria}
-
-gene_ids <- as.vector(cufflinks_pc_nozero[,1])
-
-ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
-
-gene_type <- getBM(attributes=c("ensembl_gene_id", "chromosome_name"), 
-                   filters = "ensembl_gene_id",
-                   values=gene_ids,
-                   mart=ensembl)
-
-mt <- subset(gene_type[,1],gene_type[,2]=="MT")
-
-cufflinks_nomt <- cufflinks_pc_nozero[-match(mt,cufflinks_pc_nozero[,1]),]
-
-```
-
-Heatmap of Spearman correlations between reprocessed expression profiles (# genes = 19,475)
+Heatmap of Spearman correlations between reprocessed expression profiles (# genes = 19,475):
 
 ```{r:cufflinks heatmap spearman}
 
@@ -761,9 +753,7 @@ pheatmap(cor(cufflinks_pc_nozero[,3:16], method="spearman"))
 
 ```
 
-The brain samples are in a separate cluster, whereas the heart and kidney ones are intermixed.
-
-Alternatively, one could use Pearson correlation:
+Alternatively, one could use Pearson correlation (not shown in paper):
 
 ```{r:cufflinks heatmap pearson}
 
@@ -771,30 +761,37 @@ pheatmap(cor(cufflinks_pc_nozero[,3:16]))
 
 ```
 
-Let's look at a few PCA plots. 
+Let's look at a few PCA plots:
 
 ```{r:cufflinks PCA}
-
-colors <- c(2,1,3,2,1,3,2,1,3,2,1,3,2,1)
 
 cufflinks_fpkms <- cufflinks_pc_nozero[,3:16]
 rownames(cufflinks_fpkms) <- cufflinks_pc_nozero[,1]
 
 p.cufflinks <- prcomp(t(cufflinks_fpkms))
 
-plot(p.cufflinks$x[,1],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"),main="Reprocessed FPKM values \n n=19475")
-textxy(p.cufflinks$x[,1],p.cufflinks$x[,2],labs=rownames(p.cufflinks$x))
+colors <- c("dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred")          
+
+plot(p.cufflinks$x[,1],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 87% of variance"),ylab=paste("PC2 7.7% of variance"),main="Reprocessed FPKM values \n n=19,475")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 
 plot(p.cufflinks$x[,2],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Reprocessed FPKM values \n n=19475")
-textxy(p.cufflinks$x[,2],p.cufflinks$x[,3],labs=rownames(p.cufflinks$x))
 
 ```
 
-We can plot all pairwise combinations of principal components 1 to 5:
+We can plot all pairwise combinations of principal components 1 to 5 (not shown in paper):
 
 ```{r:cufflinks PCA pairwise}
 
-colors <- c(2,1,3,2,1,3,2,1,3,2,1,3,2,1)
+colors <- c("dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred")
 
 par(mfrow=c(4,4))
 for (i in 1:6){
@@ -807,7 +804,7 @@ for (i in 1:6){
 
 ```
 
-Look at PCA loadings for PC1-3
+Look at PCA loadings for PC1-3:
 
 ```{r:cufflinks PC 1-3}
     
@@ -878,165 +875,25 @@ ENSG00000228253     MT-ATP8      3.59405e+04 1.25506e+04   29657.800 5519.300000
  
 All mitochondrially encoded genes have relatively high expresseion levels, FPKM values of several thousands.
 
-Let´s repeat this analysis but this time not including the mito genes:
-
-```{r:PCA without mitochondrially encoded genes}
-
-cufflinks_fpkms_nomt <- cufflinks_nomt[,3:16]
-rownames(cufflinks_fpkms_nomt) <- cufflinks_nomt[,1]
-
-p.cufflinks.nomt <- prcomp(t(cufflinks_fpkms_nomt))
-
-plot(p.cufflinks.nomt$x[,1],p.cufflinks.nomt$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"),main="Reprocessed FPKM values no mito \n n=19475")
-textxy(p.cufflinks.nomt$x[,1],p.cufflinks.nomt$x[,2],labs=rownames(p.cufflinks.nomt$x))
-
-plot(p.cufflinks.nomt$x[,2],p.cufflinks.nomt$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Reprocessed FPKM values no mito \n n=19475")
-textxy(p.cufflinks.nomt$x[,2],p.cufflinks.nomt$x[,3],labs=rownames(p.cufflinks.nomt$x))
-
-```
-
-And let's look at the first three components without the mito genes:
-
-```{r:cufflinks PC 1-3 without mitochondrially encoded genes}
-    
-      load.pc1 <- p.cufflinks.nomt$rotation[,1][order(p.cufflinks.nomt$rotation[,1])]
-      extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
-      
-      extreme.pc1.ensg <- names(extreme.pc1)
-      extreme.pc1.symbols <- getBM(attributes=c("ensembl_gene_id", "hgnc_symbol"), 
-                           filters = "ensembl_gene_id",
-                           values=extreme.pc1.ensg,
-                           mart=ensembl)
-      
-      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (Cufflinks FPKM without mito genes)")
-      
-      load.pc2 <- p.cufflinks.nomt$rotation[,2][order(p.cufflinks.nomt$rotation[,2])]
-      extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
-      
-      extreme.pc2.ensg <- names(extreme.pc2)
-      extreme.pc2.symbols <- getBM(attributes=c("ensembl_gene_id", "hgnc_symbol"), 
-                           filters = "ensembl_gene_id",
-                           values=extreme.pc2.ensg,
-                           mart=ensembl)
-      
-      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (Cufflinks FPKM without mito genes)")
-      
-      load.pc3 <- p.cufflinks.nomt$rotation[,3][order(p.cufflinks.nomt$rotation[,3])]
-      extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
-      
-      extreme.pc3.ensg <- names(extreme.pc3)
-      extreme.pc3.symbols <- getBM(attributes=c("ensembl_gene_id", "hgnc_symbol"), 
-                           filters = "ensembl_gene_id",
-                           values=extreme.pc3.ensg,
-                           mart=ensembl)
-      
-      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (Cufflinks FPKM without mito genes)")
-      
-```
-
-PC1:
-ensembl_gene_id     hgnc_symbol  EoGE_brain   EoGE_heart EoGE_kidney Atlas_brain Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart BodyMap_kidney HPA_brain
-ENSG00000060138        YBX3     9.072460      225.31100   2.43229e+02  2266.43000 29731.30000  2030.770000     49.521000     320.10900     123.268000   17.6349
-ENSG00000087086         FTL     649.714000    401.25200   8.33284e+03    10.07880    26.61130    75.759900    482.139000     369.82500    2650.190000  524.2920
-ENSG00000111245        MYL2     0.693233      4082.36000  2.47695e-01     0.00000   317.58200     0.000000      0.187680     462.30200       0.000000    0.0000
-ENSG00000118194       TNNT2     1371.960000   5534.68000  7.19101e+03   141.29900  1082.37000   383.309000   1244.870000    2252.56000    2233.280000 1888.7900
-ENSG00000118785        SPP1     325.661000    0.90371     5.74676e+03   164.96600    14.18270   871.652000    541.821000       9.02186    5605.570000  190.9560
-ENSG00000120885         CLU     5495.280000   275.90600   2.84596e+03  3538.52000   170.58400   330.082000   2412.680000      94.74010     558.195000 5895.8000
-ENSG00000130203        APOE     2829.730000   8.54714     0.00000e+00   474.81000     2.27603     0.328358   1993.670000       3.17969       0.266083 1789.8700
-ENSG00000140416        TPM1     803.945000    65.79370    7.06253e+03    97.18450     9.90770   131.672000    236.936000       7.50127     318.506000  702.4940
-ENSG00000175084         DES     1848.190000   9.74111     5.94327e+00   934.18000     0.96437     5.572650   2412.650000       1.40515       0.452636 2752.7200
-ENSG00000197971         MBP     2.841210      451.67200   3.93243e-01     0.69976   425.58600     0.160330      0.912246     262.60000       0.306539   11.0686
-ENSG00000198125          MB     6099.710000   9.18006     2.85108e+01  2304.66000    12.39860    23.004400   3361.860000       6.55905      12.862700 2097.8600
-ENSG00000211445        GPX3     30.923500     542.11900   1.89893e+04    11.29730   392.65900  2265.160000     28.721700     366.15000    3920.100000   83.5414
-                  HPA_heart   HPA_kidney     AltIso_brain   AltIso_heart
-ENSG00000060138   208.79000   41.417400      24.58550       308.34600
-ENSG00000087086   790.22800   4210.010000    598.34800      483.14100
-ENSG00000106631   10010.90000 0.000000       0.00000        851.30800
-ENSG00000109846   2283.73000  359.345000     2399.48000     4851.69000
-ENSG00000118785   4.53991     1718.990000    225.45600      15.52530
-ENSG00000120885   214.37800   729.142000     6333.52000     206.25600
-ENSG00000123560   13.69040    0.236948       2404.65000      3.63968
-ENSG00000130203   17.54600    1933.390000    260.67300      21.36280
-ENSG00000131095   2.58878     0.572929       1472.64000     11.55800
-ENSG00000175206   25526.30000 0.000000       3.20302        737.39000
-ENSG00000197971   10.46300    19.881500      15257.10000    11.95440
-ENSG00000211445   729.49300   8203.310000    23.92920       408.31700
-
-PC2:
-ensembl_gene_id hgnc_symbol EoGE_brain EoGE_heart EoGE_kidney Atlas_brain Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart BodyMap_kidney   HPA_brain
-ENSG00000060138        YBX3   9.072460   225.3110  243.229000 2.26643e+03  29731.3000  2030.770000    49.5210000      320.1090     123.268000  17.6349000
-ENSG00000111245        MYL2   0.000000  9422.8000    0.139516 3.66549e-01   2115.7100     2.476910     0.5077890     6846.9700       0.000000   0.0000000
-ENSG00000118194       TNNT2  37.159000  6316.8900  110.142000 1.45246e+01  18168.9000    69.131600    11.4161000     2903.3100      23.742900   6.3023500
-ENSG00000140416        TPM1  65.427500  3823.8900  147.337000 2.52634e+02   9128.3100   367.750000    42.4969000     3597.1100     131.526000  53.9851000
-ENSG00000148677      ANKRD1   0.000000   400.9800    0.000000 4.71658e-01   4320.4400     0.438835     0.0464207      795.3910       0.278846   0.0494568
-ENSG00000159251       ACTC1   0.781353  8115.2700    2.472130 4.59502e-01    306.7440     0.362615     0.4032380     2515.7200       4.924260   0.2033750
-ENSG00000161281      COX7A1 345.311000  4994.5100  859.579000 2.13994e-01     31.8037     0.823298    25.8243000      839.2290      60.391300   7.1306700
-ENSG00000166598     HSP90B1 102.055000    62.3045  197.881000 1.93476e+03   5957.2700  2593.600000   105.4160000       95.1998     415.542000 144.1290000
-ENSG00000175084         DES   1.787960 13049.8000    4.611970 5.34511e+00   1877.9900     6.613140     7.8117800     3316.1000      28.840000   0.3434410
-ENSG00000175206        NPPA   2.841210   451.6720    0.393243 6.99760e-01    425.5860     0.160330     0.9122460      262.6000       0.306539  11.0686000
-ENSG00000198125          MB   0.422366  6146.6400    1.012190 8.95293e-02    645.0390     0.000000     0.2452290     4562.4000       0.297123   0.7569730
-ENSG00000257017          HP   2.282470    23.7432   13.078000 3.54072e+00   2589.7100   921.400000     0.8874070       12.6242      26.685000   0.1724530
-                  HPA_heart  HPA_kidney AltIso_brain AltIso_heart
-ENSG00000060138   208.79000  41.4174000    24.585500     308.3460
-ENSG00000111245     5.94298   0.0000000     1.764610   15922.7000
-ENSG00000118194  3837.71000  19.3001000    26.174400   12212.1000
-ENSG00000140416  3278.81000 106.2250000    42.586900    3374.6400
-ENSG00000148677  1857.88000   0.0797934     0.314333     793.0480
-ENSG00000159251  4205.22000   0.4576150     1.214480    1725.7600
-ENSG00000161281   434.92000  28.7555000   123.654000   10314.4000
-ENSG00000166598   100.78000 192.4100000    66.324900      66.6813
-ENSG00000175084  2852.80000  15.3258000    12.444400   11200.5000
-ENSG00000175206 25526.30000   0.0000000     3.203020     737.3900
-ENSG00000198125  6000.91000   0.6131480     0.809898    7280.0900
-ENSG00000257017     5.04010   0.0000000     0.715922      16.9893
-
-PC3:
-ensembl_gene_id hgnc_symbol  EoGE_brain EoGE_heart EoGE_kidney Atlas_brain Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart BodyMap_kidney HPA_brain
-ENSG00000060138        YBX3    9.072460  225.31100 2.43229e+02  2266.43000 29731.30000  2030.770000     49.521000     320.10900     123.268000   17.6349
-ENSG00000087086         FTL  649.714000  401.25200 8.33284e+03    10.07880    26.61130    75.759900    482.139000     369.82500    2650.190000  524.2920
-ENSG00000106631        MYL7    0.693233 4082.36000 2.47695e-01     0.00000   317.58200     0.000000      0.187680     462.30200       0.000000    0.0000
-ENSG00000109846       CRYAB 1371.960000 5534.68000 7.19101e+03   141.29900  1082.37000   383.309000   1244.870000    2252.56000    2233.280000 1888.7900
-ENSG00000118785        SPP1  325.661000    0.90371 5.74676e+03   164.96600    14.18270   871.652000    541.821000       9.02186    5605.570000  190.9560
-ENSG00000120885         CLU 5495.280000  275.90600 2.84596e+03  3538.52000   170.58400   330.082000   2412.680000      94.74010     558.195000 5895.8000
-ENSG00000123560        PLP1 2829.730000    8.54714 0.00000e+00   474.81000     2.27603     0.328358   1993.670000       3.17969       0.266083 1789.8700
-ENSG00000130203        APOE  803.945000   65.79370 7.06253e+03    97.18450     9.90770   131.672000    236.936000       7.50127     318.506000  702.4940
-ENSG00000131095        GFAP 1848.190000    9.74111 5.94327e+00   934.18000     0.96437     5.572650   2412.650000       1.40515       0.452636 2752.7200
-ENSG00000175206        NPPA    2.841210  451.67200 3.93243e-01     0.69976   425.58600     0.160330      0.912246     262.60000       0.306539   11.0686
-ENSG00000197971         MBP 6099.710000    9.18006 2.85108e+01  2304.66000    12.39860    23.004400   3361.860000       6.55905      12.862700 2097.8600
-ENSG00000211445        GPX3   30.923500  542.11900 1.89893e+04    11.29730   392.65900  2265.160000     28.721700     366.15000    3920.100000   83.5414
-                  HPA_heart  HPA_kidney AltIso_brain AltIso_heart
-ENSG00000060138   208.79000   41.417400     24.58550    308.34600
-ENSG00000087086   790.22800 4210.010000    598.34800    483.14100
-ENSG00000106631 10010.90000    0.000000      0.00000    851.30800
-ENSG00000109846  2283.73000  359.345000   2399.48000   4851.69000
-ENSG00000118785     4.53991 1718.990000    225.45600     15.52530
-ENSG00000120885   214.37800  729.142000   6333.52000    206.25600
-ENSG00000123560    13.69040    0.236948   2404.65000      3.63968
-ENSG00000130203    17.54600 1933.390000    260.67300     21.36280
-ENSG00000131095     2.58878    0.572929   1472.64000     11.55800
-ENSG00000175206 25526.30000    0.000000      3.20302    737.39000
-ENSG00000197971    10.46300   19.881500  15257.10000     11.95440
-ENSG00000211445   729.49300 8203.310000     23.92920    408.31700
-
 Anova analysis of different batch factors:
 
 ```{r:cufflinks anova}
 
-o <- melt(cufflinks_pc_nozero)
-colnames(o) <- c("ENSG","Gene","sample_ID","Cuff_FPKM")
-meta <- data.frame(tissue=c("brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart","kidney","brain","heart"),study=c("EoGE","EoGE","EoGE","Atlas","Atlas","Atlas","BodyMap","BodyMap","BodyMap","HPA","HPA","HPA","AltIso","AltIso"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
-rownames(meta) <- colnames(f_pc_nozero)[3:16]
-tissue <- rep(meta$tissue, each=nrow(cufflinks_pc_nozero))
-study <- rep(meta$study, each=nrow(cufflinks_pc_nozero))
-prep <- rep(meta$prep, each=nrow(cufflinks_pc_nozero))
-layout <- rep(meta$layout, each=nrow(cufflinks_pc_nozero))
-data <- data.frame(o, tissue=tissue, study=study, prep=prep, layout=layout)
-
-#subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(Cuff_FPKM ~ prep + layout + study + tissue, data=data)
+p <- melt(cufflinks_fpkms)
+colnames(p) <- c("sample_ID","Cuff_FPKM")
+meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
+rownames(meta) <- colnames(cufflinks_fpkms)
+tissue <- rep(meta$Tissue, each=nrow(cufflinks_fpkms))
+study <- rep(meta$Study, each=nrow(cufflinks_fpkms))
+prep <- rep(meta$Preparation, each=nrow(cufflinks_fpkms))
+layout <- rep(meta$Readtype, each=nrow(cufflinks_fpkms))
+nraw <- rep(meta$NumberRaw, each=nrow(cufflinks_fpkms))
+data <- data.frame(p, tissue=tissue, study=study, prep=prep, layout=layout, nraw=nraw)
+fit <- lm(Cuff_FPKM ~ layout + prep + nraw + study + tissue, data=data)
 d <- anova(fit)
-maxval = 3000
-barplot(d$"F value"[-5],names.arg=rownames(d)[-5],main="Anova F score, Cufflinks FPKM",ylim=c(0,maxval))
+maxval = 100
+
+barplot(100*d$"Sum Sq"[1:5]/sum(d$"Sum Sq"[1:5]),names.arg=rownames(d[1:5,]),main="Anova, Cufflinks FPKM",ylim=c(0,maxval))
 
 ```
 
@@ -1045,12 +902,11 @@ Try log2 tranform the reprocessed FPKM values:
 ```{r:cufflinks log transform}
 
 pseudo <- 1
-cufflinks_log <- log2(cufflinks_pc_nozero[,3:16] + pseudo)
-rownames(cufflinks_log) <- cufflinks_pc_nozero[,1]
+cufflinks_log <- log2(cufflinks_fpkms + pseudo)
 
 ```
 
-Heatmap with log2 values:
+Heatmap of Spearman correlations between log2 reprocessed cufflinks FPKM values:
 
 ```{r:cufflinks log heatmap spearman }
 
@@ -1058,20 +914,24 @@ pheatmap(cor(cufflinks_log) ,method="spearman")
 
 ```
 
-PCA analysis of log2 reprocessed cufflinks FPKM values
+PCA analysis of log2 reprocessed cufflinks FPKM values:
 
 ```{r:cufflinks log PCA}
 
-colors <- c(2,1,3,2,1,3,2,1,3,2,1,3,2,1)
+colors <- c("dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred")          
 
 p.log.cufflinks <- prcomp(t(cufflinks_log))
 
-plot(p.log.cufflinks$x[,1],p.log.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"),main="log2 reprocessed cufflinks FPKM values \n n=19475")
-textxy(p.log.cufflinks$x[,1],p.log.cufflinks$x[,2],labs=rownames(p.log.cufflinks$x))
+plot(p.log.cufflinks$x[,1],p.log.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 33% of variance"),ylab=paste("PC2 25% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 
-plot(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="log2 reprocessed cufflinks FPKM values \n n=19475")
-textxy(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],labs=rownames(p.log.cufflinks$x))
 
+plot(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],pch=20,col=colors,xlab=paste("PC2 25% of variance"),ylab=paste("PC3 22% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
@@ -1223,39 +1083,34 @@ To further validate the above results, indicating that tissue specificity appear
 
      load.pc1 <- abs(p.log.cufflinks$rotation[,1])[order(abs(p.log.cufflinks$rotation[,1]),decreasing=TRUE)]
      top.pc1 <- names(load.pc1[1:500])
-     pheatmap(cor(cufflinks_values[top.pc1,]),method="spearman")
-
      load.pc2 <- abs(p.log.cufflinks$rotation[,2])[order(abs(p.log.cufflinks$rotation[,2]),decreasing=TRUE)]
      top.pc2 <- names(load.pc2[1:500])
-     pheatmap(cor(cufflinks_values[top.pc2,]),method="spearman")
-    
      load.pc3 <- abs(p.log.cufflinks$rotation[,3])[order(abs(p.log.cufflinks$rotation[,3]),decreasing=TRUE)]
      top.pc3 <- names(load.pc3[1:500])
+     
+     pheatmap(cor(cufflinks_values[top.pc1,]),method="spearman")
+     pheatmap(cor(cufflinks_values[top.pc2,]),method="spearman")
      pheatmap(cor(cufflinks_values[top.pc3,]),method="spearman")
+
 ```
     
 Try Anova on a "melted" expression matrix with logged cufflinks values and some metadata:
 
 ```{r:cufflinks log anova}
-n <- melt(cufflinks_log[,])
-colnames(n) <- c("sample_ID","FPKM")
+q <- melt(cufflinks_log[,])
+colnames(q) <- c("sample_ID","logFPKM")
 meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
-rownames(meta) <- colnames(cufflinks_log[,])
+rownames(meta) <- colnames(cufflinks_log)
 tissue <- rep(meta$Tissue, each=nrow(cufflinks_log))
 study <- rep(meta$Study, each=nrow(cufflinks_log))
 prep <- rep(meta$Preparation, each=nrow(cufflinks_log))
 layout <- rep(meta$Readtype, each=nrow(cufflinks_log))
-raw <- rep(meta$NumberRaw, each=nrow(cufflinks_log))
-mapped <- rep(meta$Numbermapped, each=nrow(cufflinks_log))
-data <- data.frame(n, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(FPKM ~ study + nraw + layout + prep + tissue, data=data)
-b <- anova(fit)
-maxval = 3000
+data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout)
+fit <- lm(Cuff_FPKM ~ layout + prep + nraw + study + tissue, data=data)
+e <- anova(fit)
+maxval = 100
 
-barplot(b$"F value"[-7],names.arg=rownames(b)[-7],main="Anova F score, Cufflinks FPKM",ylim=c(0,maxval))
-print(b)
-
+barplot(100*e$"Sum Sq"[1:5]/sum(e$"Sum Sq"[1:5]),names.arg=rownames(e[1:5,]),main="Anova, Cufflinks log2 FPKM",ylim=c(0,maxval))
 ```
 
 Combat analysis for removal of batch effects (n=19,475):
@@ -1269,7 +1124,8 @@ design <- model.matrix(~as.factor(tissue),data=meta)
 
 combat.cufflinks <- ComBat(dat=cufflinks_log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
 rownames(combat.cufflinks) <- rownames(cufflinks_log)
-write.table(combat, file="reprocessed_rpkms_combat_log2.txt", quote=F)
+
+#write.table(combat, file="reprocessed_rpkms_combat_log2.txt", quote=F)
 
 ```
 
@@ -1278,19 +1134,20 @@ Let's see how the correlation heatmap and PCA plots look after correction for ba
 ```{r:cufflinks log combat heatmap spearman}
 
 pheatmap(cor(combat.cufflinks),method="spearman")
+
 ```
+
+PCA analysis on reprocessed cufflinks FPKM values after ComBat run:
 
 ```{r:cufflinks log combat PCA}
 
-colors <- c(2,1,3,2,1,3,2,1,3,2,1,3,2,1)
-
 p.combat.cufflinks <- prcomp(t(combat.cufflinks))
 
-plot(p.combat.cufflinks$x[,1],p.combat.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1"),ylab=paste("PC2"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
-textxy(p.combat.cufflinks$x[,1],p.combat.cufflinks$x[,2],labs=rownames(p.combat.cufflinks$x))
+plot(p.combat.cufflinks$x[,1],p.combat.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 37% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 
-plot(p.combat.cufflinks$x[,2],p.combat.cufflinks$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
-textxy(p.combat.cufflinks$x[,2],p.combat.cufflinks$x[,3],labs=rownames(p.combat.cufflinks$x))
+plot(p.combat.cufflinks$x[,2],p.combat.cufflinks$x[,3],pch=20,col=colors,xlab=paste("PC2 37% of variance"),ylab=paste("PC3 2% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 
 ```
 
@@ -1396,202 +1253,25 @@ ENSG00000105697 - HAMP - hepcidin antimicrobial peptide - brain
 ENSG00000129824 - RPS4Y1 - ribosomal protein S4, Y-linked 1 - no clear tissue specificity
 ENSG00000205116 - TMEM88B - transmembrane protein 88B - brain
 
+Revisit ANOVA analysis on reprocessed Cufflinks FPKM values after ComBat run:
 
 ```{r:cufflinks log combat anova}
-o <- melt(combat.cufflinks[,])
-colnames(o) <- c("sample_ID","FPKM")
+
+q <- melt(combat.cufflinks)
+colnames(q) <- c("sample_ID","combat")
 meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
-rownames(meta) <- colnames(cufflinks.log[,3:16])
-tissue <- rep(meta$Tissue, each=nrow(cufflinks.log))
-study <- rep(meta$Study, each=nrow(cufflinks.log))
-prep <- rep(meta$Preparation, each=nrow(cufflinks.log))
-layout <- rep(meta$Readtype, each=nrow(cufflinks.log))
-raw <- rep(meta$NumberRaw, each=nrow(cufflinks.log))
-mapped <- rep(meta$Numbermapped, each=nrow(cufflinks.log))
-data <- data.frame(o, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-subset <- data[sample(1:nrow(data), 1000),]
-fit <- lm(FPKM ~ study + nraw + layout + prep + tissue, data=data)
-b <- anova(fit)
-maxval = 3000
+rownames(meta) <- colnames(combat.cufflinks)
+tissue <- rep(meta$Tissue, each=nrow(combat.cufflinks))
+study <- rep(meta$Study, each=nrow(combat.cufflinks))
+prep <- rep(meta$Preparation, each=nrow(combat.cufflinks))
+layout <- rep(meta$Readtype, each=nrow(combat.cufflinks))
+raw <- rep(meta$NumberRaw, each=nrow(combat.cufflinks))
+mapped <- rep(meta$Numbermapped, each=nrow(combat.cufflinks))
+data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
+fit <- lm(combat ~ prep + nraw + layout + study + tissue, data=data)
+f <- anova(fit)
+maxval = 100
+barplot(100*f$"Sum Sq"/sum(f$"Sum Sq"),names.arg=rownames(f),main="Anova Cufflinks Combat",ylim=c(0,maxval))
 
-barplot(b$"F value"[-7],names.arg=rownames(b)[-7],main="Anova F score, Cufflinks FPKM",ylim=c(0,maxval))
-print(b)
 
 ```
-
-Let's include the raw counts that were generated with HTSeq and merge all data into a big data frame:
-
-```{r:counts download}
-library(biomaRt)
-
-counts <- read.delim("count_table.txt",row.names=1)
-
-```
-
-```{r:counts filter protein coding}
-
-ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
-
-gene_type <- getBM(attributes=c("ensembl_gene_id", "gene_biotype"), 
-                   filters = "ensembl_gene_id",
-                   values=rownames(counts),
-                   mart=ensembl)
-
-pc <- subset(gene_type[,1],gene_type[,2]=="protein_coding")
-
-counts_pc <- counts[match(pc,rownames(counts)),]
-
-colnames(counts_pc)<-c("EoGE_brain","EoGE_heart","EoGE_kidney","Atlas_brain","Atlas_heart","Atlas_kidney","BodyMap_brain","BodyMap_heart","BodyMap_kidney","HPA_brain","HPA_heart","HPA_kidney","AltIso_brain","AltIso_heart")
-
-counts_pc_nonzero <- counts_pc[-which(rowSums(counts_pc)<=0.01),]
-```
-
-First join everything into a large matrix. We have to give the columns unique names to avoid collisions.
-
-```{r:join-datasets}
-
-#published.nozero
-#cufflinks_fpkms
-
-new.colnames.published <- paste0("PUB-FPKM-",colnames(published.nozero))
-new.colnames.fpkm <- paste0("REPR-FPKM-",colnames(cufflinks_values))
-new.colnames.counts <- paste0("REPR-CNTS-",colnames(counts_pc_nonzero))
-new.colnames <- c(new.colnames.published,new.colnames.fpkm,new.colnames.counts)
-
-common.ensg.temp <- intersect(rownames(published.nozero), cufflinks_pc_nozero[,1])
-common.ensg <- intersect(common.ensg.temp, rownames(counts_pc_nonzero))
-
-data <- data.frame(published.nozero[common.ensg,], cufflinks_values[common.ensg,], counts_pc_nonzero[common.ensg,])
-colnames(data) <- new.colnames
-```
-
-Visualize the matrix with all samples processed in different ways using a heatmap and PCA with various settings.
-
-Set the colors: heart is red, brain is blue, kidney is black.
-
-```{r:setcolors}
-colorvec <- rep("black", length(new.colnames))
-colorvec[grep("heart", new.colnames)] <- "red"
-colorvec[grep("brain", new.colnames)] <- "blue"
-```
-
-```{r:visualize-bigmatrix}
-pheatmap(cor(data),method="spearman")
-
-
-
-
-p <- prcomp(t(data))
-plot(p$x[,1],p$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="Default prcomp")
-plot(p$x[,2],p$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="Default prcomp")
-
-p.sc <- prcomp(t(data),scale.=TRUE)
-plot(p.sc$x[,1],p.sc$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="Scaled prcomp")
-plot(p.sc$x[,2],p.sc$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="Scaled prcomp")
-
-p.nm <- prcomp(t(data),center=FALSE)
-plot(p.nm$x[,1],p.nm$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="prcomp without centering") # This should be equal to the plot.SVD() function
-plot(p.nm$x[,2],p.nm$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="prcomp without centering") # This should be equal to the plot.SVD() function
-
-plot.SVD(data, groups=colorvec)
-```
-
-Log transforming the whole matrix.
-
-```{r:log-trafo}
-pseudo <- 1
-data.log <- log2((data + pseudo)/1e6)
-p <- prcomp(t(data.log))
-plot(p$x[,1],p$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="log2, Default prcomp")
-plot(p$x[,2],p$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="log2, Default prcomp")
-
-p.sc <- prcomp(t(data.log),scale.=TRUE)
-plot(p.sc$x[,1],p.sc$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="log2, Scaled prcomp")
-plot(p.sc$x[,2],p.sc$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="log2, Scaled prcomp")
-
-p.nm <- prcomp(t(data.log),center=F)
-plot(p.nm$x[,1],p.nm$x[,2],pch=20,xlab="PC1",ylab="PC2",col=colorvec,main="log2, prcomp without centering") # This should be equal to the plot.SVD() function
-plot(p.nm$x[,2],p.nm$x[,3],pch=20,xlab="PC2",ylab="PC3",col=colorvec,main="log2, prcomp without centering") # This should be equal to the plot.SVD() function
-```
-
-Doing PCA on each of the three data sets in turn (logged), looking at PCs 2 and 3.
-```{r:PCA-each}
-pub.merged.log <- log2(pub.merged + pseudo)
-repr.fpkm.nonzero.log <- log2(repr.fpkm.nonzero + pseudo)
-repr.counts.nonzero.log <- log2(repr.counts.nonzero + pseudo)
-repr.counts.log <- normalize.voom(repr.counts) # voom also normalizes by lib size
-#repr.counts.log <- log2( (repr.counts+0.5)/(1e6+1))
-
-p.pub <- prcomp(t(pub.merged.log))
-cols.pub <- rep("black", length(colnames(pub.merged.log)))
-cols.pub[grep("heart",colnames(pub.merged.log))] <- "red"
-cols.pub[grep("brain",colnames(pub.merged.log))] <- "blue"
-p.fpkm <- prcomp(t(repr.fpkm.nonzero.log))
-cols.fpkm <- rep("black", length(colnames(repr.fpkm.nonzero.log)))
-cols.fpkm[grep("heart",colnames(repr.fpkm.nonzero.log))] <- "red"
-cols.fpkm[grep("brain",colnames(repr.fpkm.nonzero.log))] <- "blue"
-p.counts <- prcomp(t(repr.counts.log))
-cols.counts <- rep("black", length(colnames(repr.counts.log)))
-cols.counts[grep("heart",colnames(repr.counts.log))] <- "red"
-cols.counts[grep("brain",colnames(repr.counts.log))] <- "blue"
-
-par(mfrow=c(3,1))
-plot(p.pub$x[,2],p.pub$x[,3],pch=20,xlab="PC2",ylab="PC3",col=cols.pub,main="Published RPKMs (log2), PC 2-3") 
-plot(p.fpkm$x[,2],p.fpkm$x[,3],pch=20,xlab="PC2",ylab="PC3",col=cols.fpkm,main="Reprocessed FPKMs (log2), PC 2-3") 
-plot(p.counts$x[,2],p.counts$x[,3],pch=20,xlab="PC2",ylab="PC3",col=cols.counts,main="Reprocessed counts (log2), PC 2-3") 
-```
-Other combinations of PCs
-
-```{r:combs}
-par(mfrow=c(3,3))
-for (i in 2:4){
-for (j in 2:4){
-if (i < j){
-plot(p.pub$x[,i],p.pub$x[,j],pch=20,xlab=paste0("PC", i),ylab=paste0("PC",j),col=cols.pub,main="Published RPKMs (log2)") 
-plot(p.fpkm$x[,i],p.fpkm$x[,j],pch=20,xlab=paste0("PC", i),ylab=paste0("PC",j),col=cols.fpkm,main="Reprocessed FPKMs (log2)") 
-plot(p.counts$x[,i],p.counts$x[,j],pch=20,xlab=paste0("PC", i),ylab=paste0("PC",j),col=cols.counts,main="Reprocessed counts (log2)") 
-}}}
-```
-
-Try "blind" SVA to see what features are pulled out (3x3 scenarios)
-
-```{r:blind-sva-published}
-pheno <- read.delim("sample_info_published.txt")
-expr.nozero <- pub.merged[which(rowSums(pub.merged)>0),] # required for SVA to work?
-mod <- model.matrix(~as.factor(Tissue), data=pheno)
-mod0 <- model.matrix(~1,data=pheno)
-n.sv <- num.sv(pub.merged.log,mod,method="leek") # 8 (!)
-svobj <- sva(as.matrix(pub.merged.log),mod,mod0,n.sv=n.sv)
-```
-
-The above did not work ... What about the reprocessed ones?
-```{r:blind-sva-reprocessed}
-pheno <- read.delim("sample_info_reprocessed.txt")
-mod <- model.matrix(~as.factor(Tissue), data=pheno)
-mod0 <- model.matrix(~1,data=pheno)
-n.sv <- num.sv(repr.fpkm.nonzero.log,mod,method="leek") 
-svobj <- sva(as.matrix(repr.fpkm.nonzero.log),mod,mod0,n.sv=n.sv)
-
-l <- svobj$sv # the matrix with 3 surrogate variables
-rownames(l) <- colnames(repr.fpkm.nonzero.log)
-heatmap(l,scale="none")
-```
-
-Seems like variable 1 is preparation (r~0.9), variable 2 is study (r~-0.8), variable 3 is read type (single/paired, r~0.97)
-
-```{r:blind-sva-reprocessed-counts}
-pheno <- read.delim("sample_info_reprocessed.txt")
-mod <- model.matrix(~as.factor(Tissue), data=pheno)
-mod0 <- model.matrix(~1,data=pheno)
-n.sv <- num.sv(repr.counts.nonzero.log,mod,method="leek") 
-svobj <- sva(as.matrix(repr.counts.nonzero.log),mod,mod0,n.sv=n.sv)
-
-l <- svobj$sv # the matrix with 3 surrogate variables
-rownames(l) <- colnames(repr.fpkm.nonzero.log)
-cor(l, as.numeric(pheno$Preparation))
-cor(l, as.numeric(pheno$Study))
-cor(l, as.numeric(pheno$readlength))
-cor(l, pheno$NumberRaw)
-heatmap(l,scale="none")
-```
-The first variable is apparently correlated to raw/mapped read number (r 0.97) or just BodyMap. Even though voom should correct for library size, the BodyMap samples somehow have higher log-CPMs. The second variable appears to be preparation, and the third seems to be study. 
