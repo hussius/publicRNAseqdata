@@ -1573,3 +1573,6 @@ barplot(100*f$"Sum Sq"/sum(f$"Sum Sq"),names.arg=rownames(f),main="Anova Cufflin
 ```
 
 ![plot of chunk :cufflinks log combat anova](figure/:cufflinks log combat anova.png) 
+   
+
+
