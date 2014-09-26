@@ -26,7 +26,12 @@ library(ops)
 ```
 
 ```
-## Error: there is no package called 'ops'
+## 
+## Attaching package: 'ops'
+## 
+## The following object is masked from 'package:stats':
+## 
+##     filter
 ```
 
 ```r
@@ -1573,6 +1578,3 @@ barplot(100*f$"Sum Sq"/sum(f$"Sum Sq"),names.arg=rownames(f),main="Anova Cufflin
 ```
 
 ![plot of chunk :cufflinks log combat anova](figure/:cufflinks log combat anova.png) 
-   
-
-
