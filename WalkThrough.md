@@ -26,7 +26,12 @@ library(ops)
 ```
 
 ```
-## Error: there is no package called 'ops'
+## 
+## Attaching package: 'ops'
+## 
+## The following object is masked from 'package:stats':
+## 
+##     filter
 ```
 
 ```r
