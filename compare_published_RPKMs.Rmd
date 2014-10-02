@@ -272,7 +272,7 @@ Let's remove all lines where FPKM is close to zero in all samples before we proc
 ```{r}
 
 f.nozero <- f[-which(rowSums(f[,])<=0.01),]
-
+#write.table(flipped, file="transposed_published_rpkms.txt", col.names=F, row.names=F, quote=F, sep=",")
 ```
 
 Start by a few correlation heat maps:
@@ -304,6 +304,10 @@ pseudo <- 1
 fpkms.log <- log2(f.nozero + pseudo)
 pheatmap(cor(fpkms.log))
 write.table(fpkms.log, file="published_rpkms_log2.txt", quote=F)
+flipped <- t(fpkms.log)
+write.table(flipped, file="transposed_published_rpkms_log.txt", col.names=F, row.names=F, quote=F, sep=",")
+
+
 ```
 
 What if we drop the genes that have less than FPKM 1 on average? (not shown in paper):
@@ -504,7 +508,8 @@ Look a bit closer at PCs 1-3 in prcomp:
       
       barplot(extreme.pc3, names.arg=symbs, las=2, main="Genes w highest absolute loadings in PC3 (logRPKM)")
 
-
+loadings.3 <- p$x[,1:3]
+write.table(loadings.3,file="loadings_pub_log.txt",sep=",",quote=F,col.names=F,row.names=F)
 ```
 
 ENSG00000171560 - FGA - fibrinogen light chain. A bit inconsistent between studies. Mostly kidney specific but not in the Atlas.
