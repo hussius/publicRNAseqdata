@@ -3,22 +3,63 @@ Comparing published FPKM/RPKM values and reprocessed FPKM values.
 ========================================================
 
 Prepare by loading packages etc.
-```{r prepare}
+
+```r
 library(pheatmap)
 library(reshape)
 library(gplots)
+```
+
+```
+## KernSmooth 2.23 loaded
+## Copyright M. P. Wand 1997-2009
+## 
+## Attaching package: 'gplots'
+## 
+## The following object is masked from 'package:stats':
+## 
+##     lowess
+```
+
+```r
 library(ops)
+```
+
+```
+## 
+## Attaching package: 'ops'
+## 
+## The following object is masked from 'package:stats':
+## 
+##     filter
+```
+
+```r
 library(calibrate)
+```
+
+```
+## Loading required package: MASS
+```
+
+```r
 library(biomaRt)
 library(sva)
+```
 
+```
+## Loading required package: corpcor
+## Loading required package: mgcv
+## Loading required package: nlme
+## This is mgcv 1.8-3. For overview type 'help("mgcv-package")'.
 ```
 
 Data from four different public sources are downloaded and brain, heart and kidney samples are extracted. 
 
 Start with Human Protein Atlas (HPA):
 
-```{r:HPA download}
+
+```r
 #temp <- tempfile()
 #download.file(url="http://www.proteinatlas.org/download/rna.csv.zip",destfile=temp)
 #hpa <- read.csv(unz(temp, "rna.csv"))
@@ -35,7 +76,8 @@ Start with Human Protein Atlas (HPA):
 
 Check if the identifiers are unique and write table to file.
 
-```{r:HPA check identifiers}
+
+```r
 #length(hpa.fpkms[,1])
 #length(unique(hpa.fpkms[,1]))
 
@@ -45,7 +87,8 @@ Check if the identifiers are unique and write table to file.
 Next dataset is from the article "Alternative isoform regulation in human tissue transcriptomes.." by Wang et.al
 AltIso:
 
-```{r:AltIso download}
+
+```r
 #temp <- tempfile()
 #download.file(url="http://genes.mit.edu/burgelab/Supplementary/wang_sandberg08/hg18.ensGene.CEs.rpkm.txt",destfile=temp)
 #altiso <- read.delim(temp, sep="\t")
@@ -54,14 +97,16 @@ AltIso:
 
 There is no kidney sample here, so just use heart and brain
 
-```{r}
+
+```r
 #altiso.fpkms <- altiso[,c("X.Gene","heart","brain")]
 #colnames(altiso.fpkms) <- c("ENSG_ID", "AltIso_heart", "AltIso_brain")
 ```
 
 Check uniqueness of IDs.
 
-```{r:AltIso check identifiers}
+
+```r
 #length(altiso.fpkms[,1])
 #length(unique(altiso.fpkms[,1]))
 
@@ -73,7 +118,8 @@ Next dataset is derived from "GTEx": Genotype-Tissue Expression
 This is a big download: 337.8 Mb (as of 2014-02-04)
 We also add some code to randomly select one sample from each tissue type; there are many biological replicates in this data set.
 
-```{r:GTEx download}
+
+```r
 #temp <- tempfile()
 #download.file(url="http://www.gtexportal.org/home/rest/file/download?portalFileId=175729&forDownload=true",destfile=temp)
 #header_lines <- readLines(temp, n=2)
@@ -89,7 +135,8 @@ We also add some code to randomly select one sample from each tissue type; there
 
 The metadata table seems to contain entries that are not in the RPKM table.
 
-```{r}
+
+```r
 #samp.id <- gsub('-','.',metadata$SAMPID)
 #eligible.samples <- which(samp.id %in% colnames(gtex))
 #metadata <- metadata[eligible.samples,]
@@ -97,7 +144,8 @@ The metadata table seems to contain entries that are not in the RPKM table.
 
 Select random heart, kidney and brain samples.
 
-```{r}
+
+```r
 #random.heart <- sample(which(metadata$SMTS=="Heart"), size=1)
 #random.heart.samplename <- gsub('-','.',metadata[random.heart, "SAMPID"])
 #gtex.heart.fpkm <- as.numeric(gtex[,random.heart.samplename])
@@ -113,7 +161,8 @@ Select random heart, kidney and brain samples.
 
 Get gene IDs on same format as the other data sets by removing the part after the dot; check ID uniqueness and write to file.
 
-```{r}
+
+```r
 #gtex.names <- gtex[,"Name"]
 #temp_list <- strsplit(as.character(gtex.names), split="\\.")
 #gtex.names.nodot <- unlist(temp_list)[2*(1:length(gtex.names))-1]
@@ -128,7 +177,8 @@ Get gene IDs on same format as the other data sets by removing the part after th
 
 *RNA-seq Atlas*
 
-```{r:Atlas download}
+
+```r
 #temp <- tempfile()
 #download.file(url="http://medicalgenomics.org/rna_seq_atlas/download?download_revision1=1",destfile=temp)
 #atlas <- read.delim(temp, sep="\t")
@@ -144,12 +194,76 @@ Combining F/RPKM values from public data sets
 
 We will join the data sets on ENSEMBL ID:s, losing a lot of data in the process - but joining on gene symbols or something else would lead to an even worse loss. 
 
-```{r LoadPackagesAndData}
+
+```r
 library(org.Hs.eg.db) # for transferring gene identifiers
+```
+
+```
+## Loading required package: AnnotationDbi
+## Loading required package: BiocGenerics
+## Loading required package: parallel
+## 
+## Attaching package: 'BiocGenerics'
+## 
+## The following objects are masked from 'package:parallel':
+## 
+##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+##     clusterExport, clusterMap, parApply, parCapply, parLapply,
+##     parLapplyLB, parRapply, parSapply, parSapplyLB
+## 
+## The following object is masked from 'package:stats':
+## 
+##     xtabs
+## 
+## The following objects are masked from 'package:base':
+## 
+##     anyDuplicated, append, as.data.frame, as.vector, cbind,
+##     colnames, do.call, duplicated, eval, evalq, Filter, Find, get,
+##     intersect, is.unsorted, lapply, Map, mapply, match, mget,
+##     order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+##     rbind, Reduce, rep.int, rownames, sapply, setdiff, sort,
+##     table, tapply, union, unique, unlist
+## 
+## Loading required package: Biobase
+## Welcome to Bioconductor
+## 
+##     Vignettes contain introductory material; view with
+##     'browseVignettes()'. To cite Bioconductor, see
+##     'citation("Biobase")', and for packages 'citation("pkgname")'.
+## 
+## Loading required package: GenomeInfoDb
+## 
+## Attaching package: 'AnnotationDbi'
+## 
+## The following object is masked from 'package:MASS':
+## 
+##     select
+## 
+## Loading required package: DBI
+```
+
+```r
 library(data.table) # for collapsing transcript RPKMs
 library(pheatmap) # for nicer visualization
 library(edgeR) # for TMM normalization
+```
 
+```
+<<<<<<< HEAD
+## Loading required package: limma
+## 
+## Attaching package: 'limma'
+## 
+## The following object is masked from 'package:BiocGenerics':
+## 
+##     plotMA
+=======
+## Error: there is no package called 'edgeR'
+>>>>>>> a26a6006b42f51efac74e0a6bbc6f403cbf4a1b0
+```
+
+```r
 #hpa.fpkms <- read.delim("hpa_fpkms.txt")
 #altiso.fpkms <- read.delim("altiso_fpkms.txt")
 #gtex.fpkms <- read.delim("gtex_fpkms.txt")
@@ -160,7 +274,8 @@ The RNA-seq Atlas data set uses many different identifiers, while the other all 
 
 Approach 1: Merge on ENSEMBL genes (ENSG) as given in RNA-seq Atlas. Note that there are repeated ENSG ID:s in RNA-seq Atlas, as opposed to the other data sets, so we need to do something about that. In this case, we just sum the transcripts that belong to each ENSG gene. We use data.table for this.
 
-```{r SumTranscripts}
+
+```r
 #data.dt <- data.table(atlas.fpkms)
 #setkey(data.dt, ENSG_ID)
 #temp <- data.dt[, lapply(.SD, sum), by=ENSG_ID]
@@ -173,7 +288,8 @@ Approach 1: Merge on ENSEMBL genes (ENSG) as given in RNA-seq Atlas. Note that t
 
 Finally, combine all the data sets into a data frame.
 
-```{r Combine}
+
+```r
 #fpkms <- merge(hpa.fpkms, altiso.fpkms, by="ENSG_ID")
 #fpkms <- merge(fpkms, gtex.fpkms, by="ENSG_ID")
 #fpkms <- merge(fpkms, atlas.fpkms.summed, by.x="ENSG_ID", by.y=0)
@@ -184,13 +300,15 @@ Finally, combine all the data sets into a data frame.
 
 Check how many ENSG IDs we have left.
 
-```{r}
+
+```r
 #dim(f)
 ```
 
 Approach 2: Try to map Entrez symbols to ENSEMBL to recover more ENSG IDs than already present in the table. 
 
-```{r RemapENSEMBL}
+
+```r
 #m <- org.Hs.egENSEMBL
 #mapped_genes <- mappedkeys(m)
 #ensg.for.entrez <- as.list(m[mapped_genes])
@@ -209,7 +327,8 @@ Approach 2: Try to map Entrez symbols to ENSEMBL to recover more ENSG IDs than a
 
 Combine data sets again
 
-```{r Combine2}
+
+```r
 #fpkms <- merge(hpa.fpkms, altiso.fpkms, by="ENSG_ID")
 #fpkms <- merge(fpkms, gtex.fpkms, by="ENSG_ID")
 #fpkms <- merge(fpkms, atlas.fpkms.summed, by.x="ENSG_ID", by.y=0)
@@ -222,7 +341,8 @@ Combine data sets again
 ```
 Download the data from local file:
 
-```{r:published download}
+
+```r
 published <- read.delim("published_rpkms.txt",sep=" ")
 
 sampleinfo_published <- read.table("sample_info_published.txt",header=TRUE)
@@ -230,32 +350,33 @@ sampleinfo_published <- read.table("sample_info_published.txt",header=TRUE)
 
 The published FPKM values are first filtered by removing all lines where FPKM is less or equal to 0.01 in all samples:
 
-```{r:published filter zeros}
 
+```r
 published.nozero <- published[-which(rowSums(published[,])<=0.01),]
-
 ```
 
 Heatmap of Spearman correlations between published expression profiles (# genes = 13,323):
 
-```{r:published heatmap spearman}
 
+```r
 pheatmap(cor(published.nozero, method="spearman")) 
-
 ```
+
+![plot of chunk :published heatmap spearman](figure/:published heatmap spearman.png) 
 
 Alternatively, one could use Pearson correlation (not shown in paper):
 
-```{r:published heatmap pearson}
 
+```r
 pheatmap(cor(published.nozero))
-
 ```
+
+![plot of chunk :published heatmap pearson](figure/:published heatmap pearson.png) 
 
 PCA analysis of published FPKM values
 
-```{r:published PCA}
 
+```r
 colors <- c("indianred", "dodgerblue", "forestgreen",
             "indianred", "dodgerblue",
             "indianred", "dodgerblue", "forestgreen", 
@@ -266,17 +387,22 @@ rownames(p$x) <- c(rep("HPA",3),rep("AltIso",2),rep("GTEx",3),rep("Atlas",3))
 
 plot(p$x[,1],p$x[,2],pch=20,cex=1.5,col=colors,xlab=paste("PC1 58% of variance"),ylab=paste("PC2 13% of variance"),main="Published FPKM/RPKM values \n n=13,323")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+```
 
+![plot of chunk :published PCA](figure/:published PCA1.png) 
+
+```r
 #plotting PC2 vs PC3 (not shown in paper):
 plot(p$x[,2],p$x[,3],pch=20,cex=1.5,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM/RPKM values \n n=13,323")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
-
 ```
+
+![plot of chunk :published PCA](figure/:published PCA2.png) 
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
-```{r:published pairwise PCA}
 
+```r
 par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
@@ -285,14 +411,14 @@ for (i in 1:6){
 		}
 	}
 }
-
 ```
+
+![plot of chunk :published pairwise PCA](figure/:published pairwise PCA.png) 
 
 Look a bit closer at PCs 1-3 in prcomp:
 
-```{r:published PC 1-3}
 
-      #PC1:
+```r
       load.pc1 <- p$rotation[,1][order(p$rotation[,1])]
       extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
 
@@ -303,12 +429,12 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc1.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc1.symbols[,2]
-      names(q) <- extreme.pc1.symbols[,1]
+      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (raw RPKM)")
+```
 
-      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (raw RPKM)")
-      
-      #PC2:
+![plot of chunk :published PC 1-3](figure/:published PC 1-31.png) 
+
+```r
       load.pc2 <- p$rotation[,2][order(p$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -318,12 +444,12 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc2.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc2.symbols[,2]
-      names(q) <- extreme.pc2.symbols[,1]
+      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (raw RPKM)")
+```
 
-      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (raw RPKM)")
+![plot of chunk :published PC 1-3](figure/:published PC 1-32.png) 
 
-      #PC3:
+```r
       load.pc3 <- p$rotation[,3][order(p$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -333,12 +459,11 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc3.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc3.symbols[,2]
-      names(q) <- extreme.pc3.symbols[,1]
-
-      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (raw RPKM)")
-
+      
+      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (raw RPKM)")
 ```
+
+![plot of chunk :published PC 1-3](figure/:published PC 1-33.png) 
 
 PC1:
 ensembl_gene_id hgnc_symbol HPA_heart HPA_brain HPA_kidney AltIso_heart AltIso_brain   GTEx_heart   GTEx_brain  GTEx_kidney Atlas_heart Atlas_brain   Atlas_kidney
@@ -390,9 +515,16 @@ ENSG00000175206        NPPA    6693.0       8.1        0.1       193.69         
 
 Try Anova on a "melted" expression matrix with some metadata:
 
-```{r:published anova}
 
+```r
 m <- melt(published.nozero)
+```
+
+```
+## Using  as id variables
+```
+
+```r
 colnames(m) <- c("sample_ID","RPKM")
 
 meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
@@ -409,30 +541,31 @@ a <- anova(fit)
 maxval = 100
 
 barplot(100*a$"Sum Sq"[1:5]/sum(a$"Sum Sq"[1:5]),names.arg=rownames(a[1:5,]),main="Anova, published FPKM/RPKM values",ylim=c(0,maxval))
-
 ```
+
+![plot of chunk :published anova](figure/:published anova.png) 
 
 Try log2 tranform the published FPKM values:
 
-```{r:published log tranform}
 
+```r
 pseudo <- 1
 published.log <- log2(published.nozero + pseudo)
-
 ```
 
 Heatmap of Spearman correlations between published expression profiles with log2 values:
 
-```{r:published log heatmap spearman}
 
+```r
 pheatmap(cor(published.log),method="spearman")
-
 ```
+
+![plot of chunk :published log heatmap spearman](figure/:published log heatmap spearman.png) 
 
 PCA analysis of log2 published FPKM values:
 
-```{r:published log PCA}
 
+```r
 colors <- c("indianred", "dodgerblue", "forestgreen",
             "indianred", "dodgerblue",
             "indianred", "dodgerblue", "forestgreen", 
@@ -442,16 +575,21 @@ p.log <- prcomp(t(published.log))
 
 plot(p.log$x[,1],p.log$x[,2],pch=20,col=colors,xlab=paste("PC1 31% of variance"),ylab=paste("PC2 27% of variance"),main="log2 Published FPKM/RPKM values \n n=13,323")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+```
 
+![plot of chunk :published log PCA](figure/:published log PCA1.png) 
+
+```r
 plot(p.log$x[,2],p.log$x[,3],pch=20,col=colors,xlab=paste("PC2 27% of variance"),ylab=paste("PC3 19% of variance"),main="log2 Published FPKM values \n n=13,323")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
-
 ```
+
+![plot of chunk :published log PCA](figure/:published log PCA2.png) 
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
-```{r:published log PCA pairwise}
 
+```r
 par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
@@ -460,14 +598,14 @@ for (i in 1:6){
 		}
 	}
 }
-
 ```
+
+![plot of chunk :published log PCA pairwise](figure/:published log PCA pairwise.png) 
 
 Look a bit closer at PCs 1-3 in prcomp:
 
-```{r:published log PC 1-3}
-     
-     #PC1:
+
+```r
      load.pc1 <- p.log$rotation[,1][order(p.log$rotation[,1])]
      extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
 
@@ -476,13 +614,13 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc1.ensg,
                            mart=ensembl)
-     
-      q <- extreme.pc1.symbols[,2]
-      names(q) <- extreme.pc1.symbols[,1]
+      
+      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (log2RPKM)")
+```
 
-      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (log2 RPKM)")
+![plot of chunk :published log PC 1-3](figure/:published log PC 1-31.png) 
 
-      #PC2:
+```r
       load.pc2 <- p.log$rotation[,2][order(p.log$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -491,13 +629,13 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc2.ensg,
                            mart=ensembl)
+     
+      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (log2RPKM)")
+```
 
-      q <- extreme.pc2.symbols[,2]
-      names(q) <- extreme.pc2.symbols[,1]
+![plot of chunk :published log PC 1-3](figure/:published log PC 1-32.png) 
 
-      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (log2 RPKM)")
-      
-      #PC3:
+```r
       load.pc3 <- p.log$rotation[,3][order(p$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -507,12 +645,10 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc3.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc3.symbols[,2]
-      names(q) <- extreme.pc3.symbols[,1]
-
-      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (log2 RPKM)")
-
+      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (log2RPKM)")
 ```
+
+![plot of chunk :published log PC 1-3](figure/:published log PC 1-33.png) 
 
 PC1:
 ensembl_gene_id hgnc_symbol HPA_heart HPA_brain HPA_kidney AltIso_heart AltIso_brain   GTEx_heart   GTEx_brain  GTEx_kidney Atlas_heart Atlas_brain    Atlas_kidney
@@ -563,8 +699,8 @@ ENSG00000175206        NPPA    6693.0       8.1        0.1       193.69         
 
 To further validate the above results, indicating that tissue specificity appears mainly in PC 2 and 3, we will extract the 500 genes with highest loadings in each component and plot the corresponding published FPKM values in a heatmap:
 
-```{r:published log top 500 loadings heatmap}
-    
+
+```r
      load.pc1 <- abs(p.log$rotation[,1])[order(abs(p.log$rotation[,1]),decreasing=TRUE)]
      top.pc1 <- names(load.pc1[1:500]) 
 
@@ -575,14 +711,34 @@ To further validate the above results, indicating that tissue specificity appear
      top.pc3 <- names(load.pc3[1:500])
 
      pheatmap(cor(published[top.pc1,]),method="spearman")
+```
+
+![plot of chunk :published log top 500 loadings heatmap](figure/:published log top 500 loadings heatmap1.png) 
+
+```r
      pheatmap(cor(published[top.pc2,]),method="spearman")
+```
+
+![plot of chunk :published log top 500 loadings heatmap](figure/:published log top 500 loadings heatmap2.png) 
+
+```r
      pheatmap(cor(published[top.pc3,]),method="spearman")
 ```
 
+![plot of chunk :published log top 500 loadings heatmap](figure/:published log top 500 loadings heatmap3.png) 
+
 Try Anova on a "melted" expression matrix with logged values and some metadata:
 
-```{r:published log anova}
+
+```r
 n <- melt(published.log)
+```
+
+```
+## Using  as id variables
+```
+
+```r
 colnames(n) <- c("sample_ID","RPKM")
 meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
 rownames(meta) <- colnames(published.log)
@@ -600,40 +756,55 @@ maxval = 100
 barplot(100*b$"Sum Sq"[1:5]/sum(b$"Sum Sq"[1:5]),names.arg=rownames(a[1:5,]),main="Anova, log2 published FPKM/RPKM values",ylim=c(0,maxval))
 ```
 
+![plot of chunk :published log anova](figure/:published log anova.png) 
+
 Combat analysis is performed on log2 values (n=13,323):
 
-```{r:published log combat}
+
+```r
 meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas",3)),tissue=c("Heart","Brain","Kidney","Heart","Brain","Heart","Brain","Kidney","Heart","Brain","Kidney"))
 
 batch <- meta$study
 design <- model.matrix(~as.factor(tissue),data=meta)
 
 combat <- ComBat(dat=published.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+```
 
+```
+## Found 4 batches
+## Found 2  categorical covariate(s)
+## Standardizing Data across genes
+## Fitting L/S model and finding priors
+## Finding parametric adjustments
+## Adjusting the Data
+```
+
+```r
 write.table(combat, file="published_rpkms_combat_log2.txt", quote=F)
-
 ```
 
 Heatmap of Spearman correlations between published expression profiles after combat run (# genes = 13,323):
 
-```{r:published log combat heatmap spearman}
 
+```r
 pheatmap(cor(combat, method="spearman")) 
-
 ```
+
+![plot of chunk :published log combat heatmap spearman](figure/:published log combat heatmap spearman.png) 
 
 Alternatively, one could use Pearson correlation (not shown in paper):
 
-```{r:published log combat heatmap pearson}
 
+```r
 pheatmap(cor(combat))
-
 ```
+
+![plot of chunk :published log combat heatmap pearson](figure/:published log combat heatmap pearson.png) 
 
 PCA analysis of published FPKM values after combat run:
 
-```{r:published log combat PCA}
 
+```r
 colors <- c("indianred", "dodgerblue", "forestgreen",
             "indianred", "dodgerblue",
             "indianred", "dodgerblue", "forestgreen", 
@@ -643,16 +814,20 @@ p.combat <- prcomp(t(combat))
 
 plot(p.combat$x[,1],p.combat$x[,2],pch=20,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 38% of variance"),main="Published FPKM values \n COMBAT \n n=13,323")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
-
-
-plot(p.combat$x[,2],p.combat$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM values \n COMBAT \n n=13323")
-
 ```
+
+![plot of chunk :published log combat PCA](figure/:published log combat PCA1.png) 
+
+```r
+plot(p.combat$x[,2],p.combat$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM values \n COMBAT \n n=13323")
+```
+
+![plot of chunk :published log combat PCA](figure/:published log combat PCA2.png) 
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
-```{r:published log combat PCA pairwise}
 
+```r
 par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
@@ -661,14 +836,14 @@ for (i in 1:6){
 		}
 	}
 }
-
 ```
+
+![plot of chunk :published log combat PCA pairwise](figure/:published log combat PCA pairwise.png) 
 
 Look a bit closer at PCs 1-3 in prcomp:
 
-```{r:published log combat PC 1-3}
-    
-     #PC1:
+
+```r
      load.pc1 <- p.combat$rotation[,1][order(p.combat$rotation[,1])]
      extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
 
@@ -677,13 +852,13 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc1.ensg,
                            mart=ensembl)
-
-      q <- extreme.pc1.symbols[,2]
-      names(q) <- extreme.pc1.symbols[,1]
-
-      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (ComBat log2 RPKM)")
       
-      #PC2:
+      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (Combat log2RPKM)")
+```
+
+![plot of chunk :published log combat PC 1-3](figure/:published log combat PC 1-31.png) 
+
+```r
       load.pc2 <- p.combat$rotation[,2][order(p.combat$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
 
@@ -692,12 +867,13 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc2.ensg,
                            mart=ensembl)
-      q <- extreme.pc2.symbols[,2]
-      names(q) <- extreme.pc2.symbols[,1]
-
-      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (ComBat log2 RPKM)")
       
-      #PC3:
+      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (Combat log2RPKM)")
+```
+
+![plot of chunk :published log combat PC 1-3](figure/:published log combat PC 1-32.png) 
+
+```r
       load.pc3 <- p.combat$rotation[,3][order(p.combat$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
 
@@ -706,19 +882,24 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc3.ensg,
                            mart=ensembl)
-
-      q <- extreme.pc3.symbols[,2]
-      names(q) <- extreme.pc3.symbols[,1]
-
-      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (ComBat log2 RPKM)")
-    
+      
+      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (Combat log2RPKM)")
 ```
+
+![plot of chunk :published log combat PC 1-3](figure/:published log combat PC 1-33.png) 
 
 Revisit Anova with combated values.
 
-```{r:published log combat anova}
 
+```r
 o <- melt(combat)
+```
+
+```
+## Using  as id variables
+```
+
+```r
 colnames(o) <- c("sample_ID","combat")
 meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
 rownames(meta) <- colnames(combat)
@@ -734,23 +915,23 @@ c <- anova(fit)
 maxval = 100
 
 barplot(100*c$"Sum Sq"[1:5]/sum(c$"Sum Sq"[1:5]),names.arg=rownames(c[1:5,]),main="Anova Combat",ylim=c(0,maxval))
-
 ```
+
+![plot of chunk :published log combat anova](figure/:published log combat anova.png) 
 
 Comparing FPKMs for FASTQ files reprocessed with TopHat and Cufflinks:
 
-```{r:cufflinks download data}
 
+```r
 cufflinks <- read.delim("fpkm_table_tophat.txt")
 
 sampleinfo_cufflinks <- read.delim("sample_info_reprocessed.txt")
-
 ```
 
 First, we will restrict the data set to only include protein coding genes using the ensembl based R package biomaRt:
 
-```{r:cufflinks filter protein coding}
 
+```r
 gene_ids <- as.vector(cufflinks[,1])
 
 ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
@@ -763,37 +944,37 @@ gene_type <- getBM(attributes=c("ensembl_gene_id", "gene_biotype"),
 pc <- subset(gene_type[,1],gene_type[,2]=="protein_coding")
 
 cufflinks_pc <- cufflinks[match(pc,cufflinks[,1]),]
-
 ```
 
 Let's remove all lines where FPKM is close to zero in all samples before we proceed with this version of the data set:
 
-```{r:cufflinks filter zeros}
 
+```r
 cufflinks_pc_nozero <- cufflinks_pc[-which(rowSums(cufflinks_pc[,3:16])<=0.01),]
-
 ```
 
 Heatmap of Spearman correlations between reprocessed expression profiles (# genes = 19,475):
 
-```{r:cufflinks heatmap spearman}
 
+```r
 pheatmap(cor(cufflinks_pc_nozero[,3:16], method="spearman")) 
-
 ```
+
+![plot of chunk :cufflinks heatmap spearman](figure/:cufflinks heatmap spearman.png) 
 
 Alternatively, one could use Pearson correlation (not shown in paper):
 
-```{r:cufflinks heatmap pearson}
 
+```r
 pheatmap(cor(cufflinks_pc_nozero[,3:16])) 
-
 ```
+
+![plot of chunk :cufflinks heatmap pearson](figure/:cufflinks heatmap pearson.png) 
 
 Let's look at a few PCA plots:
 
-```{r:cufflinks PCA}
 
+```r
 cufflinks_fpkms <- cufflinks_pc_nozero[,3:16]
 rownames(cufflinks_fpkms) <- cufflinks_pc_nozero[,1]
 
@@ -805,17 +986,30 @@ colors <- c("dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred")          
 
+p.cufflinks <- prcomp(t(cufflinks_fpkms))
+
+colors <- c("dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred")          
+
 plot(p.cufflinks$x[,1],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 87% of variance"),ylab=paste("PC2 7.7% of variance"),main="Reprocessed FPKM values \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
-
-plot(p.cufflinks$x[,2],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Reprocessed FPKM values \n n=19475")
-
 ```
+
+![plot of chunk :cufflinks PCA](figure/:cufflinks PCA1.png) 
+
+```r
+plot(p.cufflinks$x[,2],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Reprocessed FPKM values \n n=19475")
+```
+
+![plot of chunk :cufflinks PCA](figure/:cufflinks PCA2.png) 
 
 We can plot all pairwise combinations of principal components 1 to 5 (not shown in paper):
 
-```{r:cufflinks PCA pairwise}
 
+```r
 colors <- c("dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
@@ -830,13 +1024,14 @@ for (i in 1:6){
 		}
 	}
 }
-
 ```
+
+![plot of chunk :cufflinks PCA pairwise](figure/:cufflinks PCA pairwise.png) 
 
 Look at PCA loadings for PC1-3:
 
-```{r:cufflinks PC 1-3}
-      #PC1:
+
+```r
       load.pc1 <- p.cufflinks$rotation[,1][order(p.cufflinks$rotation[,1])]
       extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
       
@@ -846,12 +1041,12 @@ Look at PCA loadings for PC1-3:
                            values=extreme.pc1.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc1.symbols[,2]
-      names(q) <- extreme.pc1.symbols[,1]
+      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (raw Cufflinks    FPKM)")
+```
 
-      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (raw Cufflinks    FPKM)")
-      
-      #PC2:
+![plot of chunk :cufflinks PC 1-3](figure/:cufflinks PC 1-31.png) 
+
+```r
       load.pc2 <- p.cufflinks$rotation[,2][order(p.cufflinks$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -861,12 +1056,12 @@ Look at PCA loadings for PC1-3:
                            values=extreme.pc2.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc2.symbols[,2]
-      names(q) <- extreme.pc2.symbols[,1]
-      
-      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (raw Cufflinks    FPKM)")
-      
-      #PC3:
+      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (raw Cufflinks    FPKM)")
+```
+
+![plot of chunk :cufflinks PC 1-3](figure/:cufflinks PC 1-32.png) 
+
+```r
       load.pc3 <- p.cufflinks$rotation[,3][order(p.cufflinks$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -876,12 +1071,10 @@ Look at PCA loadings for PC1-3:
                            values=extreme.pc3.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc3.symbols[,2]
-      names(q) <- extreme.pc3.symbols[,1]
-      
-      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (raw Cufflinks    FPKM)")
-      
+      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (raw Cufflinks    FPKM)")
 ```
+
+![plot of chunk :cufflinks PC 1-3](figure/:cufflinks PC 1-33.png) 
 
 PC1:
 ensembl_gene_id     hgnc_symbol  EoGE_brain  EoGE_heart   EoGE_kidney Atlas_brain Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart BodyMap_kidney   HPA_brain
@@ -917,9 +1110,16 @@ All mitochondrially encoded genes have relatively high expresseion levels, FPKM 
 
 Anova analysis of different batch factors:
 
-```{r:cufflinks anova}
 
+```r
 p <- melt(cufflinks_fpkms)
+```
+
+```
+## Using  as id variables
+```
+
+```r
 colnames(p) <- c("sample_ID","Cuff_FPKM")
 meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
 rownames(meta) <- colnames(cufflinks_fpkms)
@@ -934,30 +1134,31 @@ d <- anova(fit)
 maxval = 100
 
 barplot(100*d$"Sum Sq"[1:5]/sum(d$"Sum Sq"[1:5]),names.arg=rownames(d[1:5,]),main="Anova, Cufflinks FPKM",ylim=c(0,maxval))
-
 ```
+
+![plot of chunk :cufflinks anova](figure/:cufflinks anova.png) 
 
 Try log2 tranform the reprocessed FPKM values:
 
-```{r:cufflinks log transform}
 
+```r
 pseudo <- 1
 cufflinks_log <- log2(cufflinks_fpkms + pseudo)
-
 ```
 
 Heatmap of Spearman correlations between log2 reprocessed cufflinks FPKM values:
 
-```{r:cufflinks log heatmap spearman }
 
+```r
 pheatmap(cor(cufflinks_log) ,method="spearman")
-
 ```
+
+![plot of chunk :cufflinks log heatmap spearman](figure/:cufflinks log heatmap spearman.png) 
 
 PCA analysis of log2 reprocessed cufflinks FPKM values:
 
-```{r:cufflinks log PCA}
 
+```r
 colors <- c("dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
@@ -968,16 +1169,21 @@ p.log.cufflinks <- prcomp(t(cufflinks_log))
 
 plot(p.log.cufflinks$x[,1],p.log.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 33% of variance"),ylab=paste("PC2 25% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+```
 
+![plot of chunk :cufflinks log PCA](figure/:cufflinks log PCA1.png) 
 
+```r
 plot(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],pch=20,col=colors,xlab=paste("PC2 25% of variance"),ylab=paste("PC3 22% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
+![plot of chunk :cufflinks log PCA](figure/:cufflinks log PCA2.png) 
+
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
-```{r:cufflinks log PCA pairwise}
 
+```r
 par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
@@ -986,14 +1192,14 @@ for (i in 1:6){
 		}
 	}
 }
-
 ```
+
+![plot of chunk :cufflinks log PCA pairwise](figure/:cufflinks log PCA pairwise.png) 
 
 Look a bit closer at PCs 1-3 in prcomp for the logged FPKM values from cufflinks:
 
-```{r:cufflinks log PC 1-3}
-      
-      #PC1
+
+```r
       load.pc1 <- p.log.cufflinks$rotation[,1][order(p.log.cufflinks$rotation[,1])]
       extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
       
@@ -1003,12 +1209,12 @@ Look a bit closer at PCs 1-3 in prcomp for the logged FPKM values from cufflinks
                            values=extreme.pc1.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc1.symbols[,2]
-      names(q) <- extreme.pc1.symbols[,1]
+      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (log2Cufflinks FPKM)")
+```
 
-      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (log2 Cufflinks    FPKM)")
-      
-      #PC2
+![plot of chunk :cufflinks log PC 1-3](figure/:cufflinks log PC 1-31.png) 
+
+```r
       load.pc2 <- p.log.cufflinks$rotation[,2][order(p.log.cufflinks$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -1018,12 +1224,12 @@ Look a bit closer at PCs 1-3 in prcomp for the logged FPKM values from cufflinks
                            values=extreme.pc2.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc2.symbols[,2]
-      names(q) <- extreme.pc2.symbols[,1]
+      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (log2Cufflinks FPKM)")
+```
 
-      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (log2 Cufflinks    FPKM)")
-      
-      #PC3
+![plot of chunk :cufflinks log PC 1-3](figure/:cufflinks log PC 1-32.png) 
+
+```r
       load.pc3 <- p.log.cufflinks$rotation[,3][order(p.log.cufflinks$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -1032,13 +1238,11 @@ Look a bit closer at PCs 1-3 in prcomp for the logged FPKM values from cufflinks
                            filters = "ensembl_gene_id",
                            values=extreme.pc3.ensg,
                            mart=ensembl)
-
-      q <- extreme.pc3.symbols[,2]
-      names(q) <- extreme.pc3.symbols[,1]
-
-      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (log2 Cufflinks    FPKM)")
-    
+      
+      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (log2Cufflinks FPKM)")
 ```
+
+![plot of chunk :cufflinks log PC 1-3](figure/:cufflinks log PC 1-33.png) 
 
 Seems to yield a heart vs. brain separation
 
@@ -1128,8 +1332,8 @@ ENSG00000198125 6.00091e+03 6.13148e-01     0.809898  7280.090000
 
 To further validate the above results, indicating that tissue specificity appears mainly in PC 3, we will extract the 500 genes with highest loadings in each component and plot the corresponding cufflinks FPKM values in a heatmap:
 
-```{r:cufflinks log top 500 loadings heatmap}
-     
+
+```r
      cufflinks_values <- cufflinks_pc_nozero[,3:16]
      rownames(cufflinks_values) <- cufflinks_pc_nozero[,1]
 
@@ -1141,15 +1345,34 @@ To further validate the above results, indicating that tissue specificity appear
      top.pc3 <- names(load.pc3[1:500])
      
      pheatmap(cor(cufflinks_values[top.pc1,]),method="spearman")
-     pheatmap(cor(cufflinks_values[top.pc2,]),method="spearman")
-     pheatmap(cor(cufflinks_values[top.pc3,]),method="spearman")
-
 ```
+
+![plot of chunk :cufflinks log top 500 loadings heatmap](figure/:cufflinks log top 500 loadings heatmap1.png) 
+
+```r
+     pheatmap(cor(cufflinks_values[top.pc2,]),method="spearman")
+```
+
+![plot of chunk :cufflinks log top 500 loadings heatmap](figure/:cufflinks log top 500 loadings heatmap2.png) 
+
+```r
+     pheatmap(cor(cufflinks_values[top.pc3,]),method="spearman")
+```
+
+![plot of chunk :cufflinks log top 500 loadings heatmap](figure/:cufflinks log top 500 loadings heatmap3.png) 
     
 Try Anova on a "melted" expression matrix with logged cufflinks values and some metadata:
 
-```{r:cufflinks log anova}
+
+```r
 q <- melt(cufflinks_log[,])
+```
+
+```
+## Using  as id variables
+```
+
+```r
 colnames(q) <- c("sample_ID","logFPKM")
 meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
 rownames(meta) <- colnames(cufflinks_log)
@@ -1159,54 +1382,80 @@ prep <- rep(meta$Preparation, each=nrow(cufflinks_log))
 layout <- rep(meta$Readtype, each=nrow(cufflinks_log))
 data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout)
 fit <- lm(Cuff_FPKM ~ layout + prep + nraw + study + tissue, data=data)
+```
+
+```
+## Error: object 'Cuff_FPKM' not found
+```
+
+```r
 e <- anova(fit)
 maxval = 100
 
 barplot(100*e$"Sum Sq"[1:5]/sum(e$"Sum Sq"[1:5]),names.arg=rownames(e[1:5,]),main="Anova, Cufflinks log2 FPKM",ylim=c(0,maxval))
 ```
 
+![plot of chunk :cufflinks log anova](figure/:cufflinks log anova.png) 
+
 Combat analysis for removal of batch effects (n=19,475):
 
-```{r:cufflinks log combat}
 
+```r
 meta <- data.frame(study=c(rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HPA",3),rep("AltIso",2)),tissue=c("Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
 
 batch <- meta$study
 design <- model.matrix(~as.factor(tissue),data=meta)
 
 combat.cufflinks <- ComBat(dat=cufflinks_log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+```
+
+```
+## Found 5 batches
+## Found 2  categorical covariate(s)
+## Standardizing Data across genes
+## Fitting L/S model and finding priors
+## Finding parametric adjustments
+## Adjusting the Data
+```
+
+```r
 rownames(combat.cufflinks) <- rownames(cufflinks_log)
 
 #write.table(combat, file="reprocessed_rpkms_combat_log2.txt", quote=F)
-
 ```
 
 Let's see how the correlation heatmap and PCA plots look after correction for batch effects with combat:
 
-```{r:cufflinks log combat heatmap spearman}
 
+```r
 pheatmap(cor(combat.cufflinks),method="spearman")
-
 ```
+
+![plot of chunk :cufflinks log combat heatmap spearman](figure/:cufflinks log combat heatmap spearman.png) 
 
 PCA analysis on reprocessed cufflinks FPKM values after ComBat run:
 
-```{r:cufflinks log combat PCA}
 
+```r
 p.combat.cufflinks <- prcomp(t(combat.cufflinks))
 
 plot(p.combat.cufflinks$x[,1],p.combat.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 37% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
-legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+```
 
+![plot of chunk :cufflinks log combat PCA](figure/:cufflinks log combat PCA1.png) 
+
+```r
 plot(p.combat.cufflinks$x[,2],p.combat.cufflinks$x[,3],pch=20,col=colors,xlab=paste("PC2 37% of variance"),ylab=paste("PC3 2% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
-
 ```
+
+![plot of chunk :cufflinks log combat PCA](figure/:cufflinks log combat PCA2.png) 
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
-```{r:cufflinks log combat PCA pairwise}
 
+```r
 par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
@@ -1215,13 +1464,14 @@ for (i in 1:6){
 		}
 	}
 }
-
 ```
+
+![plot of chunk :cufflinks log combat PCA pairwise](figure/:cufflinks log combat PCA pairwise.png) 
 
 Look a bit closer at PCs 1-3 in prcomp:
 
-```{r:cufflinks log combat PC 1-3}
-      #PC1:
+
+```r
       load.pc1 <- p.combat.cufflinks$rotation[,1][order(p.combat.cufflinks$rotation[,1])]
       extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
       
@@ -1231,12 +1481,12 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc1.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc1.symbols[,2]
-      names(q) <- extreme.pc1.symbols[,1]
+      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (COMBAT Cufflinks FPKM)")
+```
 
-      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (COMBAT Cufflinks    FPKM)")
+![plot of chunk :cufflinks log combat PC 1-3](figure/:cufflinks log combat PC 1-31.png) 
 
-      #PC2:
+```r
       load.pc2 <- p.combat.cufflinks$rotation[,2][order(p.combat.cufflinks$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -1246,12 +1496,13 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc2.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc2.symbols[,2]
-      names(q) <- extreme.pc2.symbols[,1]
+      
+      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (Combat Cufflinks FPKM)")
+```
 
-      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (COMBAT Cufflinks    FPKM)")
+![plot of chunk :cufflinks log combat PC 1-3](figure/:cufflinks log combat PC 1-32.png) 
 
-      #PC3:      
+```r
       load.pc3 <- p.combat.cufflinks$rotation[,3][order(p.combat.cufflinks$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -1261,13 +1512,11 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc3.ensg,
                            mart=ensembl)
       
-      q <- extreme.pc3.symbols[,2]
-      names(q) <- extreme.pc3.symbols[,1]
-
-      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (COMBAT Cufflinks    FPKM)")
       
-      
+      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (Combat Cufflinks FPKM)")
 ```
+
+![plot of chunk :cufflinks log combat PC 1-3](figure/:cufflinks log combat PC 1-33.png) 
 Let's have a look at the genes with highest loadings:
 
 PC1:
@@ -1314,9 +1563,16 @@ ENSG00000205116 - TMEM88B - transmembrane protein 88B - brain
 
 Revisit ANOVA analysis on reprocessed Cufflinks FPKM values after ComBat run:
 
-```{r:cufflinks log combat anova}
 
+```r
 q <- melt(combat.cufflinks)
+```
+
+```
+## Using  as id variables
+```
+
+```r
 colnames(q) <- c("sample_ID","combat")
 meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
 rownames(meta) <- colnames(combat.cufflinks)
@@ -1331,6 +1587,6 @@ fit <- lm(combat ~ prep + nraw + layout + study + tissue, data=data)
 f <- anova(fit)
 maxval = 100
 barplot(100*f$"Sum Sq"/sum(f$"Sum Sq"),names.arg=rownames(f),main="Anova Cufflinks Combat",ylim=c(0,maxval))
-
-
 ```
+
+![plot of chunk :cufflinks log combat anova](figure/:cufflinks log combat anova.png) 
