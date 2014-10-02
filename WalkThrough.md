@@ -250,6 +250,7 @@ library(edgeR) # for TMM normalization
 ```
 
 ```
+<<<<<<< HEAD
 ## Loading required package: limma
 ## 
 ## Attaching package: 'limma'
@@ -257,6 +258,9 @@ library(edgeR) # for TMM normalization
 ## The following object is masked from 'package:BiocGenerics':
 ## 
 ##     plotMA
+=======
+## Error: there is no package called 'edgeR'
+>>>>>>> a26a6006b42f51efac74e0a6bbc6f403cbf4a1b0
 ```
 
 ```r
@@ -973,6 +977,7 @@ Let's look at a few PCA plots:
 ```r
 cufflinks_fpkms <- cufflinks_pc_nozero[,3:16]
 rownames(cufflinks_fpkms) <- cufflinks_pc_nozero[,1]
+<<<<<<< HEAD
 
 p.cufflinks <- prcomp(t(cufflinks_fpkms))
 
@@ -982,6 +987,17 @@ colors <- c("dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred")          
 
+=======
+
+p.cufflinks <- prcomp(t(cufflinks_fpkms))
+
+colors <- c("dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred", "forestgreen",
+            "dodgerblue", "indianred")          
+
+>>>>>>> a26a6006b42f51efac74e0a6bbc6f403cbf4a1b0
 plot(p.cufflinks$x[,1],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 87% of variance"),ylab=paste("PC2 7.7% of variance"),main="Reprocessed FPKM values \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
