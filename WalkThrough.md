@@ -11,8 +11,6 @@ library(gplots)
 ```
 
 ```
-## KernSmooth 2.23 loaded
-## Copyright M. P. Wand 1997-2009
 ## 
 ## Attaching package: 'gplots'
 ## 
@@ -250,7 +248,6 @@ library(edgeR) # for TMM normalization
 ```
 
 ```
-<<<<<<< HEAD
 ## Loading required package: limma
 ## 
 ## Attaching package: 'limma'
@@ -258,9 +255,6 @@ library(edgeR) # for TMM normalization
 ## The following object is masked from 'package:BiocGenerics':
 ## 
 ##     plotMA
-=======
-## Error: there is no package called 'edgeR'
->>>>>>> a26a6006b42f51efac74e0a6bbc6f403cbf4a1b0
 ```
 
 ```r
@@ -419,6 +413,7 @@ Look a bit closer at PCs 1-3 in prcomp:
 
 
 ```r
+      #PC1:
       load.pc1 <- p$rotation[,1][order(p$rotation[,1])]
       extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
 
@@ -429,12 +424,16 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc1.ensg,
                            mart=ensembl)
       
-      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (raw RPKM)")
+      q <- extreme.pc1.symbols[,2]
+      names(q) <- extreme.pc1.symbols[,1]
+
+      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (raw RPKM)")
 ```
 
 ![plot of chunk :published PC 1-3](figure/:published PC 1-31.png) 
 
 ```r
+      #PC2:
       load.pc2 <- p$rotation[,2][order(p$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -444,12 +443,16 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc2.ensg,
                            mart=ensembl)
       
-      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (raw RPKM)")
+      q <- extreme.pc2.symbols[,2]
+      names(q) <- extreme.pc2.symbols[,1]
+
+      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (raw RPKM)")
 ```
 
 ![plot of chunk :published PC 1-3](figure/:published PC 1-32.png) 
 
 ```r
+      #PC3:
       load.pc3 <- p$rotation[,3][order(p$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -459,8 +462,10 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc3.ensg,
                            mart=ensembl)
       
-      
-      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (raw RPKM)")
+      q <- extreme.pc3.symbols[,2]
+      names(q) <- extreme.pc3.symbols[,1]
+
+      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (raw RPKM)")
 ```
 
 ![plot of chunk :published PC 1-3](figure/:published PC 1-33.png) 
@@ -606,6 +611,7 @@ Look a bit closer at PCs 1-3 in prcomp:
 
 
 ```r
+     #PC1:
      load.pc1 <- p.log$rotation[,1][order(p.log$rotation[,1])]
      extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
 
@@ -614,13 +620,17 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc1.ensg,
                            mart=ensembl)
-      
-      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (log2RPKM)")
+     
+      q <- extreme.pc1.symbols[,2]
+      names(q) <- extreme.pc1.symbols[,1]
+
+      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (log2 RPKM)")
 ```
 
 ![plot of chunk :published log PC 1-3](figure/:published log PC 1-31.png) 
 
 ```r
+      #PC2:
       load.pc2 <- p.log$rotation[,2][order(p.log$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -629,13 +639,17 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc2.ensg,
                            mart=ensembl)
-     
-      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (log2RPKM)")
+
+      q <- extreme.pc2.symbols[,2]
+      names(q) <- extreme.pc2.symbols[,1]
+
+      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (log2 RPKM)")
 ```
 
 ![plot of chunk :published log PC 1-3](figure/:published log PC 1-32.png) 
 
 ```r
+      #PC3:
       load.pc3 <- p.log$rotation[,3][order(p$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -645,7 +659,10 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc3.ensg,
                            mart=ensembl)
       
-      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (log2RPKM)")
+      q <- extreme.pc3.symbols[,2]
+      names(q) <- extreme.pc3.symbols[,1]
+
+      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (log2 RPKM)")
 ```
 
 ![plot of chunk :published log PC 1-3](figure/:published log PC 1-33.png) 
@@ -844,6 +861,7 @@ Look a bit closer at PCs 1-3 in prcomp:
 
 
 ```r
+     #PC1:
      load.pc1 <- p.combat$rotation[,1][order(p.combat$rotation[,1])]
      extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
 
@@ -852,13 +870,17 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc1.ensg,
                            mart=ensembl)
-      
-      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (Combat log2RPKM)")
+
+      q <- extreme.pc1.symbols[,2]
+      names(q) <- extreme.pc1.symbols[,1]
+
+      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (ComBat log2 RPKM)")
 ```
 
 ![plot of chunk :published log combat PC 1-3](figure/:published log combat PC 1-31.png) 
 
 ```r
+      #PC2:
       load.pc2 <- p.combat$rotation[,2][order(p.combat$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
 
@@ -867,13 +889,16 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc2.ensg,
                            mart=ensembl)
-      
-      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (Combat log2RPKM)")
+      q <- extreme.pc2.symbols[,2]
+      names(q) <- extreme.pc2.symbols[,1]
+
+      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (ComBat log2 RPKM)")
 ```
 
 ![plot of chunk :published log combat PC 1-3](figure/:published log combat PC 1-32.png) 
 
 ```r
+      #PC3:
       load.pc3 <- p.combat$rotation[,3][order(p.combat$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
 
@@ -882,8 +907,11 @@ Look a bit closer at PCs 1-3 in prcomp:
                            filters = "ensembl_gene_id",
                            values=extreme.pc3.ensg,
                            mart=ensembl)
-      
-      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (Combat log2RPKM)")
+
+      q <- extreme.pc3.symbols[,2]
+      names(q) <- extreme.pc3.symbols[,1]
+
+      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (ComBat log2 RPKM)")
 ```
 
 ![plot of chunk :published log combat PC 1-3](figure/:published log combat PC 1-33.png) 
@@ -986,14 +1014,6 @@ colors <- c("dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred")          
 
-p.cufflinks <- prcomp(t(cufflinks_fpkms))
-
-colors <- c("dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred")          
-
 plot(p.cufflinks$x[,1],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 87% of variance"),ylab=paste("PC2 7.7% of variance"),main="Reprocessed FPKM values \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
@@ -1032,6 +1052,7 @@ Look at PCA loadings for PC1-3:
 
 
 ```r
+      #PC1:
       load.pc1 <- p.cufflinks$rotation[,1][order(p.cufflinks$rotation[,1])]
       extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
       
@@ -1041,12 +1062,16 @@ Look at PCA loadings for PC1-3:
                            values=extreme.pc1.ensg,
                            mart=ensembl)
       
-      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (raw Cufflinks    FPKM)")
+      q <- extreme.pc1.symbols[,2]
+      names(q) <- extreme.pc1.symbols[,1]
+
+      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (raw Cufflinks    FPKM)")
 ```
 
 ![plot of chunk :cufflinks PC 1-3](figure/:cufflinks PC 1-31.png) 
 
 ```r
+      #PC2:
       load.pc2 <- p.cufflinks$rotation[,2][order(p.cufflinks$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -1056,12 +1081,16 @@ Look at PCA loadings for PC1-3:
                            values=extreme.pc2.ensg,
                            mart=ensembl)
       
-      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (raw Cufflinks    FPKM)")
+      q <- extreme.pc2.symbols[,2]
+      names(q) <- extreme.pc2.symbols[,1]
+      
+      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (raw Cufflinks    FPKM)")
 ```
 
 ![plot of chunk :cufflinks PC 1-3](figure/:cufflinks PC 1-32.png) 
 
 ```r
+      #PC3:
       load.pc3 <- p.cufflinks$rotation[,3][order(p.cufflinks$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -1071,7 +1100,10 @@ Look at PCA loadings for PC1-3:
                            values=extreme.pc3.ensg,
                            mart=ensembl)
       
-      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (raw Cufflinks    FPKM)")
+      q <- extreme.pc3.symbols[,2]
+      names(q) <- extreme.pc3.symbols[,1]
+      
+      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (raw Cufflinks    FPKM)")
 ```
 
 ![plot of chunk :cufflinks PC 1-3](figure/:cufflinks PC 1-33.png) 
@@ -1200,6 +1232,7 @@ Look a bit closer at PCs 1-3 in prcomp for the logged FPKM values from cufflinks
 
 
 ```r
+      #PC1
       load.pc1 <- p.log.cufflinks$rotation[,1][order(p.log.cufflinks$rotation[,1])]
       extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
       
@@ -1209,12 +1242,16 @@ Look a bit closer at PCs 1-3 in prcomp for the logged FPKM values from cufflinks
                            values=extreme.pc1.ensg,
                            mart=ensembl)
       
-      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (log2Cufflinks FPKM)")
+      q <- extreme.pc1.symbols[,2]
+      names(q) <- extreme.pc1.symbols[,1]
+
+      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (log2 Cufflinks    FPKM)")
 ```
 
 ![plot of chunk :cufflinks log PC 1-3](figure/:cufflinks log PC 1-31.png) 
 
 ```r
+      #PC2
       load.pc2 <- p.log.cufflinks$rotation[,2][order(p.log.cufflinks$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -1224,12 +1261,16 @@ Look a bit closer at PCs 1-3 in prcomp for the logged FPKM values from cufflinks
                            values=extreme.pc2.ensg,
                            mart=ensembl)
       
-      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (log2Cufflinks FPKM)")
+      q <- extreme.pc2.symbols[,2]
+      names(q) <- extreme.pc2.symbols[,1]
+
+      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (log2 Cufflinks    FPKM)")
 ```
 
 ![plot of chunk :cufflinks log PC 1-3](figure/:cufflinks log PC 1-32.png) 
 
 ```r
+      #PC3
       load.pc3 <- p.log.cufflinks$rotation[,3][order(p.log.cufflinks$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -1238,8 +1279,11 @@ Look a bit closer at PCs 1-3 in prcomp for the logged FPKM values from cufflinks
                            filters = "ensembl_gene_id",
                            values=extreme.pc3.ensg,
                            mart=ensembl)
-      
-      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (log2Cufflinks FPKM)")
+
+      q <- extreme.pc3.symbols[,2]
+      names(q) <- extreme.pc3.symbols[,1]
+
+      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (log2 Cufflinks    FPKM)")
 ```
 
 ![plot of chunk :cufflinks log PC 1-3](figure/:cufflinks log PC 1-33.png) 
@@ -1440,7 +1484,7 @@ PCA analysis on reprocessed cufflinks FPKM values after ComBat run:
 p.combat.cufflinks <- prcomp(t(combat.cufflinks))
 
 plot(p.combat.cufflinks$x[,1],p.combat.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 37% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
-legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 ![plot of chunk :cufflinks log combat PCA](figure/:cufflinks log combat PCA1.png) 
@@ -1472,6 +1516,7 @@ Look a bit closer at PCs 1-3 in prcomp:
 
 
 ```r
+      #PC1:
       load.pc1 <- p.combat.cufflinks$rotation[,1][order(p.combat.cufflinks$rotation[,1])]
       extreme.pc1 <- c(tail(load.pc1), head(load.pc1))
       
@@ -1481,12 +1526,16 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc1.ensg,
                            mart=ensembl)
       
-      barplot(extreme.pc1, names.arg=extreme.pc1.symbols[,2], las=2, main="Genes w highest absolute loadings in PC1 (COMBAT Cufflinks FPKM)")
+      q <- extreme.pc1.symbols[,2]
+      names(q) <- extreme.pc1.symbols[,1]
+
+      barplot(extreme.pc1, names.arg=q[extreme.pc1.ensg],las=2,main="Genes w highest absolute loadings in PC1 (COMBAT Cufflinks    FPKM)")
 ```
 
 ![plot of chunk :cufflinks log combat PC 1-3](figure/:cufflinks log combat PC 1-31.png) 
 
 ```r
+      #PC2:
       load.pc2 <- p.combat.cufflinks$rotation[,2][order(p.combat.cufflinks$rotation[,2])]
       extreme.pc2 <- c(tail(load.pc2), head(load.pc2))
       
@@ -1496,13 +1545,16 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc2.ensg,
                            mart=ensembl)
       
-      
-      barplot(extreme.pc2, names.arg=extreme.pc2.symbols[,2], las=2, main="Genes w highest absolute loadings in PC2 (Combat Cufflinks FPKM)")
+      q <- extreme.pc2.symbols[,2]
+      names(q) <- extreme.pc2.symbols[,1]
+
+      barplot(extreme.pc2, names.arg=q[extreme.pc2.ensg],las=2,main="Genes w highest absolute loadings in PC2 (COMBAT Cufflinks    FPKM)")
 ```
 
 ![plot of chunk :cufflinks log combat PC 1-3](figure/:cufflinks log combat PC 1-32.png) 
 
 ```r
+      #PC3:      
       load.pc3 <- p.combat.cufflinks$rotation[,3][order(p.combat.cufflinks$rotation[,3])]
       extreme.pc3 <- c(tail(load.pc3), head(load.pc3))
       
@@ -1512,8 +1564,10 @@ Look a bit closer at PCs 1-3 in prcomp:
                            values=extreme.pc3.ensg,
                            mart=ensembl)
       
-      
-      barplot(extreme.pc3, names.arg=extreme.pc3.symbols[,2], las=2, main="Genes w highest absolute loadings in PC3 (Combat Cufflinks FPKM)")
+      q <- extreme.pc3.symbols[,2]
+      names(q) <- extreme.pc3.symbols[,1]
+
+      barplot(extreme.pc3, names.arg=q[extreme.pc3.ensg],las=2,main="Genes w highest absolute loadings in PC3 (COMBAT Cufflinks    FPKM)")
 ```
 
 ![plot of chunk :cufflinks log combat PC 1-3](figure/:cufflinks log combat PC 1-33.png) 
