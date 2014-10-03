@@ -447,6 +447,21 @@ plot(p.log$x[,2],p.log$x[,3],pch=20,col=colors,xlab=paste("PC2 27% of variance")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 
 ```
+Also try it leaving out one of the groups. E g AltIso. 
+```{r:leave-one-out-pca}
+p.loo <- published.log[,-c(4,5)]
+colors.loo <- colors[-c(4,5)]
+p.loo.log <- prcomp(t(p.loo))
+plot(p.loo.log$x[,2],p.loo.log$x[,3],pch=20,col=colors.loo,xlab="PC2",ylab="PC3",main="log2 Published FPKM/RPKM values \n n=13,323",xlim=c(-150,100))
+legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+```
+
+Then add AltIso.
+```{r:add-one}
+p.add <- published.log[,c(4,5)]
+projection <- t(p.add) %*% p.loo.log$rotation
+points(projection[,c(2,3)],pch=22, col=colors[c(4,5)])
+```
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
@@ -614,6 +629,18 @@ write.table(combat, file="published_rpkms_combat_log2.txt", quote=F)
 
 ```
 
+Scramble the tissue labels and re-run ComBat.
+```{r:scramble-combat}
+tissue.scrambled <- sample(x=meta$tissue,size=length(meta$tissue))
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue.scrambled))
+combat <- ComBat(dat=published.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+
+plot(p.combat$x[,1],p.combat$x[,2],pch=20,col=as.numeric(tissue.scrambled),xlab="PC1",ylab="PC2",main="Published FPKM values \n COMBAT \n n=13,323 \nScrambled labels")
+legend("topright",legend=c("'Brain'","'Heart'","'Kidney'"),col=as.numeric(tissue.scrambled),cex=1.5,pch=20,bty="n")
+
+```
+
 Heatmap of Spearman correlations between published expression profiles after combat run (# genes = 13,323):
 
 ```{r:published log combat heatmap spearman}
@@ -646,11 +673,6 @@ legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodg
 
 
 plot(p.combat$x[,2],p.combat$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM values \n COMBAT \n n=13323")
-
-```
-
-Scramble the tissue labels and re-run ComBat.
-```{r:scramble-combat}
 
 ```
 

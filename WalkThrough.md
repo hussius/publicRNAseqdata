@@ -590,6 +590,29 @@ legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodg
 ```
 
 ![plot of chunk :published log PCA](figure/:published log PCA2.png) 
+Also try it leaving out one of the groups. E g AltIso. 
+
+```r
+p.loo <- published.log[,-c(4,5)]
+colors.loo <- colors[-c(4,5)]
+p.loo.log <- prcomp(t(p.loo))
+plot(p.loo.log$x[,2],p.loo.log$x[,3],pch=20,col=colors.loo,xlab="PC2",ylab="PC3",main="log2 Published FPKM/RPKM values \n n=13,323",xlim=c(-150,100))
+legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+```
+
+![plot of chunk :leave-one-out-pca](figure/:leave-one-out-pca.png) 
+
+Then add AltIso.
+
+```r
+p.add <- published.log[,c(4,5)]
+projection <- t(p.add) %*% p.loo.log$rotation
+points(projection[,c(2,3)],pch=22, col=colors[c(4,5)])
+```
+
+```
+## Error: plot.new has not been called yet
+```
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
@@ -798,6 +821,40 @@ combat <- ComBat(dat=published.log,batch=batch,mod=design,numCovs=NULL,par.prior
 
 ```r
 write.table(combat, file="published_rpkms_combat_log2.txt", quote=F)
+```
+
+Scramble the tissue labels and re-run ComBat.
+
+```r
+tissue.scrambled <- sample(x=meta$tissue,size=length(meta$tissue))
+batch <- meta$study
+design <- model.matrix(~as.factor(tissue.scrambled))
+combat <- ComBat(dat=published.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+```
+
+```
+## Found 4 batches
+## Found 2  categorical covariate(s)
+## Standardizing Data across genes
+## Fitting L/S model and finding priors
+## Finding parametric adjustments
+## Adjusting the Data
+```
+
+```r
+plot(p.combat$x[,1],p.combat$x[,2],pch=20,col=as.numeric(tissue.scrambled),xlab="PC1",ylab="PC2",main="Published FPKM values \n COMBAT \n n=13,323 \nScrambled labels")
+```
+
+```
+## Error: object 'p.combat' not found
+```
+
+```r
+legend("topright",legend=c("'Brain'","'Heart'","'Kidney'"),col=as.numeric(tissue.scrambled),cex=1.5,pch=20,bty="n")
+```
+
+```
+## Error: plot.new has not been called yet
 ```
 
 Heatmap of Spearman correlations between published expression profiles after combat run (# genes = 13,323):
@@ -1425,14 +1482,7 @@ study <- rep(meta$Study, each=nrow(cufflinks_log))
 prep <- rep(meta$Preparation, each=nrow(cufflinks_log))
 layout <- rep(meta$Readtype, each=nrow(cufflinks_log))
 data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout)
-fit <- lm(Cuff_FPKM ~ layout + prep + nraw + study + tissue, data=data)
-```
-
-```
-## Error: object 'Cuff_FPKM' not found
-```
-
-```r
+fit <- lm(logFPKM ~ layout + prep + nraw + study + tissue, data=data)
 e <- anova(fit)
 maxval = 100
 
