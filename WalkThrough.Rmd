@@ -649,6 +649,11 @@ plot(p.combat$x[,2],p.combat$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=past
 
 ```
 
+Scramble the tissue labels and re-run ComBat.
+```{r:scramble-combat}
+
+```
+
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
 ```{r:published log combat PCA pairwise}
@@ -1158,7 +1163,7 @@ study <- rep(meta$Study, each=nrow(cufflinks_log))
 prep <- rep(meta$Preparation, each=nrow(cufflinks_log))
 layout <- rep(meta$Readtype, each=nrow(cufflinks_log))
 data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout)
-fit <- lm(Cuff_FPKM ~ layout + prep + nraw + study + tissue, data=data)
+fit <- lm(logFPKM ~ layout + prep + nraw + study + tissue, data=data)
 e <- anova(fit)
 maxval = 100
 
