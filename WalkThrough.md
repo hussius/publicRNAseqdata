@@ -46,10 +46,20 @@ library(sva)
 ```
 
 ```
-## Loading required package: corpcor
 ## Loading required package: mgcv
 ## Loading required package: nlme
 ## This is mgcv 1.8-3. For overview type 'help("mgcv-package")'.
+## Loading required package: genefilter
+## 
+## Attaching package: 'genefilter'
+## 
+## The following object is masked from 'package:MASS':
+## 
+##     area
+## 
+## The following object is masked from 'package:base':
+## 
+##     anyNA
 ```
 
 Data from four different public sources are downloaded and brain, heart and kidney samples are extracted. 
@@ -199,6 +209,7 @@ library(org.Hs.eg.db) # for transferring gene identifiers
 
 ```
 ## Loading required package: AnnotationDbi
+## Loading required package: stats4
 ## Loading required package: BiocGenerics
 ## Loading required package: parallel
 ## 
@@ -221,7 +232,7 @@ library(org.Hs.eg.db) # for transferring gene identifiers
 ##     intersect, is.unsorted, lapply, Map, mapply, match, mget,
 ##     order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
 ##     rbind, Reduce, rep.int, rownames, sapply, setdiff, sort,
-##     table, tapply, union, unique, unlist
+##     table, tapply, union, unique, unlist, unsplit
 ## 
 ## Loading required package: Biobase
 ## Welcome to Bioconductor
@@ -231,8 +242,40 @@ library(org.Hs.eg.db) # for transferring gene identifiers
 ##     'citation("Biobase")', and for packages 'citation("pkgname")'.
 ## 
 ## Loading required package: GenomeInfoDb
+## Loading required package: S4Vectors
+## 
+## Attaching package: 'S4Vectors'
+## 
+## The following object is masked from 'package:reshape':
+## 
+##     rename
+## 
+## Loading required package: IRanges
+## 
+## Attaching package: 'IRanges'
+## 
+## The following object is masked from 'package:nlme':
+## 
+##     collapse
+## 
+## The following object is masked from 'package:ops':
+## 
+##     distance
+## 
+## The following object is masked from 'package:gplots':
+## 
+##     space
+## 
+## The following object is masked from 'package:reshape':
+## 
+##     expand
+## 
 ## 
 ## Attaching package: 'AnnotationDbi'
+## 
+## The following object is masked from 'package:GenomeInfoDb':
+## 
+##     species
 ## 
 ## The following object is masked from 'package:MASS':
 ## 
@@ -377,18 +420,19 @@ colors <- c("indianred", "dodgerblue", "forestgreen",
             "indianred", "dodgerblue", "forestgreen")
   
 p <- prcomp(t(published.nozero))
-rownames(p$x) <- c(rep("HPA",3),rep("AltIso",2),rep("GTEx",3),rep("Atlas",3))
 
-plot(p$x[,1],p$x[,2],pch=20,cex=1.5,col=colors,xlab=paste("PC1 58% of variance"),ylab=paste("PC2 13% of variance"),main="Published FPKM/RPKM values \n n=13,323")
-legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+shapes <- c(rep(15,3),rep(16,2),rep(17,3),rep(8,3))
+
+plot(p$x[,1],p$x[,2],pch=shapes,cex=1.5,col=colors,xlab=paste("PC1 58% of variance"),ylab=paste("PC2 13% of variance"),main="Published FPKM/RPKM values \n n=13,323")
+legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 ![plot of chunk :published PCA](figure/:published PCA1.png) 
 
 ```r
 #plotting PC2 vs PC3 (not shown in paper):
-plot(p$x[,2],p$x[,3],pch=20,cex=1.5,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM/RPKM values \n n=13,323")
-legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+plot(p$x[,2],p$x[,3],pch=shapes,cex=1.5,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM/RPKM values \n n=13,323")
+legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 ![plot of chunk :published PCA](figure/:published PCA2.png) 
@@ -401,9 +445,9 @@ par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
   	if (i<j){ 
-		plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Published FPKM values \n n=13,323")
-		}
-	}
+	   plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Published FPKM values \n n=13,323")
+	   												}
+													}
 }
 ```
 
@@ -578,41 +622,20 @@ colors <- c("indianred", "dodgerblue", "forestgreen",
 
 p.log <- prcomp(t(published.log))
 
-plot(p.log$x[,1],p.log$x[,2],pch=20,col=colors,xlab=paste("PC1 31% of variance"),ylab=paste("PC2 27% of variance"),main="log2 Published FPKM/RPKM values \n n=13,323")
+shapes <- c(rep(15,3),rep(16,2),rep(17,3),rep(8,3))
+
+plot(p.log$x[,1],p.log$x[,2],pch=shapes,col=colors,xlab=paste("PC1 31% of variance"),ylab=paste("PC2 27% of variance"),main="log2 Published FPKM/RPKM values \n n=13,323")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 ![plot of chunk :published log PCA](figure/:published log PCA1.png) 
 
 ```r
-plot(p.log$x[,2],p.log$x[,3],pch=20,col=colors,xlab=paste("PC2 27% of variance"),ylab=paste("PC3 19% of variance"),main="log2 Published FPKM values \n n=13,323")
+plot(p.log$x[,2],p.log$x[,3],pch=shapes,col=colors,xlab=paste("PC2 27% of variance"),ylab=paste("PC3 19% of variance"),main="log2 Published FPKM values \n n=13,323")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 ![plot of chunk :published log PCA](figure/:published log PCA2.png) 
-Also try it leaving out one of the groups. E g AltIso. 
-
-```r
-p.loo <- published.log[,-c(4,5)]
-colors.loo <- colors[-c(4,5)]
-p.loo.log <- prcomp(t(p.loo))
-plot(p.loo.log$x[,2],p.loo.log$x[,3],pch=20,col=colors.loo,xlab="PC2",ylab="PC3",main="log2 Published FPKM/RPKM values \n n=13,323",xlim=c(-150,100))
-legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
-```
-
-![plot of chunk :leave-one-out-pca](figure/:leave-one-out-pca.png) 
-
-Then add AltIso.
-
-```r
-p.add <- published.log[,c(4,5)]
-projection <- t(p.add) %*% p.loo.log$rotation
-points(projection[,c(2,3)],pch=22, col=colors[c(4,5)])
-```
-
-```
-## Error: plot.new has not been called yet
-```
 
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
@@ -622,9 +645,9 @@ par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
     if (i<j){ 
-		plot(p.log$x[,i],p.log$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="log2 Published FPKM values \n n=13323")
-		}
-	}
+       plot(p.log$x[,i],p.log$x[,j],pch=shapes,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="log2 Published FPKM values \n n=13323")
+       													   }
+													   }
 }
 ```
 
@@ -805,14 +828,13 @@ Combat analysis is performed on log2 values (n=13,323):
 meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas",3)),tissue=c("Heart","Brain","Kidney","Heart","Brain","Heart","Brain","Kidney","Heart","Brain","Kidney"))
 
 batch <- meta$study
-design <- model.matrix(~as.factor(tissue),data=meta)
-
+design <- model.matrix(~1,data=meta)
 combat <- ComBat(dat=published.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
 ```
 
 ```
 ## Found 4 batches
-## Found 2  categorical covariate(s)
+## Found 0  categorical covariate(s)
 ## Standardizing Data across genes
 ## Fitting L/S model and finding priors
 ## Finding parametric adjustments
@@ -821,40 +843,6 @@ combat <- ComBat(dat=published.log,batch=batch,mod=design,numCovs=NULL,par.prior
 
 ```r
 write.table(combat, file="published_rpkms_combat_log2.txt", quote=F)
-```
-
-Scramble the tissue labels and re-run ComBat.
-
-```r
-tissue.scrambled <- sample(x=meta$tissue,size=length(meta$tissue))
-batch <- meta$study
-design <- model.matrix(~as.factor(tissue.scrambled))
-combat <- ComBat(dat=published.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-```
-
-```
-## Found 4 batches
-## Found 2  categorical covariate(s)
-## Standardizing Data across genes
-## Fitting L/S model and finding priors
-## Finding parametric adjustments
-## Adjusting the Data
-```
-
-```r
-plot(p.combat$x[,1],p.combat$x[,2],pch=20,col=as.numeric(tissue.scrambled),xlab="PC1",ylab="PC2",main="Published FPKM values \n COMBAT \n n=13,323 \nScrambled labels")
-```
-
-```
-## Error: object 'p.combat' not found
-```
-
-```r
-legend("topright",legend=c("'Brain'","'Heart'","'Kidney'"),col=as.numeric(tissue.scrambled),cex=1.5,pch=20,bty="n")
-```
-
-```
-## Error: plot.new has not been called yet
 ```
 
 Heatmap of Spearman correlations between published expression profiles after combat run (# genes = 13,323):
@@ -886,14 +874,15 @@ colors <- c("indianred", "dodgerblue", "forestgreen",
 
 p.combat <- prcomp(t(combat))
 
-plot(p.combat$x[,1],p.combat$x[,2],pch=20,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 38% of variance"),main="Published FPKM values \n COMBAT \n n=13,323")
+shapes <- c(rep(15,3),rep(16,2),rep(17,3),rep(8,3))
+plot(p.combat$x[,1],p.combat$x[,2],pch=shapes,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 38% of variance"),main="Published FPKM values \n COMBAT \n n=13,323")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 ![plot of chunk :published log combat PCA](figure/:published log combat PCA1.png) 
 
 ```r
-plot(p.combat$x[,2],p.combat$x[,3],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM values \n COMBAT \n n=13323")
+plot(p.combat$x[,2],p.combat$x[,3],pch=shapes,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Published FPKM values \n COMBAT \n n=13323")
 ```
 
 ![plot of chunk :published log combat PCA](figure/:published log combat PCA2.png) 
@@ -906,9 +895,9 @@ par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
     if (i<j){ 
-		plot(p.combat$x[,i],p.combat$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Published FPKM values \n COMBAT \ n=13323")
-		}
-	}
+       plot(p.combat$x[,i],p.combat$x[,j],pch=shapes,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Published FPKM values \n COMBAT \ n=13323")
+       														      }
+														      }
 }
 ```
 
@@ -1071,14 +1060,16 @@ colors <- c("dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred")          
 
-plot(p.cufflinks$x[,1],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 87% of variance"),ylab=paste("PC2 7.7% of variance"),main="Reprocessed FPKM values \n n=19,475")
+shapes_cufflinks <- c(rep(11,3),rep(8,3),rep(17,3),rep(15,3),rep(16,2))
+
+plot(p.cufflinks$x[,1],p.cufflinks$x[,2],pch=shapes_cufflinks,col=colors,xlab=paste("PC1 87% of variance"),ylab=paste("PC2 7.7% of variance"),main="Reprocessed FPKM values \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 ![plot of chunk :cufflinks PCA](figure/:cufflinks PCA1.png) 
 
 ```r
-plot(p.cufflinks$x[,2],p.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Reprocessed FPKM values \n n=19475")
+plot(p.cufflinks$x[,2],p.cufflinks$x[,2],pch=shapes_cufflinks,col=colors,xlab=paste("PC2"),ylab=paste("PC3"),main="Reprocessed FPKM values \n n=19475")
 ```
 
 ![plot of chunk :cufflinks PCA](figure/:cufflinks PCA2.png) 
@@ -1097,9 +1088,9 @@ par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
     if (i<j){ 
-      plot(p.cufflinks$x[,i],p.cufflinks$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Cufflinks FPKM values \n n=19475")
-		}
-	}
+      plot(p.cufflinks$x[,i],p.cufflinks$x[,j],pch=shapes_cufflinks,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Cufflinks FPKM values \n n=19475")
+      																     }
+																     }
 }
 ```
 
@@ -1256,14 +1247,15 @@ colors <- c("dodgerblue", "indianred", "forestgreen",
 
 p.log.cufflinks <- prcomp(t(cufflinks_log))
 
-plot(p.log.cufflinks$x[,1],p.log.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 33% of variance"),ylab=paste("PC2 25% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
+shapes_cufflinks <- c(rep(11,3),rep(8,3),rep(17,3),rep(15,3),rep(16,2))
+plot(p.log.cufflinks$x[,1],p.log.cufflinks$x[,2],pch=shapes_cufflinks,col=colors,xlab=paste("PC1 33% of variance"),ylab=paste("PC2 25% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 ![plot of chunk :cufflinks log PCA](figure/:cufflinks log PCA1.png) 
 
 ```r
-plot(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],pch=20,col=colors,xlab=paste("PC2 25% of variance"),ylab=paste("PC3 22% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
+plot(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],pch=shapes_cufflinks,col=colors,xlab=paste("PC2 25% of variance"),ylab=paste("PC3 22% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
@@ -1277,9 +1269,9 @@ par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
     if (i<j){ 
-  	plot(p.log.cufflinks$x[,i],p.log.cufflinks$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="log2 reprocessed FPKM values \n n=19475")
-		}
-	}
+    plot(p.log.cufflinks$x[,i],p.log.cufflinks$x[,j],pch=shapes_cufflinks,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="log2 reprocessed FPKM values \n n=19475")
+    																      }
+																      }
 }
 ```
 
@@ -1482,7 +1474,14 @@ study <- rep(meta$Study, each=nrow(cufflinks_log))
 prep <- rep(meta$Preparation, each=nrow(cufflinks_log))
 layout <- rep(meta$Readtype, each=nrow(cufflinks_log))
 data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout)
-fit <- lm(logFPKM ~ layout + prep + nraw + study + tissue, data=data)
+fit <- lm(Cuff_FPKM ~ layout + prep + nraw + study + tissue, data=data)
+```
+
+```
+## Error: object 'Cuff_FPKM' not found
+```
+
+```r
 e <- anova(fit)
 maxval = 100
 
@@ -1498,14 +1497,13 @@ Combat analysis for removal of batch effects (n=19,475):
 meta <- data.frame(study=c(rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HPA",3),rep("AltIso",2)),tissue=c("Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
 
 batch <- meta$study
-design <- model.matrix(~as.factor(tissue),data=meta)
-
+design <- model.matrix(~1,data=meta)
 combat.cufflinks <- ComBat(dat=cufflinks_log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
 ```
 
 ```
 ## Found 5 batches
-## Found 2  categorical covariate(s)
+## Found 0  categorical covariate(s)
 ## Standardizing Data across genes
 ## Fitting L/S model and finding priors
 ## Finding parametric adjustments
@@ -1533,14 +1531,17 @@ PCA analysis on reprocessed cufflinks FPKM values after ComBat run:
 ```r
 p.combat.cufflinks <- prcomp(t(combat.cufflinks))
 
-plot(p.combat.cufflinks$x[,1],p.combat.cufflinks$x[,2],pch=20,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 37% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
+shapes_cufflinks <- c(rep(11,3),rep(8,3),rep(17,3),rep(15,3),rep(16,2))
+
+
+plot(p.combat.cufflinks$x[,1],p.combat.cufflinks$x[,2],pch=shapes_cufflinks,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 37% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
 ![plot of chunk :cufflinks log combat PCA](figure/:cufflinks log combat PCA1.png) 
 
 ```r
-plot(p.combat.cufflinks$x[,2],p.combat.cufflinks$x[,3],pch=20,col=colors,xlab=paste("PC2 37% of variance"),ylab=paste("PC3 2% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
+plot(p.combat.cufflinks$x[,2],p.combat.cufflinks$x[,3],pch=shapes_cufflinks,col=colors,xlab=paste("PC2 37% of variance"),ylab=paste("PC3 2% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 ```
 
@@ -1554,9 +1555,9 @@ par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
     if (i<j){ 
-  	plot(p.combat.cufflinks$x[,i],p.combat.cufflinks$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Cufflinks FPKM values \n COMBAT \ n=19,475")
-		}
-	}
+    plot(p.combat.cufflinks$x[,i],p.combat.cufflinks$x[,j],pch=shapes_cufflinks,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Cufflinks FPKM values \n COMBAT \ n=19,475")
+    																		 }
+																		 }
 }
 ```
 
