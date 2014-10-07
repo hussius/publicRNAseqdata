@@ -679,7 +679,9 @@ legend("top",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,
 ```
 
 ![plot of chunk :published log PCA 1&2](figure/:published log PCA 1&2.png) 
+
 Figure 2c:
+
 
 ```r
 plot(p.log$x[,2],p.log$x[,3],pch=shapes,col=colors,xlab=paste("PC2 27% of variance"),ylab=paste("PC3 19% of variance"),main="log2 Published FPKM values \n n=13,323")
@@ -726,7 +728,7 @@ for (i in 1:6){
 
 ![plot of chunk :published log PCA pairwise](figure/:published log PCA pairwise.png) 
 
-Look a bit closer at PCs 1-3 in prcomp:
+Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
 
 
 ```r
@@ -1059,7 +1061,7 @@ for (i in 1:6){
 
 ![plot of chunk :published log combat PCA pairwise](figure/:published log combat PCA pairwise.png) 
 
-Look a bit closer at PCs 1-3 in prcomp:
+Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
 
 
 ```r
@@ -1385,7 +1387,7 @@ for (i in 1:6){
 
 ![plot of chunk :cufflinks PCA pairwise](figure/:cufflinks PCA pairwise.png) 
 
-Look at PCA loadings for PC1-3:
+Look at PCA loadings for PC1-3 (not shown in paper):
 
 
 ```r
@@ -1704,7 +1706,8 @@ Figure 4f:
 
 ```r
 plot(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],pch=shapes_cufflinks,col=colors,xlab=paste("PC2 25% of variance"),ylab=paste("PC3 22% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
-legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
 
 ![plot of chunk :cufflinks log PCA 2&3](figure/:cufflinks log PCA 2&3.png) 
@@ -1747,7 +1750,7 @@ col.original.plus.new <- c(colors.loo, colors[c(13,14)])
 plot(p.original.plus.new[,2],p.original.plus.new[,3],pch=c(shapes_cufflinks[1:12],rep(22,nrow(projection))),col=col.original.plus.new,xlab="PC2",ylab="PC3",main="log2 Cufflinks FPKM values; AltIso projected onto existing PCs \n n=19,475,",xlim=c(-150,100))
 
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
-legend("top",legend=c("HPA","GTEx","Atlas","AltIso"),col="black",pch=c(11,8,17,15,22),ncol=2)
+legend("topleft",legend=c("HPA","GTEx","Atlas","AltIso"),col="black",pch=c(11,8,17,15,22),ncol=2)
 ```
 
 ![plot of chunk :leave-one-out-pca cufflinks](figure/:leave-one-out-pca cufflinks.png) 
@@ -2086,7 +2089,7 @@ for (i in 1:6){
 
 ![plot of chunk :cufflinks log combat PCA pairwise](figure/:cufflinks log combat PCA pairwise.png) 
 
-Look a bit closer at PCs 1-3 in prcomp:
+Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
 
 
 ```r
