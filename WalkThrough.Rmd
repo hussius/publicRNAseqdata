@@ -11,7 +11,7 @@ library(ops)
 library(calibrate)
 library(biomaRt)
 library(sva)
-
+library("ggplot2")
 ```
 
 Data from four different public sources are downloaded and brain, heart and kidney samples are extracted. 
@@ -1231,5 +1231,248 @@ f <- anova(fit)
 maxval = 100
 barplot(100*f$"Sum Sq"[1:5]/sum(f$"Sum Sq"[1:5]),names.arg=rownames(f[1:5,]),main="Anova Cufflinks Combat",ylim=c(0,maxval))
 
-
 ```
+
+Let's compare the FPKM distribution in the samples before and after merge
+
+```{r:FPKM distribution for merged data vs non-merged data}
+
+altIso_all <- read.delim("altiso_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
+atlas_all <- read.delim("atlas_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
+gtex_all <- read.delim("gtex_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
+HPA_all <- read.delim("hpa_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
+
+#filter out all protein coding genes from the non merged lists:
+
+ensembl = useMart("ensembl",dataset= "hsapiens_gene_ensembl")
+getPcs <- function(x) {
+            type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),filters = "ensembl_gene_id",values = x$ENSG_ID,mart = ensembl)
+            results <- x[which(type[,2]=="protein_coding"),]
+            return(results)
+          }
+
+altIso_pc <- getPcs(altIso_all)
+atlas_pc <- getPcs(atlas_all)
+gtex_pc <- getPcs(gtex_all)
+HPA_pc <- getPcs(HPA_all)
+
+
+#download data that is left after merge:
+
+merged_data <- read.delim("published_rpkms.txt",sep=" ")
+
+#-----------DATA BEFORE MERGE-----------
+
+get_data <- function(x,y,z,k) {
+  
+  if(k==1){
+    if(y=="heart"){
+              data <- data.frame(x[grep("heart", names(x), value = TRUE)])
+              }
+            else if(y=="brain"){
+                data <- data.frame(x[grep("brain", names(x), value = TRUE)])
+              }
+            else{
+              data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
+            }
+            colnames(data) <- "FPKM"
+            data$study <- z
+            return(data)
+  }
+  #om det är det mergade datat:
+  else if(k==2){
+    if(y=="heart"){
+              tissue_data <- data.frame(x[grep("heart", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else if(y=="brain"){
+                tissue_data <- data.frame(x[grep("brain", names(x), value = TRUE)])
+                data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else{
+              tissue_data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+            }
+            colnames(data) <- "FPKM"
+            data$study <- z
+            return(data)
+  }
+  }
+            
+#-----------NON-MERGED DATA-----------
+all_altIso_heart <- get_data(altIso_pc,"heart","AltIso",1)
+all_atlas_heart <- get_data(atlas_pc,"heart","atlas",1)
+all_gtex_heart <- get_data(gtex_pc,"heart","gtex",1)
+all_HPA_heart <- get_data(HPA_pc,"heart","HPA",1)
+
+all_altIso_brain <- get_data(altIso_pc,"brain","AltIso",1)
+all_atlas_brain <- get_data(atlas_pc,"brain","atlas",1)
+all_gtex_brain <- get_data(gtex_pc,"brain","gtex",1)
+all_HPA_brain <- get_data(HPA_pc,"brain","HPA",1)
+
+all_atlas_kidney <- get_data(atlas_pc,"kidney","atlas",1)
+all_gtex_kidney <- get_data(gtex_pc,"kidney","gtex",1)
+all_HPA_kidney <- get_data(HPA_pc,"kidney","HPA",1)
+
+#-----------MERGED DATA-----------
+merg_altIso_heart <- get_data(altIso_pc,"heart","AltIso",2)
+merg_atlas_heart <- get_data(atlas_pc,"heart","Atlas",2)
+merg_gtex_heart <- get_data(gtex_pc,"heart","GTEx",2)
+merg_HPA_heart <- get_data(HPA_pc,"heart","HPA",2)
+
+merg_altIso_brain <- get_data(altIso_pc,"brain","AltIso",2)
+merg_atlas_brain <- get_data(atlas_pc,"brain","Atlas",2)
+merg_gtex_brain <- get_data(gtex_pc,"brain","GTEx",2)
+merg_HPA_brain <- get_data(HPA_pc,"brain","HPA",2)
+
+merg_atlas_kidney <- get_data(atlas_pc,"kidney","Atlas",2)
+merg_gtex_kidney <- get_data(gtex_pc,"kidney","GTEx",2)
+merg_HPA_kidney <- get_data(HPA_pc,"kidney","HPA",2)
+
+
+#skillnader mellan studier (alla tre vävnader) innan merge:
+
+all_altiso <- rbind(all_altIso_brain,all_altIso_heart)
+all_atlas <- rbind(all_atlas_brain,all_atlas_heart,all_atlas_kidney)
+all_gtex <- rbind(all_gtex_brain,all_gtex_heart,all_gtex_kidney)
+all_hpa <- rbind(all_HPA_brain,all_HPA_heart,all_HPA_kidney)
+
+all_data <- rbind(all_altiso,all_atlas,all_gtex,all_hpa)
+
+ggplot(all_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+#skillnader mellan studier (alla tre vävnader) efter merge:
+
+merg_altiso <- rbind(merg_altIso_brain,merg_altIso_heart)
+merg_atlas <- rbind(merg_atlas_brain,merg_atlas_heart,merg_atlas_kid)
+merg_gtex <- rbind(merg_gtex_brain,merg_gtex_heart,merg_gtex_kid)
+merg_hpa <- rbind(merg_HPA_brain,merg_HPA_heart,merg_HPA_kid)
+
+merg_data <- rbind(merg_altiso,merg_atlas,merg_gtex,merg_hpa)
+
+ggplot(merg_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0,7) + theme_bw()
+
+#för varje vävnad separat:
+
+#brain 
+all_brain_data <- rbind(all_altIso_brain,all_atlas_brain,all_gtex_brain,all_HPA_brain)
+merg_brain_data <- rbind(merg_altIso_brain,merg_atlas_brain,merg_gtex_brain,merg_HPA_brain)
+ggplot(merg_brain_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(all_brain_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(rbind(merg_brain_data,all_brain_data), aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+#heart
+all_heart_data <- rbind(all_altIso_heart,all_atlas_heart,all_gtex_heart,all_HPA_heart)
+merg_heart_data <- rbind(merg_altIso_heart,merg_atlas_heart,merg_gtex_heart,merg_HPA_heart)
+ggplot(merg_heart_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(all_heart_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(rbind(merg_heart_data,all_heart_data), aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+#kidney alla
+all_kid_data <- rbind(all_atlas_kid,all_gtex_kid,all_HPA_kid)
+merg_kid_data <- rbind(merg_atlas_kid,merg_gtex_kid,merg_HPA_kid)
+ggplot(merg_kid_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(all_kid_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(rbind(merg_kid_data,all_kid_data), aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+#--------------RE-PROCESSED DATA-----------------------------
+
+reprocessed_data <- read.table("/Users/fridadanielsson/Documents/Projekt/Publika_dataset/manuscript/publicRNAseqdata/fpkm_table_tophat.txt",sep="\t",header=T)
+
+#brain:
+repr_altIso_brain <- data.frame(reprocessed_data$AltIso_brain)
+colnames(repr_altIso_brain) <- "FPKM"
+repr_altIso_brain$study <- "altIso reprocessed"
+
+repr_atlas_brain <- data.frame(reprocessed_data$Atlas_brain)
+colnames(repr_atlas_brain) <- "FPKM"
+repr_atlas_brain$study <- "atlas reprocessed"
+
+repr_eog_brain <- data.frame(reprocessed_data$EoGE_brain)
+colnames(repr_eog_brain) <- "FPKM"
+repr_eog_brain$study <- "eog reprocessed"
+
+repr_HPA_brain <- data.frame(reprocessed_data$HPA_brain)
+colnames(repr_HPA_brain) <- "FPKM"
+repr_HPA_brain$study <- "HPA reprocessed"
+
+repr_bodymap_brain <- data.frame(reprocessed_data$BodyMap_brain)
+colnames(repr_bodymap_brain) <- "FPKM"
+repr_bodymap_brain$study <- "BodyMap reprocessed"
+
+
+#heart:
+repr_altIso_heart <- data.frame(reprocessed_data$AltIso_heart)
+colnames(repr_altIso_heart) <- "FPKM"
+repr_altIso_heart$study <- "altIso reprocessed"
+
+repr_atlas_heart <- data.frame(reprocessed_data$Atlas_heart)
+colnames(repr_atlas_heart) <- "FPKM"
+repr_atlas_heart$study <- "atlas reprocessed"
+
+repr_eog_heart <- data.frame(reprocessed_data$EoGE_heart)
+colnames(repr_eog_heart) <- "FPKM"
+repr_eog_heart$study <- "eog reprocessed"
+
+repr_HPA_heart <- data.frame(reprocessed_data$HPA_heart)
+colnames(repr_HPA_heart) <- "FPKM"
+repr_HPA_heart$study <- "HPA reprocessed"
+
+repr_bodymap_heart <- data.frame(reprocessed_data$BodyMap_heart)
+colnames(repr_bodymap_heart) <- "FPKM"
+repr_bodymap_heart$study <- "BodyMap reprocessed"
+
+
+#kidney:
+
+repr_atlas_kid <- data.frame(reprocessed_data$Atlas_kidney)
+colnames(repr_atlas_kid) <- "FPKM"
+repr_atlas_kid$study <- "atlas reprocessed"
+
+repr_eog_kid <- data.frame(reprocessed_data$EoGE_kidney)
+colnames(repr_eog_kid) <- "FPKM"
+repr_eog_kid$study <- "eog reprocessed"
+
+repr_HPA_kid <- data.frame(reprocessed_data$HPA_kidney)
+colnames(repr_HPA_kid) <- "FPKM"
+repr_HPA_kid$study <- "HPA reprocessed"
+
+repr_bodymap_kid <- data.frame(reprocessed_data$BodyMap_kidney)
+colnames(repr_bodymap_kid) <- "FPKM"
+repr_bodymap_kid$study <- "BodyMap reprocessed"
+
+#skillnader mellan studier (alla tre vävnader) reprocessade:
+
+repr_altiso <- rbind(repr_altIso_brain,repr_altIso_heart)
+repr_atlas <- rbind(repr_atlas_brain,repr_atlas_heart,repr_atlas_kid)
+repr_bodymap <- rbind(repr_bodymap_brain,repr_bodymap_heart,repr_bodymap_kid)
+repr_eog <- rbind(repr_eog_brain,repr_eog_heart,repr_eog_kid)
+repr_hpa <- rbind(repr_HPA_brain,repr_HPA_heart,repr_HPA_kid)
+
+repr_data <- rbind(repr_altiso,repr_atlas,repr_bodymap,repr_eog,repr_hpa)
+
+pdf("/Users/fridadanielsson/Documents/Projekt/Publika_dataset/manuscript/revision/between_studies_reprocessed.pdf")
+ggplot(repr_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+dev.off()
+
+#för varje vävnad separat reprocessed:
+
+#brain 
+repr_brain_data <- rbind(repr_altIso_brain,repr_atlas_brain,repr_bodymap_brain,repr_eog_brain,repr_HPA_brain)
+ggplot(repr_brain_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+#heart 
+repr_heart_data <- rbind(repr_altIso_heart,repr_atlas_heart,repr_bodymap_heart,repr_eog_heart,repr_HPA_heart)
+ggplot(repr_heart_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+
+#kidney alla
+repr_kid_data <- rbind(repr_atlas_kid,repr_bodymap_kid,repr_eog_kid,repr_HPA_kid)
+ggplot(repr_kid_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+
+
+
+
+
+

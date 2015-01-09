@@ -52,6 +52,10 @@ library(sva)
 ## This is mgcv 1.8-3. For overview type 'help("mgcv-package")'.
 ```
 
+```r
+library("ggplot2")
+```
+
 Data from four different public sources are downloaded and brain, heart and kidney samples are extracted. 
 
 Start with Human Protein Atlas (HPA):
@@ -1159,7 +1163,7 @@ Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
 
 ```
 ##                 Gene Symbol HPA_heart HPA_brain HPA_kidney AltIso_heart
-## ENSG00000095932    C19orf77       0.1       2.2      424.6         0.00
+## ENSG00000095932      SMIM24       0.1       2.2      424.6         0.00
 ## ENSG00000145692        BHMT       0.0       1.0      538.5         0.00
 ## ENSG00000124253        PCK1       0.5       0.7      489.6         0.93
 ## ENSG00000164825       DEFB1       0.1       0.6      662.2         0.84
@@ -1707,7 +1711,7 @@ Figure 4f:
 ```r
 plot(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],pch=shapes_cufflinks,col=colors,xlab=paste("PC2 25% of variance"),ylab=paste("PC3 22% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
-legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
+legend("topleft",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
 
 ![plot of chunk :cufflinks log PCA 2&3](figure/:cufflinks log PCA 2&3.png) 
@@ -1854,7 +1858,7 @@ Look a bit closer at PCs 1-3 in prcomp for the logged FPKM values from cufflinks
 
 ```
 ##                 Gene Symbol HPA_heart HPA_brain HPA_kidney AltIso_heart
-## ENSG00000095932    C19orf77       0.1       2.2      424.6         0.00
+## ENSG00000095932      SMIM24       0.1       2.2      424.6         0.00
 ## ENSG00000145692        BHMT       0.0       1.0      538.5         0.00
 ## ENSG00000124253        PCK1       0.5       0.7      489.6         0.93
 ## ENSG00000164825       DEFB1       0.1       0.6      662.2         0.84
@@ -2201,7 +2205,7 @@ Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
 
 ```
 ##                 Gene Symbol EoGE_brain EoGE_heart EoGE_kidney Atlas_brain
-## ENSG00000095932    C19orf77    6.95853     0.0000   1019.6500     0.06484
+## ENSG00000095932      SMIM24    6.95853     0.0000   1019.6500     0.06484
 ## ENSG00000164825       DEFB1    0.00000     0.0000   1469.9200     0.14473
 ## ENSG00000162366    PDZK1IP1    0.00000     0.3384   4259.2200     0.00000
 ## ENSG00000137731       FXYD2    0.08533     1.0573   2744.2100     0.00000
@@ -2282,57 +2286,57 @@ Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
 
 ```
 ##                 Gene Symbol EoGE_brain EoGE_heart EoGE_kidney Atlas_brain
-## ENSG00000198838        RYR3     16.211    0.01536      0.5697     68.2328
-## ENSG00000110195       FOLR1      0.157    0.55841    243.4410     10.6218
-## ENSG00000223865    HLA-DPB1     15.340   74.86100    132.6340     18.6981
-## ENSG00000163220      S100A9      0.629   14.06570     65.3565     67.6230
-## ENSG00000268396                  0.000    0.00000      0.0000    303.2290
-## ENSG00000118271         TTR      1.781    0.62967      6.3687   4138.2800
-## ENSG00000266956                  0.000   40.50640     22.4281      0.0000
-## ENSG00000257017          HP      2.282   23.74320     13.0780      3.5407
-## ENSG00000175445         LPL      2.607  361.14400     11.9540      4.4369
-## ENSG00000005513        SOX8     53.742    1.20108      0.1120      0.7289
-## ENSG00000125676       THOC2     10.123    3.51788     12.8518      0.0000
-## ENSG00000269027                  0.000    0.00000      0.0000      0.0000
+## ENSG00000106538     RARRES2    19.2215   43.50790    157.4800     15.1755
+## ENSG00000198838        RYR3    16.2107    0.01536      0.5697     68.2328
+## ENSG00000105697        HAMP     0.7493    3.90227      0.1804      5.5278
+## ENSG00000223865    HLA-DPB1    15.3397   74.86100    132.6340     18.6981
+## ENSG00000163220      S100A9     0.6290   14.06570     65.3565     67.6230
+## ENSG00000118271         TTR     1.7809    0.62967      6.3687   4138.2800
+## ENSG00000175445         LPL     2.6073  361.14400     11.9540      4.4369
+## ENSG00000257017          HP     2.2825   23.74320     13.0780      3.5407
+## ENSG00000005513        SOX8    53.7417    1.20108      0.1120      0.7289
+## ENSG00000157150       TIMP4     1.1661   15.85900      0.3087      0.1378
+## ENSG00000125676       THOC2    10.1232    3.51788     12.8518      0.0000
+## ENSG00000101311      FERMT1     1.0418    0.09753      1.8519      3.2780
 ##                 Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart
+## ENSG00000106538   8.216e+00      17.9976       16.3297       4.85721
 ## ENSG00000198838   1.305e-01       0.7971        4.1883       0.03303
-## ENSG00000110195   1.154e-01      29.8561        8.4481       0.22343
+## ENSG00000105697   2.652e+00       0.1952       17.7368       0.51139
 ## ENSG00000223865   1.341e+01       9.9471       36.3018      17.66610
 ## ENSG00000163220   1.949e+02       7.5356       23.3908      44.53170
-## ENSG00000268396   0.000e+00       0.0000        0.0000       0.00000
 ## ENSG00000118271   4.042e+00       2.9596     1200.0000       0.07613
-## ENSG00000266956   1.758e+02     119.3440        0.1838       2.88450
-## ENSG00000257017   2.590e+03     921.4000        0.8874      12.62420
 ## ENSG00000175445   5.376e+02      14.7952        6.9406     145.16000
+## ENSG00000257017   2.590e+03     921.4000        0.8874      12.62420
 ## ENSG00000005513   1.509e-02       0.0000       14.7852       0.16574
+## ENSG00000157150   1.425e+00       0.5531        2.5457       9.97856
 ## ENSG00000125676   4.852e+01      52.4633       14.2816       8.78908
-## ENSG00000269027   0.000e+00     471.7360        0.0000       0.00000
+## ENSG00000101311   4.004e+00      34.0848        0.3247       0.35092
 ##                 BodyMap_kidney HPA_brain HPA_heart HPA_kidney AltIso_brain
-## ENSG00000198838         0.2603   1.09129   0.46409    0.39848      38.0721
-## ENSG00000110195        44.1110   0.35560   0.09313  130.67000       0.4714
-## ENSG00000223865        41.0103   3.99889  49.81610   53.94210      18.3877
-## ENSG00000163220        42.3277   1.54815  17.65110    4.91085      14.2365
-## ENSG00000268396         0.0000   0.00000   0.00000    0.00000       0.0000
-## ENSG00000118271         1.3065   0.00000   0.36730    2.10049      20.5621
-## ENSG00000266956        83.2357   0.01193   0.55508    0.11698       0.1413
-## ENSG00000257017        26.6850   0.17245   5.04010    0.00000       0.7159
-## ENSG00000175445         5.4742  75.32840  18.72190   10.35480       2.4762
-## ENSG00000005513         0.1370 119.15600   0.62632    0.08259      26.2390
-## ENSG00000125676        19.1089  24.73970  11.04990   17.04860       8.8476
-## ENSG00000269027         0.0000   0.00000   0.00000    0.00000       0.0000
+## ENSG00000106538        81.7976    1.2375   36.2267   81.45960      13.7953
+## ENSG00000198838         0.2603    1.0913    0.4641    0.39848      38.0721
+## ENSG00000105697         0.5307    0.8971   79.8200    0.00000      28.6972
+## ENSG00000223865        41.0103    3.9989   49.8161   53.94210      18.3877
+## ENSG00000163220        42.3277    1.5481   17.6511    4.91085      14.2365
+## ENSG00000118271         1.3065    0.0000    0.3673    2.10049      20.5621
+## ENSG00000175445         5.4742   75.3284   18.7219   10.35480       2.4762
+## ENSG00000257017        26.6850    0.1725    5.0401    0.00000       0.7159
+## ENSG00000005513         0.1370  119.1560    0.6263    0.08259      26.2390
+## ENSG00000157150         1.7218   34.3867    1.8092    0.58477       1.8920
+## ENSG00000125676        19.1089   24.7397   11.0499   17.04860       8.8476
+## ENSG00000101311         0.5824   23.1343    0.6967    4.66167       0.4309
 ##                 AltIso_heart
+## ENSG00000106538      15.6561
 ## ENSG00000198838       0.3282
-## ENSG00000110195       0.4818
+## ENSG00000105697       3.2130
 ## ENSG00000223865      49.6954
 ## ENSG00000163220      74.1273
-## ENSG00000268396       0.0000
 ## ENSG00000118271       0.3213
-## ENSG00000266956     153.1870
-## ENSG00000257017      16.9893
 ## ENSG00000175445      88.1243
+## ENSG00000257017      16.9893
 ## ENSG00000005513       0.1488
+## ENSG00000157150       8.9922
 ## ENSG00000125676       6.3458
-## ENSG00000269027       0.0000
+## ENSG00000101311       0.1600
 ```
 
 Revisit ANOVA analysis on reprocessed Cufflinks FPKM values after ComBat run, Figure 4j:
@@ -2364,3 +2368,462 @@ barplot(100*f$"Sum Sq"[1:5]/sum(f$"Sum Sq"[1:5]),names.arg=rownames(f[1:5,]),mai
 ```
 
 ![plot of chunk :cufflinks log combat anova](figure/:cufflinks log combat anova.png) 
+
+
+
+```r
+AltIso_all <- read.delim("altiso_fpkms.txt",sep="\t")
+atlas_all <- read.delim("atlas_fpkms.txt",sep="\t")
+gtex_all <- read.delim("gtex_fpkms.txt",sep="\t")
+HPA_all <- read.delim("hpa_fpkms.txt",sep="\t")
+
+#filter out all protein coding genes from the non merged lists:
+
+ensembl = useMart("ensembl", dataset= "hsapiens_gene_ensembl")
+AltIso_type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),
+                        filters = "ensembl_gene_id",
+                        values = AltIso_all$ENSG_ID,
+                        mart = ensembl)
+AltIso_pc <- AltIso_all[which(AltIso_type[,2]=="protein_coding"),]
+atlas_type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),
+                     filters = "ensembl_gene_id",
+                     values = atlas_all$ENSG_ID,
+                     mart = ensembl)
+atlas_pc <- atlas_all[which(atlas_type[,2]=="protein_coding"),]
+gtex_type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),
+                     filters = "ensembl_gene_id",
+                     values = gtex_all$ENSG_ID,
+                     mart = ensembl)
+gtex_pc <- gtex_all[which(gtex_type[,2]=="protein_coding"),]
+HPA_type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),
+                     filters = "ensembl_gene_id",
+                     values = HPA_all$ENSG_ID,
+                     mart = ensembl)
+HPA_pc <- HPA_all[which(HPA_type[,2]=="protein_coding"),]
+
+#download data that is left after merge:
+
+merged_data <- read.delim("published_rpkms.txt",sep=" ")
+
+#-----------DATA BEFORE MERGE-----------
+#heart:
+all_altIso_heart <- data.frame(AltIso_pc$AltIso_heart)
+colnames(all_altIso_heart) <- "FPKM"
+all_altIso_heart$study <- "altIso"
+
+all_atlas_heart <- data.frame(atlas_pc$Atlas_heart)
+colnames(all_atlas_heart) <- "FPKM"
+all_atlas_heart$study <- "atlas"
+
+all_gtex_heart <- data.frame(gtex_pc$GTEx_heart)
+colnames(all_gtex_heart) <- "FPKM"
+all_gtex_heart$study <- "gtex"
+
+all_HPA_heart <- data.frame(HPA_pc$HPA_heart)
+colnames(all_HPA_heart) <- "FPKM"
+all_HPA_heart$study <- "HPA"
+
+#brain:
+all_altIso_brain <- data.frame(AltIso_pc$AltIso_brain)
+colnames(all_altIso_brain) <- "FPKM"
+all_altIso_brain$study <- "altIso"
+
+all_atlas_brain <- data.frame(atlas_pc$Atlas_brain)
+colnames(all_atlas_brain) <- "FPKM"
+all_atlas_brain$study <- "atlas"
+
+all_gtex_brain <- data.frame(gtex_pc$GTEx_brain)
+colnames(all_gtex_brain) <- "FPKM"
+all_gtex_brain$study <- "gtex"
+
+all_HPA_brain <- data.frame(HPA_pc$HPA_brain)
+colnames(all_HPA_brain) <- "FPKM"
+all_HPA_brain$study <- "HPA"
+
+#kidney:
+all_atlas_kid <- data.frame(atlas_pc$Atlas_kid)
+colnames(all_atlas_kid) <- "FPKM"
+all_atlas_kid$study <- "atlas"
+
+all_gtex_kid <- data.frame(gtex_pc$GTEx_kid)
+colnames(all_gtex_kid) <- "FPKM"
+all_gtex_kid$study <- "gtex"
+
+all_HPA_kid <- data.frame(HPA_pc$HPA_kid)
+colnames(all_HPA_kid) <- "FPKM"
+all_HPA_kid$study <- "HPA"
+
+#-----------MERGED DATA-----------
+
+#brain:
+merg_altIso_brain <- data.frame(merged_data$AltIso_brain)
+colnames(merg_altIso_brain) <- "FPKM"
+merg_altIso_brain$study <- "altIso merged"
+
+merg_atlas_brain <- data.frame(merged_data$Atlas_brain)
+colnames(merg_atlas_brain) <- "FPKM"
+merg_atlas_brain$study <- "atlas merged"
+
+merg_gtex_brain <- data.frame(merged_data$GTEx_brain)
+colnames(merg_gtex_brain) <- "FPKM"
+merg_gtex_brain$study <- "gtex merged"
+
+merg_HPA_brain <- data.frame(merged_data$HPA_brain)
+colnames(merg_HPA_brain) <- "FPKM"
+merg_HPA_brain$study <- "HPA merged"
+
+#heart:
+merg_altIso_heart <- data.frame(merged_data$AltIso_heart)
+colnames(merg_altIso_heart) <- "FPKM"
+merg_altIso_heart$study <- "altIso merged"
+
+merg_atlas_heart <- data.frame(merged_data$Atlas_heart)
+colnames(merg_atlas_heart) <- "FPKM"
+merg_atlas_heart$study <- "atlas merged"
+
+merg_gtex_heart <- data.frame(merged_data$GTEx_heart)
+colnames(merg_gtex_heart) <- "FPKM"
+merg_gtex_heart$study <- "gtex merged"
+
+merg_HPA_heart <- data.frame(merged_data$HPA_heart)
+colnames(merg_HPA_heart) <- "FPKM"
+merg_HPA_heart$study <- "HPA merged"
+
+#kidney:
+merg_atlas_kid <- data.frame(merged_data$Atlas_kid)
+colnames(merg_atlas_kid) <- "FPKM"
+merg_atlas_kid$study <- "atlas merged"
+
+merg_gtex_kid <- data.frame(merged_data$GTEx_kid)
+colnames(merg_gtex_kid) <- "FPKM"
+merg_gtex_kid$study <- "gtex merged"
+
+merg_HPA_kid <- data.frame(merged_data$HPA_kid)
+colnames(merg_HPA_kid) <- "FPKM"
+merg_HPA_kid$study <- "HPA merged"
+
+#skillnader mellan studier (alla tre vävnader) innan merge:
+
+all_altiso <- rbind(all_altIso_brain,all_altIso_heart)
+all_atlas <- rbind(all_atlas_brain,all_atlas_heart,all_atlas_kid)
+all_gtex <- rbind(all_gtex_brain,all_gtex_heart,all_gtex_kid)
+all_hpa <- rbind(all_HPA_brain,all_HPA_heart,all_HPA_kid)
+
+all_data <- rbind(all_altiso,all_atlas,all_gtex,all_hpa)
+
+ggplot(all_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 662 rows containing non-finite values (stat_density).
+## Warning: Removed 94 rows containing non-finite values (stat_density).
+## Warning: Removed 309 rows containing non-finite values (stat_density).
+## Warning: Removed 1439 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged1.png) 
+
+```r
+#skillnader mellan studier (alla tre vävnader) efter merge:
+
+merg_altiso <- rbind(merg_altIso_brain,merg_altIso_heart)
+merg_atlas <- rbind(merg_atlas_brain,merg_atlas_heart,merg_atlas_kid)
+merg_gtex <- rbind(merg_gtex_brain,merg_gtex_heart,merg_gtex_kid)
+merg_hpa <- rbind(merg_HPA_brain,merg_HPA_heart,merg_HPA_kid)
+
+merg_data <- rbind(merg_altiso,merg_atlas,merg_gtex,merg_hpa)
+
+ggplot(merg_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0,7) + theme_bw()
+```
+
+```
+## Warning: Removed 608 rows containing non-finite values (stat_density).
+## Warning: Removed 447 rows containing non-finite values (stat_density).
+## Warning: Removed 571 rows containing non-finite values (stat_density).
+## Warning: Removed 1124 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged2.png) 
+
+```r
+#för varje vävnad separat:
+
+#brain 
+all_brain_data <- rbind(all_altIso_brain,all_atlas_brain,all_gtex_brain,all_HPA_brain)
+merg_brain_data <- rbind(merg_altIso_brain,merg_atlas_brain,merg_gtex_brain,merg_HPA_brain)
+ggplot(merg_brain_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 308 rows containing non-finite values (stat_density).
+## Warning: Removed 163 rows containing non-finite values (stat_density).
+## Warning: Removed 166 rows containing non-finite values (stat_density).
+## Warning: Removed 278 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged3.png) 
+
+```r
+ggplot(all_brain_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 344 rows containing non-finite values (stat_density).
+## Warning: Removed 39 rows containing non-finite values (stat_density).
+## Warning: Removed 101 rows containing non-finite values (stat_density).
+## Warning: Removed 357 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged4.png) 
+
+```r
+ggplot(rbind(merg_brain_data,all_brain_data), aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 344 rows containing non-finite values (stat_density).
+## Warning: Removed 308 rows containing non-finite values (stat_density).
+## Warning: Removed 39 rows containing non-finite values (stat_density).
+## Warning: Removed 163 rows containing non-finite values (stat_density).
+## Warning: Removed 101 rows containing non-finite values (stat_density).
+## Warning: Removed 166 rows containing non-finite values (stat_density).
+## Warning: Removed 357 rows containing non-finite values (stat_density).
+## Warning: Removed 278 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged5.png) 
+
+```r
+#heart
+all_heart_data <- rbind(all_altIso_heart,all_atlas_heart,all_gtex_heart,all_HPA_heart)
+merg_heart_data <- rbind(merg_altIso_heart,merg_atlas_heart,merg_gtex_heart,merg_HPA_heart)
+ggplot(merg_heart_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 300 rows containing non-finite values (stat_density).
+## Warning: Removed 182 rows containing non-finite values (stat_density).
+## Warning: Removed 197 rows containing non-finite values (stat_density).
+## Warning: Removed 432 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged6.png) 
+
+```r
+ggplot(all_heart_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 318 rows containing non-finite values (stat_density).
+## Warning: Removed 33 rows containing non-finite values (stat_density).
+## Warning: Removed 105 rows containing non-finite values (stat_density).
+## Warning: Removed 562 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged7.png) 
+
+```r
+ggplot(rbind(merg_heart_data,all_heart_data), aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 318 rows containing non-finite values (stat_density).
+## Warning: Removed 300 rows containing non-finite values (stat_density).
+## Warning: Removed 33 rows containing non-finite values (stat_density).
+## Warning: Removed 182 rows containing non-finite values (stat_density).
+## Warning: Removed 105 rows containing non-finite values (stat_density).
+## Warning: Removed 197 rows containing non-finite values (stat_density).
+## Warning: Removed 562 rows containing non-finite values (stat_density).
+## Warning: Removed 432 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged8.png) 
+
+```r
+#kidney alla
+all_kid_data <- rbind(all_atlas_kid,all_gtex_kid,all_HPA_kid)
+merg_kid_data <- rbind(merg_atlas_kid,merg_gtex_kid,merg_HPA_kid)
+ggplot(merg_kid_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 102 rows containing non-finite values (stat_density).
+## Warning: Removed 208 rows containing non-finite values (stat_density).
+## Warning: Removed 414 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged9.png) 
+
+```r
+ggplot(all_kid_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 22 rows containing non-finite values (stat_density).
+## Warning: Removed 103 rows containing non-finite values (stat_density).
+## Warning: Removed 520 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged10.png) 
+
+```r
+ggplot(rbind(merg_kid_data,all_kid_data), aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 22 rows containing non-finite values (stat_density).
+## Warning: Removed 102 rows containing non-finite values (stat_density).
+## Warning: Removed 103 rows containing non-finite values (stat_density).
+## Warning: Removed 208 rows containing non-finite values (stat_density).
+## Warning: Removed 520 rows containing non-finite values (stat_density).
+## Warning: Removed 414 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged11.png) 
+
+```r
+#--------------RE-PROCESSED DATA-----------------------------
+
+reprocessed_data <- read.table("/Users/fridadanielsson/Documents/Projekt/Publika_dataset/manuscript/publicRNAseqdata/fpkm_table_tophat.txt",sep="\t",header=T)
+
+#brain:
+repr_altIso_brain <- data.frame(reprocessed_data$AltIso_brain)
+colnames(repr_altIso_brain) <- "FPKM"
+repr_altIso_brain$study <- "altIso reprocessed"
+
+repr_atlas_brain <- data.frame(reprocessed_data$Atlas_brain)
+colnames(repr_atlas_brain) <- "FPKM"
+repr_atlas_brain$study <- "atlas reprocessed"
+
+repr_eog_brain <- data.frame(reprocessed_data$EoGE_brain)
+colnames(repr_eog_brain) <- "FPKM"
+repr_eog_brain$study <- "eog reprocessed"
+
+repr_HPA_brain <- data.frame(reprocessed_data$HPA_brain)
+colnames(repr_HPA_brain) <- "FPKM"
+repr_HPA_brain$study <- "HPA reprocessed"
+
+repr_bodymap_brain <- data.frame(reprocessed_data$BodyMap_brain)
+colnames(repr_bodymap_brain) <- "FPKM"
+repr_bodymap_brain$study <- "BodyMap reprocessed"
+
+
+#heart:
+repr_altIso_heart <- data.frame(reprocessed_data$AltIso_heart)
+colnames(repr_altIso_heart) <- "FPKM"
+repr_altIso_heart$study <- "altIso reprocessed"
+
+repr_atlas_heart <- data.frame(reprocessed_data$Atlas_heart)
+colnames(repr_atlas_heart) <- "FPKM"
+repr_atlas_heart$study <- "atlas reprocessed"
+
+repr_eog_heart <- data.frame(reprocessed_data$EoGE_heart)
+colnames(repr_eog_heart) <- "FPKM"
+repr_eog_heart$study <- "eog reprocessed"
+
+repr_HPA_heart <- data.frame(reprocessed_data$HPA_heart)
+colnames(repr_HPA_heart) <- "FPKM"
+repr_HPA_heart$study <- "HPA reprocessed"
+
+repr_bodymap_heart <- data.frame(reprocessed_data$BodyMap_heart)
+colnames(repr_bodymap_heart) <- "FPKM"
+repr_bodymap_heart$study <- "BodyMap reprocessed"
+
+
+#kidney:
+
+repr_atlas_kid <- data.frame(reprocessed_data$Atlas_kidney)
+colnames(repr_atlas_kid) <- "FPKM"
+repr_atlas_kid$study <- "atlas reprocessed"
+
+repr_eog_kid <- data.frame(reprocessed_data$EoGE_kidney)
+colnames(repr_eog_kid) <- "FPKM"
+repr_eog_kid$study <- "eog reprocessed"
+
+repr_HPA_kid <- data.frame(reprocessed_data$HPA_kidney)
+colnames(repr_HPA_kid) <- "FPKM"
+repr_HPA_kid$study <- "HPA reprocessed"
+
+repr_bodymap_kid <- data.frame(reprocessed_data$BodyMap_kidney)
+colnames(repr_bodymap_kid) <- "FPKM"
+repr_bodymap_kid$study <- "BodyMap reprocessed"
+
+#skillnader mellan studier (alla tre vävnader) reprocessade:
+
+repr_altiso <- rbind(repr_altIso_brain,repr_altIso_heart)
+repr_atlas <- rbind(repr_atlas_brain,repr_atlas_heart,repr_atlas_kid)
+repr_bodymap <- rbind(repr_bodymap_brain,repr_bodymap_heart,repr_bodymap_kid)
+repr_eog <- rbind(repr_eog_brain,repr_eog_heart,repr_eog_kid)
+repr_hpa <- rbind(repr_HPA_brain,repr_HPA_heart,repr_HPA_kid)
+
+repr_data <- rbind(repr_altiso,repr_atlas,repr_bodymap,repr_eog,repr_hpa)
+
+pdf("/Users/fridadanielsson/Documents/Projekt/Publika_dataset/manuscript/revision/between_studies_reprocessed.pdf")
+ggplot(repr_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 1904 rows containing non-finite values (stat_density).
+## Warning: Removed 3506 rows containing non-finite values (stat_density).
+## Warning: Removed 2712 rows containing non-finite values (stat_density).
+## Warning: Removed 3054 rows containing non-finite values (stat_density).
+## Warning: Removed 1490 rows containing non-finite values (stat_density).
+```
+
+```r
+dev.off()
+```
+
+```
+## pdf 
+##   2
+```
+
+```r
+#för varje vävnad separat reprocessed:
+
+#brain 
+repr_brain_data <- rbind(repr_altIso_brain,repr_atlas_brain,repr_bodymap_brain,repr_eog_brain,repr_HPA_brain)
+ggplot(repr_brain_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 1022 rows containing non-finite values (stat_density).
+## Warning: Removed 1301 rows containing non-finite values (stat_density).
+## Warning: Removed 1048 rows containing non-finite values (stat_density).
+## Warning: Removed 1020 rows containing non-finite values (stat_density).
+## Warning: Removed 425 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged12.png) 
+
+```r
+#heart 
+repr_heart_data <- rbind(repr_altIso_heart,repr_atlas_heart,repr_bodymap_heart,repr_eog_heart,repr_HPA_heart)
+ggplot(repr_heart_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 882 rows containing non-finite values (stat_density).
+## Warning: Removed 1132 rows containing non-finite values (stat_density).
+## Warning: Removed 768 rows containing non-finite values (stat_density).
+## Warning: Removed 779 rows containing non-finite values (stat_density).
+## Warning: Removed 428 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged13.png) 
+
+```r
+#kidney alla
+repr_kid_data <- rbind(repr_atlas_kid,repr_bodymap_kid,repr_eog_kid,repr_HPA_kid)
+ggplot(repr_kid_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+```
+
+```
+## Warning: Removed 1073 rows containing non-finite values (stat_density).
+## Warning: Removed 896 rows containing non-finite values (stat_density).
+## Warning: Removed 1255 rows containing non-finite values (stat_density).
+## Warning: Removed 637 rows containing non-finite values (stat_density).
+```
+
+![plot of chunk :FPKM distribution not merged](figure/:FPKM distribution not merged14.png) 
