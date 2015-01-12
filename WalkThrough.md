@@ -1084,22 +1084,8 @@ barplot(100*b$"Sum Sq"[1:5]/sum(b$"Sum Sq"[1:5]),names.arg=rownames(b[1:5,]),mai
 Another way is to do SVA:
 
 ```r
-mod <- model.matrix(~as.factor(Tissue), data=sampleinfo_cufflinks)
-```
-
-```
-## Error in terms.formula(object, data = data): object 'sampleinfo_cufflinks' not found
-```
-
-```r
-mod0 <- model.matrix(~1, data=sampleinfo_cufflinks)
-```
-
-```
-## Error in terms.formula(object, data = data): object 'sampleinfo_cufflinks' not found
-```
-
-```r
+mod <- model.matrix(~as.factor(Tissue), data=sampleinfo_published)
+mod0 <- model.matrix(~1, data=sampleinfo_published)
 n.sv <- num.sv(cufflinks_log,mod,method="leek")
 ```
 
