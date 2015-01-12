@@ -101,9 +101,8 @@ pval.readlength.pc2<-cor.test(x[,2], sampleinfo$readlength)$p.value
 pval.readlength.pc3<-cor.test(x[,3], sampleinfo$readlength)$p.value
 
 cat(sprintf("ReadType~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.layout.pc1,pval.layout.pc2,pval.layout.pc3))
-=======
+
 library("ggplot2")
->>>>>>> 11d5ca716ae37e6107f7f0528eccb78d810b76cf
 
 pc1[7] <- pval.readlength.pc1
 pc2[7] <- pval.readlength.pc2
@@ -161,7 +160,7 @@ barplot(100*a$"Sum Sq"[1:nfac]/sum(a$"Sum Sq"[1:nfac]),names.arg=rownames(a[1:nf
 
 **Function for plotting the highest gene loadings in PCA.**
 ```{r}
-plot.highest.loadings <- function(p, caption="Highest loading"){
+plot.highest.loadings <- function(p, fpkm.table, caption="Highest loading"){
       par(mfrow=c(3,1))
       for(i in 1:3){
       load <- p$rotation[,i][order(p$rotation[,i])]
@@ -174,7 +173,7 @@ plot.highest.loadings <- function(p, caption="Highest loading"){
                            mart=ensembl)
       q <- extreme.symbols[,2]
       names(q) <- extreme.symbols[,1]
-      fpkm <- cbind(q[extreme.ensg],published.nozero[extreme.ensg,])
+      fpkm <- cbind(q[extreme.ensg],fpkm.table[extreme.ensg,])
       names(fpkm)[names(fpkm) == 'q[extreme.ensg]'] <- 'Gene Symbol'
       barplot(extreme, names.arg=q[extreme.ensg],las=2,main=paste0(caption, ", PC", i))
       print(fpkm)
@@ -449,7 +448,7 @@ for (i in 1:6){
 ```
 Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
 ```{r:published PC 1-3}
-plot.highest.loadings(p, caption="Published F/RPKM")
+plot.highest.loadings(p,published.nozero,caption="Published F/RPKM")
 ```
              
 Try Anova on a "melted" expression matrix with some metadata, **Figure 1d**:
@@ -520,7 +519,7 @@ for (i in 1:6){
 Loadings for PCs 1-3 after taking logs (not shown in paper):
 
 ```{r:published log PC 1-3}
-plot.highest.loadings(p.log,caption="Published log F/RPKM")
+plot.highest.loadings(p.log,published.log,caption="Published log F/RPKM")
 ```
 
 To further validate the above results, indicating that tissue specificity appears mainly in PC 2 and 3, we will extract the 500 genes with highest loadings in each component and plot the corresponding published FPKM values in a heatmap (not shown in paper):
@@ -577,7 +576,7 @@ legend("topright",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,1
 Loadings of PCs 1-3 after ComBat (not shown in paper):
 
 ```{r:published log combat PC 1-3}
-plot.highest.loadings(p.combat,caption="Published ComBat adj log F/RPKM")
+plot.highest.loadings(p.combat,combat,caption="Published ComBat adj log F/RPKM")
 ```
 
 Revisit Anova with "combated"" values, **Figure 3c**:
@@ -656,7 +655,7 @@ for (i in 1:6){
 Look at PCA loadings for PC1-3 (not shown in paper):
 
 ```{r:cufflinks PC 1-3}
-plot.highest.loadings(p.cufflinks,caption="Cufflinks FPKM")    
+plot.highest.loadings(p.cufflinks,cufflinks_fpkms,caption="Cufflinks FPKM")    
 ```
 Mitochondrially encoded genes have relatively high expression levels, FPKM values of several thousands.
 
@@ -726,7 +725,7 @@ legend("topleft",legend=c("HPA","GTEx","Atlas","AltIso"),col="black",pch=c(11,8,
 ```
 Loadings for PCs 1-3 for logged FPKM values from Cufflinks (not shown in paper):
 ```{r:cufflinks log PC 1-3}
-plot.highest.loadings(p.log.cufflinks,caption="Cufflinks log FPKM")
+plot.highest.loadings(p.log.cufflinks,cufflinks_log,caption="Cufflinks log FPKM")
 ```
 To further validate the above results, indicating that tissue specificity appears mainly in PC 3, we will extract the 500 genes with highest loadings in each component and plot the corresponding cufflinks FPKM values in a heatmap (not shown in paper):
 
@@ -775,7 +774,7 @@ legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c
 ```
 Loadings for PCs 1-3 in prcomp (not shown in paper):
 ```{r:cufflinks log combat PC 1-3}
-plot.highest.loadings(p.combat.cufflinks,caption="Cufflinks ComBat adj log FPKM")
+plot.highest.loadings(p.combat.cufflinks,combat.cufflinks,caption="Cufflinks ComBat adj log FPKM")
 ```
 Revisit ANOVA analysis on reprocessed Cufflinks FPKM values after ComBat run, **Figure 4j**:
 ```{r:cufflinks log combat anova}
@@ -859,20 +858,8 @@ print_PCA_corrs(j,sampleinfo,caption="Joint analysis, F/RPKM",include.quant=T)
 print_PCA_corrs(j.log,sampleinfo,caption="Joint analysis, log F/RPKM",include.quant=T)
 print_PCA_corrs(combat.j,sampleinfo,caption="Joint analysis, ComBat adj log F/RPKM",include.quant=T)
 ```
-=======
-print_PCA_corrs(published,sampleinfo_published)
-print_PCA_corrs(published.log,sampleinfo_published)
-print_PCA_corrs(combat,sampleinfo_published)
-
-print_PCA_corrs(cufflinks_fpkms,sampleinfo_cufflinks)
-print_PCA_corrs(cufflinks_log,sampleinfo_cufflinks)
-print_PCA_corrs(combat.cufflinks,sampleinfo_cufflinks)
-
-#print_PCA_corrs(j)
-#print_PCA_corrs(j.log)
-#print_PCA_corrs(combat.j)
-```
-
+Analyses relating to Supplementary Figure Y.
+--------------------------------------------
 Let's compare the FPKM distribution in the samples before and after merge
 
 ```{r:FPKM distribution for merged data vs non-merged data}
@@ -1033,9 +1020,4 @@ ggplot(brain_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alph
 ggplot(heart_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 ggplot(kidney_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 
-#--------------RE-PROCESSED DATA-----------------------------
 
-
-#reprocessed_data <- read.table("fpkm_table_tophat.txt",sep="\t",header=T)
-
->>>>>>> 11d5ca716ae37e6107f7f0528eccb78d810b76cf
