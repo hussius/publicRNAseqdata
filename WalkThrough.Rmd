@@ -364,7 +364,7 @@ Try Anova on a "melted" expression matrix with some metadata, Figure 1d:
 m <- melt(published.nozero)
 colnames(m) <- c("sample_ID","RPKM")
 
-meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
+meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype","readlength")]
 rownames(meta) <- colnames(published.nozero)
 tissue <- rep(meta$Tissue, each=nrow(published.nozero))
 study <- rep(meta$Study, each=nrow(published.nozero))
@@ -372,15 +372,14 @@ prep <- rep(meta$Preparation, each=nrow(published.nozero))
 layout <- rep(meta$Readtype, each=nrow(published.nozero))
 raw <- rep(meta$NumberRaw, each=nrow(published.nozero))
 mapped <- rep(meta$Numbermapped, each=nrow(published.nozero))
-data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-fit <- lm(RPKM ~ layout + prep + nraw + study + tissue, data=data)
+readlen <- rep(meta$readlength, each=nrow(published.nozero))
+data <- data.frame(m, tissue=tissue, study=study, prep=prep, layout=layout, readlen=readlen, nraw=raw,nmapped=mapped)
+fit <- lm(RPKM ~ layout + readlen + prep + nraw + study + tissue, data=data)
 a <- anova(fit)
 maxval = 100
 
 barplot(100*a$"Sum Sq"[1:5]/sum(a$"Sum Sq"[1:5]),names.arg=rownames(a[1:5,]),main="Anova, published FPKM/RPKM values",ylim=c(0,maxval))
-
 ```
-
 Try log2 transformation of the published FPKM values:
 
 ```{r:published log tranform}
@@ -389,7 +388,6 @@ pseudo <- 1
 published.log <- log2(published.nozero + pseudo)
 
 ```
-
 Heatmap of Spearman correlations between published expression profiles with log2 values, Figure 2a:
 
 ```{r:published log heatmap spearman}
@@ -555,7 +553,7 @@ Try Anova on a "melted" expression matrix with logged values and some metadata, 
 ```{r:published log anova}
 n <- melt(published.log)
 colnames(n) <- c("sample_ID","RPKM")
-meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
+meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype","readlength")]
 rownames(meta) <- colnames(published.log)
 tissue <- rep(meta$Tissue, each=nrow(published.log))
 study <- rep(meta$Study, each=nrow(published.log))
@@ -563,12 +561,36 @@ prep <- rep(meta$Preparation, each=nrow(published.log))
 layout <- rep(meta$Readtype, each=nrow(published.log))
 raw <- rep(meta$NumberRaw, each=nrow(published.log))
 mapped <- rep(meta$Numbermapped, each=nrow(published.log))
-data <- data.frame(n, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-fit <- lm(RPKM ~ layout + prep + nraw + study + tissue, data=data)
+readlen <- rep(meta$readlength, each=nrow(published.log))
+
+data <- data.frame(n, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped, readlen=readlen)
+fit <- lm(RPKM ~ layout + readlen + prep + nraw + study + tissue, data=data)
 b <- anova(fit)
 maxval = 100
 
-barplot(100*b$"Sum Sq"[1:5]/sum(b$"Sum Sq"[1:5]),names.arg=rownames(a[1:5,]),main="Anova, log2 published FPKM/RPKM values",ylim=c(0,maxval))
+barplot(100*b$"Sum Sq"[1:5]/sum(b$"Sum Sq"[1:5]),names.arg=rownames(b[1:5,]),main="Anova, log2 reprocessed FPKM/RPKM values",ylim=c(0,maxval))
+```
+Another way is to do SVA:
+```{r}
+mod <- model.matrix(~as.factor(Tissue), data=sampleinfo_reprocessed)
+mod0 <- model.matrix(~1, data=sampleinfo_reprocessed)
+n.sv <- num.sv(cufflinks_log,mod,method="leek")
+svobj <- sva(as.matrix(cufflinks_log),mod,mod0,n.sv=n.sv)
+surr <- svobj$sv
+```
+What are the surrogate variables correlated to?
+```{r}
+par(mfrow=c(2,1))
+for (i in c(1,2)){
+ps <- rep(1,5)
+names(ps) <- c("Preparation", "Study", "NumberRaw", "Readtype", "Readlength")
+ps[1] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$Preparation))$p.value
+ps[2] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$Study))$p.value
+ps[3] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$NumberRaw))$p.value
+ps[4] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$Readtype))$p.value
+ps[5] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$readlength))$p.value
+barplot(-log(ps),las=2)
+}
 ```
 
 Combat analysis is performed on log2 values (n=13,323):
@@ -698,7 +720,7 @@ Revisit Anova with combated values, Figure 3c:
 
 o <- melt(combat)
 colnames(o) <- c("sample_ID","combat")
-meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
+meta <- sampleinfo_published[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype","readlength")]
 rownames(meta) <- colnames(combat)
 tissue <- rep(meta$Tissue, each=nrow(combat))
 study <- rep(meta$Study, each=nrow(combat))
@@ -706,8 +728,9 @@ prep <- rep(meta$Preparation, each=nrow(combat))
 layout <- rep(meta$Readtype, each=nrow(combat))
 raw <- rep(meta$NumberRaw, each=nrow(combat))
 mapped <- rep(meta$Numbermapped, each=nrow(combat))
-data <- data.frame(o, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-fit <- lm(combat ~ layout + prep + nraw + study + tissue, data=data)
+readlen <- rep(meta$readlength, each=nrow(combat))
+data <- data.frame(o, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped,readlen=readlen)
+fit <- lm(combat ~ layout + readlen + prep + nraw + study + tissue, data=data)
 c <- anova(fit)
 maxval = 100
 
@@ -879,15 +902,17 @@ Anova analysis of different batch factors, Figure 4c:
 
 p <- melt(cufflinks_fpkms)
 colnames(p) <- c("sample_ID","Cuff_FPKM")
-meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
+meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype","readlength")]
 rownames(meta) <- colnames(cufflinks_fpkms)
 tissue <- rep(meta$Tissue, each=nrow(cufflinks_fpkms))
 study <- rep(meta$Study, each=nrow(cufflinks_fpkms))
 prep <- rep(meta$Preparation, each=nrow(cufflinks_fpkms))
 layout <- rep(meta$Readtype, each=nrow(cufflinks_fpkms))
-nraw <- rep(meta$NumberRaw, each=nrow(cufflinks_fpkms))
-data <- data.frame(p, tissue=tissue, study=study, prep=prep, layout=layout, nraw=nraw)
-fit <- lm(Cuff_FPKM ~ layout + prep + nraw + study + tissue, data=data)
+raw <- rep(meta$NumberRaw, each=nrow(cufflinks_fpkms))
+readlen <- rep(meta$readlength, each=nrow(cufflinks_fpkms))
+
+data <- data.frame(p, tissue=tissue, study=study, prep=prep, layout=layout, nraw=raw, readlen=readlen)
+fit <- lm(Cuff_FPKM ~ layout + readlen + prep + nraw + study + tissue, data=data)
 d <- anova(fit)
 maxval = 100
 
@@ -1078,18 +1103,44 @@ Try Anova on a "melted" expression matrix with logged cufflinks values and some 
 ```{r:cufflinks log anova}
 q <- melt(cufflinks_log[,])
 colnames(q) <- c("sample_ID","logFPKM")
-meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
+meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype","readlength")]
 rownames(meta) <- colnames(cufflinks_log)
 tissue <- rep(meta$Tissue, each=nrow(cufflinks_log))
 study <- rep(meta$Study, each=nrow(cufflinks_log))
 prep <- rep(meta$Preparation, each=nrow(cufflinks_log))
 layout <- rep(meta$Readtype, each=nrow(cufflinks_log))
-data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout)
-fit <- lm(logFPKM ~ layout + prep + nraw + study + tissue, data=data)
+readlen <- rep(meta$readlength, each=nrow(cufflinks_log))
+raw <- rep(meta$NumberRaw, each=nrow(cufflinks_log))
+data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout, nraw=raw, readlen=readlen)
+fit <- lm(logFPKM ~ layout + readlen + prep + nraw + study + tissue, data=data)
 e <- anova(fit)
 maxval = 100
 
 barplot(100*e$"Sum Sq"[1:5]/sum(e$"Sum Sq"[1:5]),names.arg=rownames(e[1:5,]),main="Anova, Cufflinks log2 FPKM",ylim=c(0,maxval))
+```
+
+SVA analysis.
+```{r}
+library(sva)
+mod <- model.matrix(~as.factor(Tissue), data=sampleinfo_reprocessed)
+mod0 <- model.matrix(~1, data=sampleinfo_reprocessed)
+n.sv <- num.sv(published.log,mod,method="leek")
+svobj <- sva(as.matrix(published.log),mod,mod0,n.sv=n.sv)
+surr <- svobj$sv
+```
+What are the surrogate variables correlated to?
+```{r}
+par(mfrow=c(2,1))
+for (i in c(1,2)){
+ps <- rep(1,5)
+names(ps) <- c("Preparation", "Study", "NumberRaw", "Readtype", "Readlength")
+ps[1] <- cor.test(surr[,i], as.numeric(sampleinfo_published$Preparation))$p.value
+ps[2] <- cor.test(surr[,i], as.numeric(sampleinfo_published$Study))$p.value
+ps[3] <- cor.test(surr[,i], as.numeric(sampleinfo_published$NumberRaw))$p.value
+ps[4] <- cor.test(surr[,i], as.numeric(sampleinfo_published$Readtype))$p.value
+ps[5] <- cor.test(surr[,i], as.numeric(sampleinfo_published$readlength))$p.value
+barplot(-log(ps),las=2)
+}
 ```
 
 Combat analysis for removal of batch effects (n=19,475):
@@ -1217,19 +1268,351 @@ Revisit ANOVA analysis on reprocessed Cufflinks FPKM values after ComBat run, Fi
 
 q <- melt(combat.cufflinks)
 colnames(q) <- c("sample_ID","combat")
-meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype")]
+meta <- sampleinfo_cufflinks[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype","readlength")]
 rownames(meta) <- colnames(combat.cufflinks)
 tissue <- rep(meta$Tissue, each=nrow(combat.cufflinks))
 study <- rep(meta$Study, each=nrow(combat.cufflinks))
 prep <- rep(meta$Preparation, each=nrow(combat.cufflinks))
 layout <- rep(meta$Readtype, each=nrow(combat.cufflinks))
 raw <- rep(meta$NumberRaw, each=nrow(combat.cufflinks))
+readlen <- rep(meta$readlength, each=nrow(combat.cufflinks))
 mapped <- rep(meta$Numbermapped, each=nrow(combat.cufflinks))
-data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped)
-fit <- lm(combat ~ prep + nraw + layout + study + tissue, data=data)
+data <- data.frame(q, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped, readlen=readlen)
+fit <- lm(combat ~ prep + nraw + layout + study + tissue + readlen, data=data)
 f <- anova(fit)
 maxval = 100
 barplot(100*f$"Sum Sq"[1:5]/sum(f$"Sum Sq"[1:5]),names.arg=rownames(f[1:5,]),main="Anova Cufflinks Combat",ylim=c(0,maxval))
 
 
 ```
+
+```{r:joint}
+j <- merge(published.nozero, cufflinks_pc_nozero, by.x=0, by.y="ENSEMBL_ID")
+j <- j[,-which(colnames(j)=="Gene_ID"),]
+rown <- j[,1]
+j <- j[,2:ncol(j)]
+rownames(j) <- rown
+```
+
+Heatmap and PCA of untransformed.
+```{r}
+pheatmap(cor(j))
+```
+
+Here, RNA-seq Atlas forms its own group, whereas the other studies form tissue-specific groups.
+
+PCA:
+```{r}
+pdf("Joint_PCA.pdf")
+#par(mfrow=c(2,2))
+
+colors <- c("indianred", "dodgerblue", "forestgreen","indianred", "dodgerblue", "indianred", "dodgerblue", "forestgreen","indianred", "dodgerblue", "forestgreen","dodgerblue","indianred","forestgreen","dodgerblue","indianred","forestgreen","dodgerblue","indianred","forestgreen","dodgerblue","indianred","forestgreen","dodgerblue","indianred")
+shapes <- c(rep(0,3),rep(1,2),rep(8,3),rep(2,3),rep(6,3),rep(17,3),rep(5,3),rep(15,3),rep(16,2))
+
+p.joint <- prcomp(t(j))
+plot(p.joint$x[,1],p.joint$x[,2],col=colors,pch=shapes,main="Raw F/RPKM PC1/2")
+#text(p.joint$x[,1],p.joint$x[,2],labels=colnames(j))
+legend("topright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+legend("top",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atlas-R", "GTeX-P","EoGE-P", "BodyMap-R"),col="black",pch=c(0,15,1,16,2,17,8,6,5),ncol=2)
+
+```
+
+After log transformation:
+```{r}
+j.log <- log2(j+1)
+p.joint.log <- prcomp(t(j.log))
+plot(p.joint.log$x[,1],p.joint.log$x[,2],pch=shapes,col=colors,main="log F/RPKM PC1/2")
+#text(p.joint.log$x[,1],p.joint.log$x[,2],labels=colnames(j))
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+legend("bottomleft",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atlas-R", "GTeX-P","EoGE-P", "BodyMap-R"),col="black",pch=c(0,15,1,16,2,17,8,6,5),ncol=2)
+plot(p.joint.log$x[,2],p.joint.log$x[,3],pch=shapes,col=colors,main="log F/RPKM PC2/3")
+#text(p.joint.log$x[,2],p.joint.log$x[,3],labels=colnames(j))
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+legend("bottomleft",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atlas-R", "GTeX-P","EoGE-P", "BodyMap-R"),col="black",pch=c(0,15,1,16,2,17,8,6,5),ncol=2)
+```
+
+ComBat:
+```{r}
+meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas",3),rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HPA",3),rep("AltIso",2)),tissue=c("Heart","Brain","Kidney","Heart","Brain","Heart","Brain","Kidney","Heart","Brain","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart"),quantification=c(rep("other",11),rep("tophatcufflinks",14)))
+
+batch <- meta$study
+design <- model.matrix(~1,data=meta)
+combat.j <- ComBat(dat=j.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
+p.com <- prcomp(t(combat.j))
+plot(p.com$x[,1],p.com$x[,2],pch=shapes,col=colors,main="ComBat PC1/2")
+#text(p.com$x[,1],p.com$x[,2],labels=colnames(j))
+legend("topright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+legend("bottom",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atlas-R", "GTeX-P","EoGE-P", "BodyMap-R"),col="black",pch=c(0,15,1,16,2,17,8,6,5),ncol=2)
+dev.off()
+```
+
+Check out Atlas (pre-computed) RPKMs against (pre-computed HPA): (both are logged for clarity)
+Try to fit a linear model between the two datasets' logged RPKMs.
+```{r}
+pdf("Atlas_vs_HPA_published.pdf")
+par(mfrow=c(3,1))
+l <- lm(Atlas_heart.x ~ HPA_heart.x,data=j.log)
+l
+plot(Atlas_heart.x ~ HPA_heart.x,data=j.log,pch=20,main=paste("Slope",signif(l$coefficients[2],2),sep="="))
+yfit <- l$coefficients[1] + l$coefficients[2]*(1:13)
+lines(yfit,col="red")
+```
+The plot and linear model show that the RNA-seq Atlas FPKMs are consistently lower than the ones from HPA (slope=0.65). On a linear scale, the slope is just 0.42! (but with a different intercept)
+
+Look at the other tissues too!
+```{r}
+l <- lm(Atlas_brain.x ~ HPA_brain.x,data=j.log)
+plot(Atlas_brain.x ~ HPA_brain.x,data=j.log,pch=20,main=paste("Slope",signif(l$coefficients[2],2),sep="="))
+yfit <- l$coefficients[1] + l$coefficients[2]*(1:13)
+lines(yfit,col="red")
+l <- lm(Atlas_kidney.x ~ HPA_kidney.x,data=j.log)
+
+plot(Atlas_kidney.x ~ HPA_kidney.x,data=j.log,pch=20,main=paste("Slope",signif(l$coefficients[2],2),sep="="))
+yfit <- l$coefficients[1] + l$coefficients[2]*(1:13)
+lines(yfit,col="red")
+dev.off()
+```
+
+Instead look at AltIso vs HPA.
+```{r}
+par(mfrow=c(2,1))
+l <- lm(AltIso_heart.x ~ HPA_heart.x,data=j.log)
+plot(AltIso_heart.x ~ HPA_heart.x,data=j.log,col=densCols(j.log$HPA_heart.x,j.log$AltIso_heart.x),pch=20,main=paste("Slope",signif(l$coefficients[2],2),sep="="))
+yfit <- l$coefficients[1] + l$coefficients[2]*(1:13)
+lines(yfit,col="red")
+l <- lm(AltIso_brain.x ~ HPA_brain.x,data=j.log)
+plot(AltIso_brain.x ~ HPA_brain.x,data=j.log,col=densCols(j.log$HPA_brain.x,j.log$AltIso_brain.x),pch=20,main=paste("Slope",signif(l$coefficients[2],2),sep="="))
+yfit <- l$coefficients[1] + l$coefficients[2]*(1:13)
+lines(yfit,col="red")
+```
+Look at RNA-seq Atlas, published vs reprocessed:
+```{r}
+pdf("Atlas_published_vs_reprocessed.pdf")
+par(mfrow=c(3,1))
+l <- lm(Atlas_heart.x ~ Atlas_heart.y,data=j.log)
+plot(Atlas_heart.x ~ Atlas_heart.y,data=j.log,col=densCols(j.log$Atlas_heart.y,j.log$Atlas_heart.x),pch=20,main=paste("Slope",signif(l$coefficients[2],2),sep="="))
+yfit <- l$coefficients[1] + l$coefficients[2]*(1:13)
+lines(yfit,col="red")
+#
+l <- lm(Atlas_brain.x ~ Atlas_brain.y,data=j.log)
+plot(Atlas_brain.x ~ Atlas_brain.y,data=j.log,col=densCols(j.log$Atlas_brain.y,j.log$Atlas_brain.x),pch=20,main=paste("Slope",signif(l$coefficients[2],2),sep="="))
+yfit <- l$coefficients[1] + l$coefficients[2]*(1:13)
+lines(yfit,col="red")
+#
+l <- lm(Atlas_kidney.x ~ Atlas_kidney.y,data=j.log)
+plot(Atlas_kidney.x ~ Atlas_kidney.y,data=j.log,col=densCols(j.log$Atlas_kidney.y,j.log$Atlas_kidney.x),pch=20,main=paste("Slope",signif(l$coefficients[2],2),sep="="))
+yfit <- l$coefficients[1] + l$coefficients[2]*(1:13)
+lines(yfit,col="red")
+dev.off()
+```
+
+Correlations between studies (per tissue)
+```{r}
+heart.p <- j[,c(1,4,6,9)]
+pheatmap(cor(log2(1+heart.p)))
+heart.r <- j[,c(16,19,22,25)]
+pheatmap(cor(log2(1+heart.r)))
+heart.all <- cbind(heart.p, heart.r)
+```
+
+ANOVAs including quantification method
+```{r}
+pdf("Joint_ANOVAs.pdf")
+par(mfrow=c(3,1))
+sampleinfo_cufflinks$quantification <- "topcuff"
+sampleinfo_published$quantification <- "other"
+studylabels_cuff <- c("EoGE_brain","EoEG_heart","EoEG_kidney","Atlas_brain","Atlas_heart","Atlas_kidney","BodyMap_brain","BodyMap_heart","BodyMap_kidney","HPA_brain","HPA_heart","HPA_kidney","AltIso_brain","AltIso_heart")
+sampleinfo_reprocessed <- data.frame(Study_labels=studylabels_cuff, sampleinfo_cufflinks)
+sampleinfo <- rbind(sampleinfo_published, sampleinfo_reprocessed)
+meta <- sampleinfo[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype","quantification","readlength")]
+rownames(meta) <- colnames(j)
+tissue <- rep(meta$Tissue, each=nrow(j))
+study <- rep(meta$Study, each=nrow(j))
+prep <- rep(meta$Preparation, each=nrow(j))
+layout <- rep(meta$Readtype, each=nrow(j))
+raw <- rep(meta$NumberRaw, each=nrow(j))
+mapped <- rep(meta$Numbermapped, each=nrow(j))
+quantification <- rep(meta$quantification, each=nrow(j))
+readlen <- rep(meta$readlength, each=nrow(j))
+o <- melt(j)
+colnames(o) <- c("sample_ID","RawRPKM")
+data <- data.frame(o, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped,quant=quantification,readlen=readlen)
+
+#fit <- lm(RawRPKM ~ layout + prep + nraw + study + tissue + quant, data=data)
+fit <- lm(RawRPKM ~ layout + readlen + prep + nraw + quant + study + tissue, data=data)
+a <- anova(fit)
+maxval = 100
+barplot(100*a$"Sum Sq"[1:7]/sum(a$"Sum Sq"[1:7]),names.arg=rownames(a[1:7,]),main="Anova raw",ylim=c(0,maxval))
+
+o <- melt(j.log)
+colnames(o) <- c("sample_ID","logRPKM")
+data <- data.frame(o, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped,quant=quantification, readlen=readlen)
+
+fit <- lm(logRPKM ~  layout + readlen + prep + nraw + quant + study + tissue, data=data)
+b <- anova(fit)
+maxval = 100
+barplot(100*b$"Sum Sq"[1:7]/sum(b$"Sum Sq"[1:7]),names.arg=rownames(b[1:7,]),main="Anova log",ylim=c(0,maxval))
+
+o <- melt(combat.j)
+colnames(o) <- c("sample_ID","combat")
+data <- data.frame(o, tissue=tissue, study=study, prep=prep, layout=layout,nraw=raw,nmapped=mapped,quant=quantification,readlen=readlen)
+
+fit <- lm(combat ~ layout + readlen + prep + nraw + quant + study + tissue, data=data)
+c <- anova(fit)
+maxval = 100
+barplot(100*c$"Sum Sq"[1:7]/sum(c$"Sum Sq"[1:7]),names.arg=rownames(c[1:7,]),main="Anova ComBat",ylim=c(0,maxval))
+dev.off()
+```
+
+Try SVA to assess importance of different factors.
+```{r}
+library(sva)
+mod <- model.matrix(~as.factor(Tissue), data=sampleinfo)
+mod0 <- model.matrix(~1, data=sampleinfo)
+n.sv <- num.sv(j.log,mod,method="leek")
+svobj <- sva(as.matrix(j.log),mod,mod0,n.sv=n.sv)
+surr <- svobj$sv
+heatmap(surr,scale="none",labRow=colnames(j), Rowv=NA, Colv=NA)
+```
+
+What is in the first surrogate variable?
+```{r}
+cor.test(surr[,1], as.numeric(sampleinfo$Preparation)) # 2e-7
+cor.test(surr[,1], as.numeric(sampleinfo$Study)) # NS
+cor.test(surr[,1], as.numeric(sampleinfo$NumberRaw)) # NS
+cor.test(surr[,1], as.numeric(sampleinfo$Readtype)) # NS
+cor.test(surr[,1], as.numeric(sampleinfo$readlength)) # 0.017
+sampleinfo$quant_numeric <- c(rep(0,11),rep(1,14))
+cor.test(surr[,1], as.numeric(sampleinfo$quant_numeric)) # 0.033
+```
+Mostly the prep (=Atlas vs others).
+
+The second surrogate variable:
+```{r}
+cor.test(surr[,2], as.numeric(sampleinfo$Preparation)) # 0.014
+cor.test(surr[,2], as.numeric(sampleinfo$Study)) # 0.03
+cor.test(surr[,2], as.numeric(sampleinfo$NumberRaw)) # 0.02
+cor.test(surr[,2], as.numeric(sampleinfo$Readtype)) # NS
+cor.test(surr[,2], as.numeric(sampleinfo$readlength)) # NS
+sampleinfo$quant_numeric <- c(rep(0,11),rep(1,14))
+cor.test(surr[,2], as.numeric(sampleinfo$quant_numeric)) # 0.003
+```
+
+A little bit of everything, though quantification seems to be the strongest.
+
+Correlations between PCs and experimental factors.
+```{r}
+print_PCA_corrs <- function(data,sampleinfo){
+pca <- prcomp(t(data[,]))
+
+rot <- pca$r
+x <- pca$x
+
+pc1 <- rep(1,7)
+names(pc1) <- c("Raw reads","Mapped reads", "Tissue", "Library prep", "Study", "Read type", "Read length")
+pc2 <- rep(1,7)
+names(pc2) <- names(pc1)
+
+# Test correlations between number of seq'd reads and PCs 1-4 from prcomp
+pval.nraw.pc1 <- cor.test(x[,1], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.pc2 <- cor.test(x[,2], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.pc3 <- cor.test(x[,3], sampleinfo$NumberRaw,method="spearman")$p.value
+pval.nraw.pc4 <- cor.test(x[,4], sampleinfo$NumberRaw,method="spearman")$p.value
+
+cat(sprintf("Number_of_rawreads~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\n", pval.nraw.pc1,pval.nraw.pc2,pval.nraw.pc3,pval.nraw.pc4))
+
+pc1[1] <- pval.nraw.pc1
+pc2[1] <- pval.nraw.pc2
+
+pval.nmapped.pc1 <- cor.test(x[,1], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.pc2 <- cor.test(x[,2], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.pc3 <- cor.test(x[,3], sampleinfo$Numbermapped,method="spearman")$p.value
+pval.nmapped.pc4 <- cor.test(x[,4], sampleinfo$Numbermapped,method="spearman")$p.value
+
+cat(sprintf("Number_of_mappedreads~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"PCA4=\"%f\n", pval.nmapped.pc1,pval.nmapped.pc2,pval.nmapped.pc3,pval.nmapped.pc4))
+
+pc1[2] <- pval.nmapped.pc1
+pc2[2] <- pval.nmapped.pc2
+
+# For tissue, use kruskal.test which handles ordinal variables 
+pval.tissue.pc1<-kruskal.test(x[,1], sampleinfo$Tissue)$p.value
+pval.tissue.pc2<-kruskal.test(x[,2], sampleinfo$Tissue)$p.value
+pval.tissue.pc3<-kruskal.test(x[,3], sampleinfo$Tissue)$p.value
+pval.tissue.pc4<-kruskal.test(x[,4], sampleinfo$Tissue)$p.value
+
+cat(sprintf("Tissues~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.tissue.pc1,pval.tissue.pc2,pval.tissue.pc3,pval.tissue.pc4))
+
+pc1[3] <- pval.tissue.pc1
+pc2[3] <- pval.tissue.pc2
+
+# Library prep 
+pval.prep.pc1<-kruskal.test(x[,1], sampleinfo$Preparation)$p.value
+pval.prep.pc2<-kruskal.test(x[,2], sampleinfo$Preparation)$p.value
+pval.prep.pc3<-kruskal.test(x[,3], sampleinfo$Preparation)$p.value
+pval.prep.pc4<-kruskal.test(x[,4], sampleinfo$Preparation)$p.value
+
+cat(sprintf("LibPrep~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.prep.pc1,pval.prep.pc2,pval.prep.pc3,pval.prep.pc4))
+
+pc1[4] <- pval.prep.pc1
+pc2[4] <- pval.prep.pc2
+
+# Study  
+pval.study.pc1<-kruskal.test(x[,1], sampleinfo$Study)$p.value
+pval.study.pc2<-kruskal.test(x[,2], sampleinfo$Study)$p.value
+pval.study.pc3<-kruskal.test(x[,3], sampleinfo$Study)$p.value
+pval.study.pc4<-kruskal.test(x[,4], sampleinfo$Study)$p.value
+
+cat(sprintf("Study~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.study.pc1,pval.study.pc2,pval.study.pc3,pval.study.pc4))
+
+pc1[5] <- pval.study.pc1
+pc2[5] <- pval.study.pc2
+
+# Layout
+pval.layout.pc1<-kruskal.test(x[,1], sampleinfo$Readtype)$p.value
+pval.layout.pc2<-kruskal.test(x[,2], sampleinfo$Readtype)$p.value
+pval.layout.pc3<-kruskal.test(x[,3], sampleinfo$Readtype)$p.value
+pval.layout.pc4<-kruskal.test(x[,4], sampleinfo$Readtype)$p.value
+
+pc1[6] <- pval.layout.pc1
+pc2[6] <- pval.layout.pc2
+
+# Read length
+pval.readlength.pc1<-kruskal.test(x[,1], sampleinfo$readlength)$p.value
+pval.readlength.pc2<-kruskal.test(x[,2], sampleinfo$readlength)$p.value
+pval.readlength.pc3<-kruskal.test(x[,3], sampleinfo$readlength)$p.value
+pval.readlength.pc4<-kruskal.test(x[,4], sampleinfo$readlength)$p.value
+
+cat(sprintf("ReadType~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.layout.pc1,pval.layout.pc2,pval.layout.pc3,pval.layout.pc4))
+
+pc1[7] <- pval.readlength.pc1
+pc2[7] <- pval.readlength.pc2
+
+# Quantification
+#pval.layout.pc1<-kruskal.test(x[,1], sampleinfo$quantification=="other")$p.value
+#pval.layout.pc2<-kruskal.test(x[,2], sampleinfo$quantification=="other")$p.value
+#pval.layout.pc3<-kruskal.test(x[,3], sampleinfo$quantification=="other")$p.value
+#pval.layout.pc4<-kruskal.test(x[,4], sampleinfo$quantification=="other")$p.value
+
+cat(sprintf("QuantificationMethod~PCAs: PCA1=\"%f\"PCA2=\"%f\"PCA3=\"%f\"\n", pval.layout.pc1,pval.layout.pc2,pval.layout.pc3,pval.layout.pc4))
+
+par(mfrow=c(2,1))
+barplot(-log(pc1),las=2)
+barplot(-log(pc2),las=2)
+}
+```
+
+Try for raw RPKM, logged RPKM and ComBat adjusted RPKM:
+```{r}
+print_PCA_corrs(published,sampleinfo_published)
+print_PCA_corrs(published.log,sampleinfo_published)
+print_PCA_corrs(combat,sampleinfo_published)
+
+print_PCA_corrs(cufflinks_fpkms,sampleinfo_reprocessed)
+print_PCA_corrs(cufflinks_log,sampleinfo_reprocessed)
+print_PCA_corrs(combat.cufflinks,sampleinfo_reprocessed)
+
+#print_PCA_corrs(j)
+#print_PCA_corrs(j.log)
+#print_PCA_corrs(combat.j)
+```
+
