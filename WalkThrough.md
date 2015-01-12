@@ -1084,19 +1084,19 @@ barplot(100*b$"Sum Sq"[1:5]/sum(b$"Sum Sq"[1:5]),names.arg=rownames(b[1:5,]),mai
 Another way is to do SVA:
 
 ```r
-mod <- model.matrix(~as.factor(Tissue), data=sampleinfo_reprocessed)
+mod <- model.matrix(~as.factor(Tissue), data=sampleinfo_cufflinks)
 ```
 
 ```
-## Error in terms.formula(object, data = data): object 'sampleinfo_reprocessed' not found
+## Error in terms.formula(object, data = data): object 'sampleinfo_cufflinks' not found
 ```
 
 ```r
-mod0 <- model.matrix(~1, data=sampleinfo_reprocessed)
+mod0 <- model.matrix(~1, data=sampleinfo_cufflinks)
 ```
 
 ```
-## Error in terms.formula(object, data = data): object 'sampleinfo_reprocessed' not found
+## Error in terms.formula(object, data = data): object 'sampleinfo_cufflinks' not found
 ```
 
 ```r
@@ -1129,17 +1129,17 @@ par(mfrow=c(2,1))
 for (i in c(1,2)){
 ps <- rep(1,5)
 names(ps) <- c("Preparation", "Study", "NumberRaw", "Readtype", "Readlength")
-ps[1] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$Preparation))$p.value
-ps[2] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$Study))$p.value
-ps[3] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$NumberRaw))$p.value
-ps[4] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$Readtype))$p.value
-ps[5] <- cor.test(surr[,i], as.numeric(sampleinfo_reprocessed$readlength))$p.value
+ps[1] <- cor.test(surr[,i], as.numeric(sampleinfo_cufflinks$Preparation))$p.value
+ps[2] <- cor.test(surr[,i], as.numeric(sampleinfo_cufflinks$Study))$p.value
+ps[3] <- cor.test(surr[,i], as.numeric(sampleinfo_cufflinks$NumberRaw))$p.value
+ps[4] <- cor.test(surr[,i], as.numeric(sampleinfo_cufflinks$Readtype))$p.value
+ps[5] <- cor.test(surr[,i], as.numeric(sampleinfo_cufflinks$readlength))$p.value
 barplot(-log(ps),las=2)
 }
 ```
 
 ```
-## Error in cor.test(surr[, i], as.numeric(sampleinfo_reprocessed$Preparation)): object 'surr' not found
+## Error in cor.test(surr[, i], as.numeric(sampleinfo_cufflinks$Preparation)): object 'surr' not found
 ```
 
 Combat analysis is performed on log2 values (n=13,323):
@@ -2179,27 +2179,13 @@ SVA analysis.
 
 ```r
 library(sva)
-mod <- model.matrix(~as.factor(Tissue), data=sampleinfo_reprocessed)
-```
-
-```
-## Error in terms.formula(object, data = data): object 'sampleinfo_reprocessed' not found
-```
-
-```r
-mod0 <- model.matrix(~1, data=sampleinfo_reprocessed)
-```
-
-```
-## Error in terms.formula(object, data = data): object 'sampleinfo_reprocessed' not found
-```
-
-```r
+mod <- model.matrix(~as.factor(Tissue), data=sampleinfo_cufflinks)
+mod0 <- model.matrix(~1, data=sampleinfo_cufflinks)
 n.sv <- num.sv(published.log,mod,method="leek")
 ```
 
 ```
-## Error in num.sv(published.log, mod, method = "leek"): object 'mod' not found
+## Error in diag(dims[2]) - mod %*% solve(t(mod) %*% mod) %*% t(mod): non-conformable arrays
 ```
 
 ```r
@@ -2801,8 +2787,8 @@ par(mfrow=c(3,1))
 sampleinfo_cufflinks$quantification <- "topcuff"
 sampleinfo_published$quantification <- "other"
 studylabels_cuff <- c("EoGE_brain","EoEG_heart","EoEG_kidney","Atlas_brain","Atlas_heart","Atlas_kidney","BodyMap_brain","BodyMap_heart","BodyMap_kidney","HPA_brain","HPA_heart","HPA_kidney","AltIso_brain","AltIso_heart")
-sampleinfo_reprocessed <- data.frame(Study_labels=studylabels_cuff, sampleinfo_cufflinks)
-sampleinfo <- rbind(sampleinfo_published, sampleinfo_reprocessed)
+sampleinfo_cufflinks <- data.frame(Study_labels=studylabels_cuff, sampleinfo_cufflinks)
+sampleinfo <- rbind(sampleinfo_published, sampleinfo_cufflinks)
 meta <- sampleinfo[,c("Study","Tissue","Preparation","NumberRaw","Numbermapped","Readtype","quantification","readlength")]
 rownames(meta) <- colnames(j)
 tissue <- rep(meta$Tissue, each=nrow(j))
@@ -3269,7 +3255,7 @@ print_PCA_corrs(combat,sampleinfo_published)
 ![plot of chunk unnamed-chunk-24](figure/unnamed-chunk-24-3.png) 
 
 ```r
-print_PCA_corrs(cufflinks_fpkms,sampleinfo_reprocessed)
+print_PCA_corrs(cufflinks_fpkms,sampleinfo_cufflinks)
 ```
 
 ```
@@ -3285,7 +3271,7 @@ print_PCA_corrs(cufflinks_fpkms,sampleinfo_reprocessed)
 ![plot of chunk unnamed-chunk-24](figure/unnamed-chunk-24-4.png) 
 
 ```r
-print_PCA_corrs(cufflinks_log,sampleinfo_reprocessed)
+print_PCA_corrs(cufflinks_log,sampleinfo_cufflinks)
 ```
 
 ```
@@ -3301,7 +3287,7 @@ print_PCA_corrs(cufflinks_log,sampleinfo_reprocessed)
 ![plot of chunk unnamed-chunk-24](figure/unnamed-chunk-24-5.png) 
 
 ```r
-print_PCA_corrs(combat.cufflinks,sampleinfo_reprocessed)
+print_PCA_corrs(combat.cufflinks,sampleinfo_cufflinks)
 ```
 
 ```
