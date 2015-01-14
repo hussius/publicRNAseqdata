@@ -864,6 +864,7 @@ Let's compare the FPKM distribution in the samples before and after merge
 
 ```{r:FPKM distribution for merged data vs non-merged data}
 
+#-----------DOWNLOAD DATA BEFORE MERGE-----------
 altIso_all <- read.delim("altiso_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 atlas_all <- read.delim("atlas_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 gtex_all <- read.delim("gtex_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
@@ -884,12 +885,21 @@ gtex_pc <- getPcs(gtex_all)
 HPA_pc <- getPcs(HPA_all)
 
 
-#download data that is left after merge:
-
+#-----------DOWNLOAD MERGED DATA-----------
 merged_data <- read.delim("published_rpkms.txt",sep=" ")
 
-#-----------DATA BEFORE MERGE-----------
+#-----------DOWNLOAD REPROCESSED DATA-----------
+reprocessed_data <- read.table("fpkm_table_tophat.txt",sep="\t",header=T)
+ensembl = useMart("ensembl",dataset= "hsapiens_gene_ensembl")
+getPcs <- function(x) {
+            type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),filters = "ensembl_gene_id",values = x$ENSEMBL_ID,mart = ensembl)
+            results <- x[which(type[,2]=="protein_coding"),]
+            return(results)
+          }
 
+reprocessed_data_pc <- getPcs(reprocessed_data)
+
+#-----------ADJUST DATA-----------
 get_data <- function(x,y,z,k) {
   
   if(k==1){
@@ -925,7 +935,7 @@ get_data <- function(x,y,z,k) {
             return(data)
   }
   }
-            
+           
 #-----------NON-MERGED DATA-----------
 all_altIso_heart <- get_data(altIso_pc,"heart","AltIso",1)
 all_atlas_heart <- get_data(atlas_pc,"heart","atlas",1)
@@ -956,9 +966,45 @@ merg_atlas_kidney <- get_data(atlas_pc,"kidney","Atlas",2)
 merg_gtex_kidney <- get_data(gtex_pc,"kidney","GTEx",2)
 merg_HPA_kidney <- get_data(HPA_pc,"kidney","HPA",2)
 
+#--------------RE-PROCESSED DATA-----------------------------
 
-#--------------NON-MERGED DATA-----------------------------
+get_data <- function(x,y,z) {
+    if(y=="heart"){
+              tissue_data <- data.frame(x[grep("heart", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else if(y=="brain"){
+                tissue_data <- data.frame(x[grep("brain", names(x), value = TRUE)])
+                data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else{
+              tissue_data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+            }
+            colnames(data) <- "FPKM"
+            data$study <- paste(z,"_repr.",sep ="")
+            return(data)
+  }
+  
 
+repr_altIso_heart <- get_data(reprocessed_data_pc,"heart","AltIso")
+repr_atlas_heart <- get_data(reprocessed_data_pc,"heart","Atlas")
+repr_Bodymap_heart <- get_data(reprocessed_data_pc,"heart","BodyMap")
+repr_EoGE_heart <- get_data(reprocessed_data_pc,"heart","EoGE")
+repr_HPA_heart <- get_data(reprocessed_data_pc,"heart","HPA")
+
+repr_altIso_brain <- get_data(reprocessed_data_pc,"brain","AltIso")
+repr_atlas_brain <- get_data(reprocessed_data_pc,"brain","Atlas")
+repr_Bodymap_brain <- get_data(reprocessed_data_pc,"brain","BodyMap")
+repr_EoGE_brain <- get_data(reprocessed_data_pc,"brain","EoGE")
+repr_HPA_brain <- get_data(reprocessed_data_pc,"brain","HPA")
+
+repr_atlas_kidney <- get_data(reprocessed_data_pc,"kidney","Atlas")
+repr_Bodymap_kidney <- get_data(reprocessed_data_pc,"kidney","BodyMap")
+repr_EoGE_kidney <- get_data(reprocessed_data_pc,"kidney","EoGE")
+repr_HPA_kidney <- get_data(reprocessed_data_pc,"kidney","HPA")
+
+#--------------PLOT DISTRIBUTIONS NON-MERGED DATA-----------------------------
 
 all_altiso <- rbind(all_altIso_brain,all_altIso_heart)
 all_atlas <- rbind(all_atlas_brain,all_atlas_heart,all_atlas_kidney)
@@ -990,8 +1036,7 @@ ggplot(heart_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density
 ggplot(kidney_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 
 
-#--------------MERGED DATA-----------------------------
-
+#--------------PLOT DISTRIBUTIONS MERGED DATA-----------------------------
 merg_altiso <- rbind(merg_altIso_brain,merg_altIso_heart)
 merg_atlas <- rbind(merg_atlas_brain,merg_atlas_heart,merg_atlas_kidney)
 merg_gtex <- rbind(merg_gtex_brain,merg_gtex_heart,merg_gtex_kidney)
@@ -1019,5 +1064,38 @@ ggplot(merged_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.
 ggplot(brain_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 ggplot(heart_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 ggplot(kidney_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+#--------------PLOT DISTRIBUTIONS  DATA-----------------------------
+
+repr_altiso <- rbind(repr_altIso_brain,repr_altIso_heart)
+repr_atlas <- rbind(repr_atlas_brain,repr_atlas_heart,repr_atlas_kidney)
+repr_BodyMap <- rbind(repr_Bodymap_brain,repr_Bodymap_heart,repr_Bodymap_kidney)
+repr_EoGE <- rbind(repr_EoGE_brain,repr_EoGE_heart,repr_EoGE_kidney)
+repr_HPA <- rbind(repr_HPA_brain,repr_HPA_heart,repr_HPA_kidney)
+
+
+repr_data <- rbind(repr_altiso,repr_atlas,repr_BodyMap,repr_EoGE,repr_HPA)
+
+brain_data_repr <- rbind(repr_altIso_brain,
+                           repr_atlas_brain,
+                           repr_Bodymap_brain,
+                           repr_EoGE_brain,
+                           repr_HPA_brain)
+
+heart_data_repr <- rbind(repr_altIso_heart,
+                           repr_atlas_heart,
+                           repr_Bodymap_heart,
+                           repr_EoGE_heart,
+                           repr_HPA_heart)
+
+kidney_data_repr <- rbind(repr_atlas_kidney,
+                           repr_Bodymap_kidney,
+                           repr_EoGE_kidney,
+                           repr_HPA_kidney)
+
+ggplot(repr_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0,7) + theme_bw()
+ggplot(brain_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(heart_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 
 
