@@ -5,82 +5,21 @@ Comparing published FPKM/RPKM values and reprocessed FPKM values.
 The first part of this document defines some helper functions and then shows in detail how data were downloaded and combined. However, most of the material related to downloading and combining is commented out - it is just left for reference. 
 
 Prepare by loading packages etc.
-
-```r
+```{r prepare}
 library(pheatmap)
 library(reshape)
 library(gplots)
-```
-
-```
-## Warning: package 'gplots' was built under R version 3.1.2
-```
-
-```
-## 
-## Attaching package: 'gplots'
-## 
-## The following object is masked from 'package:stats':
-## 
-##     lowess
-```
-
-```r
 library(ops)
-```
-
-```
-## 
-## Attaching package: 'ops'
-## 
-## The following object is masked from 'package:stats':
-## 
-##     filter
-```
-
-```r
 library(calibrate)
-```
-
-```
-## Loading required package: MASS
-```
-
-```r
 library(biomaRt)
 library(sva)
-```
-
-```
-## Loading required package: mgcv
-```
-
-```
-## Warning: package 'mgcv' was built under R version 3.1.2
-```
-
-```
-## Loading required package: nlme
-## This is mgcv 1.8-4. For overview type 'help("mgcv-package")'.
-## Loading required package: genefilter
-## 
-## Attaching package: 'genefilter'
-## 
-## The following object is masked from 'package:MASS':
-## 
-##     area
-## 
-## The following object is masked from 'package:base':
-## 
-##     anyNA
 ```
 Function definitions
 --------------------
 Define functions for (a) computing and plotting p-values for correlations between PCA scores and various sample features and (b) quantifying and plotting the importance of various sample features using ANOVA.
 
 **Correlations between PCs and experimental factors.**
-
-```r
+```{r}
  print_PCA_corrs <- function(data,sampleinfo,caption="PCA correlations",include.quant=F){
 pca <- prcomp(t(data[,]))
 rot <- pca$r
@@ -186,8 +125,7 @@ barplot(-log(pc2),las=2,main=paste(caption, "PC2"),ylab="-log(p)")
 ```
 
 ** ANOVA for estimating the influence of different factors.**
-
-```r
+```{r}
 do_anova <- function(data, sampleinfo, caption="ANOVA", include.quant=F){
 m <- melt(data)
 colnames(m) <- c("sample_ID","RPKM")
@@ -221,8 +159,7 @@ barplot(100*a$"Sum Sq"[1:nfac]/sum(a$"Sum Sq"[1:nfac]),names.arg=rownames(a[1:nf
 ```
 
 **Function for plotting the highest gene loadings in PCA.**
-
-```r
+```{r}
 plot.highest.loadings <- function(p, fpkm.table, caption="Highest loading"){
       par(mfrow=c(3,1))
       for(i in 1:3){
@@ -250,8 +187,7 @@ Data from four different public sources are downloaded and brain, heart and kidn
 
 Start with Human Protein Atlas (HPA):
 
-
-```r
+```{r:HPA download}
 #temp <- tempfile()
 #download.file(url="http://www.proteinatlas.org/download/rna.csv.zip",destfile=temp)
 #hpa <- read.csv(unz(temp, "rna.csv"))
@@ -268,8 +204,7 @@ Start with Human Protein Atlas (HPA):
 
 Check if the identifiers are unique and write table to file.
 
-
-```r
+```{r:HPA check identifiers}
 #length(hpa.fpkms[,1])
 #length(unique(hpa.fpkms[,1]))
 
@@ -278,8 +213,7 @@ Check if the identifiers are unique and write table to file.
 
 The next dataset, "AltIso", is from the article "Alternative isoform regulation in human tissue transcriptomes.." by Wang et al.
 
-
-```r
+```{r:AltIso download}
 #temp <- tempfile()
 #download.file(url="http://genes.mit.edu/burgelab/Supplementary/wang_sandberg08/hg18.ensGene.CEs.rpkm.txt",destfile=temp)
 #altiso <- read.delim(temp, sep="\t")
@@ -288,16 +222,14 @@ The next dataset, "AltIso", is from the article "Alternative isoform regulation 
 
 There is no kidney sample here, so just use heart and brain.
 
-
-```r
+```{r}
 #altiso.fpkms <- altiso[,c("X.Gene","heart","brain")]
 #colnames(altiso.fpkms) <- c("ENSG_ID", "AltIso_heart", "AltIso_brain")
 ```
 
 Check uniqueness of IDs.
 
-
-```r
+```{r:AltIso check identifiers}
 #length(altiso.fpkms[,1])
 #length(unique(altiso.fpkms[,1]))
 
@@ -309,8 +241,7 @@ The next dataset is derived from "GTEx": Genotype-Tissue Expression.
 This is a big download: 337.8 Mb (as of 2014-02-04)
 We also add some code to randomly select one sample from each tissue type; there are many biological replicates in this data set.
 
-
-```r
+```{r:GTEx download}
 #temp <- tempfile()
 #download.file(url="http://www.gtexportal.org/home/rest/file/download?portalFileId=175729&forDownload=true",destfile=temp)
 #header_lines <- readLines(temp, n=2)
@@ -326,8 +257,7 @@ We also add some code to randomly select one sample from each tissue type; there
 
 The metadata table seems to contain entries that are not in the RPKM table.
 
-
-```r
+```{r}
 #samp.id <- gsub('-','.',metadata$SAMPID)
 #eligible.samples <- which(samp.id %in% colnames(gtex))
 #metadata <- metadata[eligible.samples,]
@@ -335,8 +265,7 @@ The metadata table seems to contain entries that are not in the RPKM table.
 
 Select random heart, kidney and brain samples.
 
-
-```r
+```{r}
 #random.heart <- sample(which(metadata$SMTS=="Heart"), size=1)
 #random.heart.samplename <- gsub('-','.',metadata[random.heart, "SAMPID"])
 #gtex.heart.fpkm <- as.numeric(gtex[,random.heart.samplename])
@@ -352,8 +281,7 @@ Select random heart, kidney and brain samples.
 
 Get gene IDs on same format as the other data sets by removing the part after the dot; check ID uniqueness and write to file.
 
-
-```r
+```{r}
 #gtex.names <- gtex[,"Name"]
 #temp_list <- strsplit(as.character(gtex.names), split="\\.")
 #gtex.names.nodot <- unlist(temp_list)[2*(1:length(gtex.names))-1]
@@ -368,8 +296,7 @@ Get gene IDs on same format as the other data sets by removing the part after th
 
 RNA-seq Atlas data.
 
-
-```r
+```{r:Atlas download}
 #temp <- tempfile()
 #download.file(url="http://medicalgenomics.org/rna_seq_atlas/download?download_revision1=1",destfile=temp)
 #atlas <- read.delim(temp, sep="\t")
@@ -385,136 +312,12 @@ Combining F/RPKM values from public data sets
 
 We will join the data sets on ENSEMBL ID:s, losing a lot of data in the process - but joining on gene symbols or something else would lead to an even worse loss. 
 
-
-```r
+```{r LoadPackagesAndData}
 library(org.Hs.eg.db) # for transferring gene identifiers
-```
-
-```
-## Loading required package: AnnotationDbi
-## Loading required package: stats4
-## Loading required package: BiocGenerics
-```
-
-```
-## Warning: package 'BiocGenerics' was built under R version 3.1.2
-```
-
-```
-## Loading required package: parallel
-## 
-## Attaching package: 'BiocGenerics'
-## 
-## The following objects are masked from 'package:parallel':
-## 
-##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
-##     clusterExport, clusterMap, parApply, parCapply, parLapply,
-##     parLapplyLB, parRapply, parSapply, parSapplyLB
-## 
-## The following object is masked from 'package:stats':
-## 
-##     xtabs
-## 
-## The following objects are masked from 'package:base':
-## 
-##     anyDuplicated, append, as.data.frame, as.vector, cbind,
-##     colnames, do.call, duplicated, eval, evalq, Filter, Find, get,
-##     intersect, is.unsorted, lapply, Map, mapply, match, mget,
-##     order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
-##     rbind, Reduce, rep.int, rownames, sapply, setdiff, sort,
-##     table, tapply, union, unique, unlist, unsplit
-## 
-## Loading required package: Biobase
-## Welcome to Bioconductor
-## 
-##     Vignettes contain introductory material; view with
-##     'browseVignettes()'. To cite Bioconductor, see
-##     'citation("Biobase")', and for packages 'citation("pkgname")'.
-## 
-## Loading required package: GenomeInfoDb
-```
-
-```
-## Warning: package 'GenomeInfoDb' was built under R version 3.1.2
-```
-
-```
-## Loading required package: S4Vectors
-## 
-## Attaching package: 'S4Vectors'
-## 
-## The following object is masked from 'package:reshape':
-## 
-##     rename
-## 
-## Loading required package: IRanges
-```
-
-```
-## Warning: package 'IRanges' was built under R version 3.1.2
-```
-
-```
-## 
-## Attaching package: 'IRanges'
-## 
-## The following object is masked from 'package:nlme':
-## 
-##     collapse
-## 
-## The following object is masked from 'package:ops':
-## 
-##     distance
-## 
-## The following object is masked from 'package:gplots':
-## 
-##     space
-## 
-## The following object is masked from 'package:reshape':
-## 
-##     expand
-## 
-## 
-## Attaching package: 'AnnotationDbi'
-## 
-## The following object is masked from 'package:GenomeInfoDb':
-## 
-##     species
-## 
-## The following object is masked from 'package:MASS':
-## 
-##     select
-```
-
-```
-## Warning: package 'RSQLite' was built under R version 3.1.2
-```
-
-```
-## Loading required package: DBI
-```
-
-```r
 library(data.table) # for collapsing transcript RPKMs
 library(pheatmap) # for nicer visualization
 library(edgeR) # for TMM normalization
-```
 
-```
-## Warning: package 'edgeR' was built under R version 3.1.2
-```
-
-```
-## Loading required package: limma
-## 
-## Attaching package: 'limma'
-## 
-## The following object is masked from 'package:BiocGenerics':
-## 
-##     plotMA
-```
-
-```r
 #hpa.fpkms <- read.delim("hpa_fpkms.txt")
 #altiso.fpkms <- read.delim("altiso_fpkms.txt")
 #gtex.fpkms <- read.delim("gtex_fpkms.txt")
@@ -525,8 +328,7 @@ The RNA-seq Atlas data set uses many different identifiers, while the other all 
 
 **Approach 1**: Merge on ENSEMBL genes (ENSG) as given in RNA-seq Atlas. Note that there are repeated ENSG ID:s in RNA-seq Atlas, as opposed to the other data sets, so we need to do something about that. In this case, we just sum the transcripts that belong to each ENSG gene. We use data.table for this.
 
-
-```r
+```{r SumTranscripts}
 #data.dt <- data.table(atlas.fpkms)
 #setkey(data.dt, ENSG_ID)
 #temp <- data.dt[, lapply(.SD, sum), by=ENSG_ID]
@@ -539,8 +341,7 @@ The RNA-seq Atlas data set uses many different identifiers, while the other all 
 
 Finally, combine all the data sets into a data frame.
 
-
-```r
+```{r Combine}
 #fpkms <- merge(hpa.fpkms, altiso.fpkms, by="ENSG_ID")
 #fpkms <- merge(fpkms, gtex.fpkms, by="ENSG_ID")
 #fpkms <- merge(fpkms, atlas.fpkms.summed, by.x="ENSG_ID", by.y=0)
@@ -551,15 +352,13 @@ Finally, combine all the data sets into a data frame.
 
 Check how many ENSG IDs we have left.
 
-
-```r
+```{r}
 #dim(f)
 ```
 
 **Approach 2**: Try to map Entrez symbols to ENSEMBL to recover more ENSG IDs than already present in the table. 
 
-
-```r
+```{r RemapENSEMBL}
 #m <- org.Hs.egENSEMBL
 #mapped_genes <- mappedkeys(m)
 #ensg.for.entrez <- as.list(m[mapped_genes])
@@ -578,8 +377,7 @@ Check how many ENSG IDs we have left.
 
 Combine data sets again.
 
-
-```r
+```{r Combine2}
 #fpkms <- merge(hpa.fpkms, altiso.fpkms, by="ENSG_ID")
 #fpkms <- merge(fpkms, gtex.fpkms, by="ENSG_ID")
 #fpkms <- merge(fpkms, atlas.fpkms.summed, by.x="ENSG_ID", by.y=0)
@@ -598,8 +396,7 @@ Here is where the actual data analysis starts - after the public data has been d
 
 Download the data and sample descriptions from local files:
 
-
-```r
+```{r:published download}
 published <- read.delim("published_rpkms.txt",sep=" ")
 sampleinfo_published <- read.table("sample_info_published.txt",header=TRUE)
 ```
@@ -610,29 +407,21 @@ Figure 1 deals with untransformed (but combined) published data.
 
 The published FPKM values are first filtered by removing all lines where FPKM is less or equal to 0.01 in all samples:
 
-
-```r
+```{r:published filter zeros}
 published.nozero <- published[-which(rowSums(published[,])<=0.01),]
 ```
 
 Heatmap of Spearman correlations between published expression profiles (# genes = 13,323), **Figure 1b**:
 
-
-```r
+```{r:published heatmap spearman}
 pheatmap(cor(published.nozero, method="spearman")) 
 ```
-
-![plot of chunk :published heatmap spearman](figure/:published heatmap spearman-1.png) 
 Alternatively, one could use Pearson correlation (not shown in paper):
-
-```r
+```{r:published heatmap pearson}
 pheatmap(cor(published.nozero))
 ```
-
-![plot of chunk :published heatmap pearson](figure/:published heatmap pearson-1.png) 
 PCA analysis of published FPKM values, **Figure 1c**:
-
-```r
+```{r:published PCA}
 colors <- c("indianred", "dodgerblue", "forestgreen",
             "indianred", "dodgerblue",
             "indianred", "dodgerblue", "forestgreen", 
@@ -645,11 +434,8 @@ legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodge
 legend("top",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
 ```
 
-![plot of chunk :published PCA](figure/:published PCA-1.png) 
-
 We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
-
-```r
+```{r:published pairwise PCA}
 par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
@@ -658,175 +444,33 @@ for (i in 1:6){
 		}
 	}
 }
-```
 
-![plot of chunk :published pairwise PCA](figure/:published pairwise PCA-1.png) 
+```
 Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
-
-```r
+```{r:published PC 1-3}
 plot.highest.loadings(p,published.nozero,caption="Published F/RPKM")
-```
-
-```
-##                 Gene Symbol HPA_heart HPA_brain HPA_kidney AltIso_heart
-## ENSG00000136872       ALDOB       0.4       2.4     1824.1         0.00
-## ENSG00000123560        PLP1      11.9    1295.2        0.7         2.56
-## ENSG00000118785        SPP1       8.3     368.2     1251.1         7.74
-## ENSG00000120885         CLU     336.9    3545.9      631.6        58.72
-## ENSG00000087086         FTL     436.5     487.2     1523.1       463.86
-## ENSG00000131095        GFAP       3.0    1372.0        1.4         1.70
-## ENSG00000111245        MYL2    5291.5       0.2        2.6     16780.36
-## ENSG00000118194       TNNT2    2693.8       7.0       20.8      8074.39
-## ENSG00000198125          MB    3937.3       0.9        2.3      7065.54
-## ENSG00000175084         DES    3403.6       2.4       10.2      3160.05
-## ENSG00000159251       ACTC1    2914.4       1.6        0.4      3457.43
-## ENSG00000092054        MYH7    1802.4       2.1        0.8      4117.17
-##                 AltIso_brain   GTEx_heart   GTEx_brain  GTEx_kidney
-## ENSG00000136872         0.49 1.629837e-01    0.2298469 1927.8311768
-## ENSG00000123560      1544.93 2.431595e+00 1164.7164307    0.4162828
-## ENSG00000118785       309.26 5.712032e-01  317.7869873 2806.6496582
-## ENSG00000120885      1682.03 2.138420e+01  307.3468933  365.1710815
-## ENSG00000087086       407.35 5.737621e+02 2099.7219238 5310.5092773
-## ENSG00000131095       834.13 1.671327e+00 3633.8173828    0.8537604
-## ENSG00000111245         1.03 1.576518e+04   10.2006025    2.3142705
-## ENSG00000118194         9.37 2.027960e+03    1.6754625   11.8667431
-## ENSG00000198125         1.35 2.705914e+03    2.6915243    0.6978353
-## ENSG00000175084         2.65 5.524179e+03   13.1029377    4.9041762
-## ENSG00000159251         0.42 5.319639e+03    3.6530383    1.0412433
-## ENSG00000092054         0.83 4.713973e+03    6.4869833    0.6886783
-##                 Atlas_heart Atlas_brain Atlas_kidney
-## ENSG00000136872       1.452       0.125      788.910
-## ENSG00000123560       5.086     779.755        0.513
-## ENSG00000118785      16.293     121.874      878.535
-## ENSG00000120885      29.357     394.746       47.363
-## ENSG00000087086      16.930       7.700       40.892
-## ENSG00000131095       0.549     691.908        0.135
-## ENSG00000111245    1064.500       0.000        0.358
-## ENSG00000118194   10930.800       8.713       43.633
-## ENSG00000198125    1415.554       0.032        0.000
-## ENSG00000175084    1675.890       4.500        6.252
-## ENSG00000159251     310.068       0.421        0.311
-## ENSG00000092054    2137.510       0.635        0.354
-```
-
-```
-##                 Gene Symbol HPA_heart HPA_brain HPA_kidney AltIso_heart
-## ENSG00000125971     DYNLRB1     207.8     164.7      170.0      1532.98
-## ENSG00000160808        MYL3    1213.4       3.2       24.9      3909.81
-## ENSG00000087086         FTL     436.5     487.2     1523.1       463.86
-## ENSG00000075624        ACTB     423.6     786.5      521.8       377.87
-## ENSG00000111245        MYL2    5291.5       0.2        2.6     16780.36
-## ENSG00000167996        FTH1     363.8     366.9      498.9      3563.32
-## ENSG00000118194       TNNT2    2693.8       7.0       20.8      8074.39
-## ENSG00000140416        TPM1    4937.5      61.9      128.6      4379.09
-## ENSG00000148677      ANKRD1    2451.5       0.2        0.3      1088.94
-## ENSG00000175206        NPPA    6693.0       8.1        0.1       193.69
-## ENSG00000188257     PLA2G2A      51.2       0.8        2.3       210.68
-## ENSG00000106631        MYL7    4606.5       0.2        0.1       896.01
-##                 AltIso_brain   GTEx_heart   GTEx_brain  GTEx_kidney
-## ENSG00000125971      2293.04    21.458061   42.5225830   32.5898590
-## ENSG00000160808         0.84  3996.971191    5.8288269   19.8492756
-## ENSG00000087086       407.35   573.762085 2099.7219238 5310.5092773
-## ENSG00000075624      3277.02   283.548279  782.8235474  653.1090088
-## ENSG00000111245         1.03 15765.178711   10.2006025    2.3142705
-## ENSG00000167996      9086.14   337.275970 1151.6777344 1828.0887451
-## ENSG00000118194         9.37  2027.959717    1.6754625   11.8667431
-## ENSG00000140416        68.39  1132.400513   17.7401543   31.1860542
-## ENSG00000148677         0.10  1471.471680    2.0739977    0.5601565
-## ENSG00000175206         1.74   137.694275    0.8982058    2.7191663
-## ENSG00000188257         0.00     2.313501    0.4622447    0.4419056
-## ENSG00000106631         0.00   214.277832    1.5850240    0.5706197
-##                 Atlas_heart Atlas_brain Atlas_kidney
-## ENSG00000125971      20.874      42.315       23.413
-## ENSG00000160808      80.668       0.204        2.634
-## ENSG00000087086      16.930       7.700       40.892
-## ENSG00000075624      67.058     140.560       69.191
-## ENSG00000111245    1064.500       0.000        0.358
-## ENSG00000167996      43.503      53.459       66.455
-## ENSG00000118194   10930.800       8.713       43.633
-## ENSG00000140416    4228.464     105.073      189.505
-## ENSG00000148677    3863.610       0.403        0.263
-## ENSG00000175206     311.399       0.445        0.131
-## ENSG00000188257    2351.218       3.057       24.728
-## ENSG00000106631     115.287       0.000        0.000
-```
-
-![plot of chunk :published PC 1-3](figure/:published PC 1-3-1.png) 
-
-```
-##                 Gene Symbol HPA_heart HPA_brain HPA_kidney AltIso_heart
-## ENSG00000111245        MYL2    5291.5       0.2        2.6     16780.36
-## ENSG00000101608      MYL12A    2033.5      32.2      214.9       528.97
-## ENSG00000175206        NPPA    6693.0       8.1        0.1       193.69
-## ENSG00000175084         DES    3403.6       2.4       10.2      3160.05
-## ENSG00000159251       ACTC1    2914.4       1.6        0.4      3457.43
-## ENSG00000129991       TNNI3    2157.5       0.5        0.1      2698.36
-## ENSG00000167996        FTH1     363.8     366.9      498.9      3563.32
-## ENSG00000118194       TNNT2    2693.8       7.0       20.8      8074.39
-## ENSG00000125971     DYNLRB1     207.8     164.7      170.0      1532.98
-## ENSG00000075624        ACTB     423.6     786.5      521.8       377.87
-## ENSG00000071082       RPL31     632.0     348.9      561.3      2239.86
-## ENSG00000106211       HSPB1     521.6      37.7      196.6      3971.37
-##                 AltIso_brain  GTEx_heart   GTEx_brain  GTEx_kidney
-## ENSG00000111245         1.03 15765.17871   10.2006025    2.3142705
-## ENSG00000101608        28.70  1968.66089   54.9993858  141.2810822
-## ENSG00000175206         1.74   137.69427    0.8982058    2.7191663
-## ENSG00000175084         2.65  5524.17871   13.1029377    4.9041762
-## ENSG00000159251         0.42  5319.63867    3.6530383    1.0412433
-## ENSG00000129991         0.47  5751.82275    4.0958185    0.6090932
-## ENSG00000167996      9086.14   337.27597 1151.6777344 1828.0887451
-## ENSG00000118194         9.37  2027.95972    1.6754625   11.8667431
-## ENSG00000125971      2293.04    21.45806   42.5225830   32.5898590
-## ENSG00000075624      3277.02   283.54828  782.8235474  653.1090088
-## ENSG00000071082      1678.90    38.41791   99.8054581   51.5868454
-## ENSG00000106211       643.46   333.51608   86.1186981  201.8283081
-##                 Atlas_heart Atlas_brain Atlas_kidney
-## ENSG00000111245    1064.500       0.000        0.358
-## ENSG00000101608     300.410      15.476       24.862
-## ENSG00000175206     311.399       0.445        0.131
-## ENSG00000175084    1675.890       4.500        6.252
-## ENSG00000159251     310.068       0.421        0.311
-## ENSG00000129991     999.559       0.675        0.132
-## ENSG00000167996      43.503      53.459       66.455
-## ENSG00000118194   10930.800       8.713       43.633
-## ENSG00000125971      20.874      42.315       23.413
-## ENSG00000075624      67.058     140.560       69.191
-## ENSG00000071082     378.917     484.379      259.057
-## ENSG00000106211      61.190       6.808       17.175
 ```
              
 Try Anova on a "melted" expression matrix with some metadata, **Figure 1d**:
-
-```r
+```{r:published anova}
 do_anova(published.nozero,sampleinfo_published,"ANOVA, published data")
 ```
-
-```
-## Using  as id variables
-```
-
-![plot of chunk :published anova](figure/:published anova-1.png) 
 Analyses and plots related to Figure 2
 --------------------------------------
 Figure 2 deals with the effects of log-transforming the published data.
 
-
-```r
+```{r:published log transform}
 pseudo <- 1
 published.log <- log2(published.nozero + pseudo)
 ```
 Heatmap of Spearman correlations between published expression profiles with log2 values, **Figure 2a**:
 
-
-```r
+```{r:published log heatmap spearman}
 pheatmap(cor(published.log),method="spearman")
 ```
-
-![plot of chunk :published log heatmap spearman](figure/:published log heatmap spearman-1.png) 
 PCA analysis of log2 transformed published FPKM values, **Figure 2b**:
 
-
-```r
+```{r:published log PCA 1&2}
 colors <- c("indianred", "dodgerblue", "forestgreen",
             "indianred", "dodgerblue",
             "indianred", "dodgerblue", "forestgreen", 
@@ -837,22 +481,16 @@ plot(p.log$x[,1],p.log$x[,2],pch=shapes,col=colors,xlab=paste("PC1 31% of varian
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("top",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
 ```
-
-![plot of chunk :published log PCA 1&2](figure/:published log PCA 1&2-1.png) 
 **Figure 2c**, PCs 2 and 3 for log transformed public data:
 
-
-```r
+```{r:published log PCA 2&3}
 plot(p.log$x[,2],p.log$x[,3],pch=shapes,col=colors,xlab=paste("PC2 27% of variance"),ylab=paste("PC3 19% of variance"),main="log2 Published FPKM values \n n=13,323")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("topright",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
 ```
-
-![plot of chunk :published log PCA 2&3](figure/:published log PCA 2&3-1.png) 
 Cross-validation by leaving out one of the studies, in this case AltIso, **Figure 2d**: 
 
-
-```r
+```{r:leave-one-out-pca}
 p.loo <- published.log[,-c(4,5)]
 colors.loo <- colors[-c(4,5)]
 p.loo.log <- prcomp(t(p.loo))
@@ -865,12 +503,9 @@ legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodge
 legend("top",legend=c("HPA","GTEx","Atlas","AltIso"),col="black",pch=c(15,17,8,22),ncol=2)
 ```
 
-![plot of chunk :leave-one-out-pca](figure/:leave-one-out-pca-1.png) 
-
 In order to convince ourselves that there is no obviously superior combination of PCs, can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
 
-
-```r
+```{r:published log PCA pairwise}
 par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
@@ -881,147 +516,15 @@ for (i in 1:6){
 }
 ```
 
-![plot of chunk :published log PCA pairwise](figure/:published log PCA pairwise-1.png) 
-
 Loadings for PCs 1-3 after taking logs (not shown in paper):
 
-
-```r
+```{r:published log PC 1-3}
 plot.highest.loadings(p.log,published.log,caption="Published log F/RPKM")
-```
-
-```
-##                 Gene Symbol  HPA_heart HPA_brain HPA_kidney AltIso_heart
-## ENSG00000171560         FGA  0.0000000 0.0000000  0.7655347     0.000000
-## ENSG00000148677      ANKRD1 11.2600374 0.2630344  0.3785116    10.090033
-## ENSG00000135218        CD36  8.9669380 1.8479969  3.1699250     7.060264
-## ENSG00000057593          F7  0.2630344 0.3785116  0.3785116     0.000000
-## ENSG00000118194       TNNT2 11.3959625 3.0000000  4.4462562    12.979316
-## ENSG00000188257     PLA2G2A  5.7059779 0.8479969  1.7224660     7.725741
-## ENSG00000105372       RPS19  8.7149324 8.0730704  8.8284539     6.898450
-## ENSG00000063177       RPL18  8.8357346 7.8996590  8.8423503     7.691185
-## ENSG00000100097      LGALS1  8.9649184 6.8354188  6.2890967     8.610360
-## ENSG00000105640      RPL18A  5.5484366 5.0134623  6.1106138     8.984191
-## ENSG00000105583     WDR83OS  7.0628557 5.7441611  6.6438562     4.595146
-## ENSG00000087086         FTL  8.7731392 8.9313285 10.5737418     8.860652
-##                 AltIso_brain   GTEx_heart GTEx_brain GTEx_kidney
-## ENSG00000171560    0.0000000  0.000000000  0.0000000   2.9016433
-## ENSG00000148677    0.1375035 10.524024171  1.6201161   0.6416908
-## ENSG00000135218    0.1110313  7.286516166  0.6702866   0.3837591
-## ENSG00000057593    0.3785116  0.008757757  0.2395564   0.5619542
-## ENSG00000118194    3.3743440 10.986524507  1.4197883   3.6855750
-## ENSG00000188257    0.0000000  1.728356303  0.5481847   0.5279768
-## ENSG00000105372    7.1474085  6.895660700  8.3486451   8.2652645
-## ENSG00000063177    8.1564876  6.663349515  7.3220812   7.0818969
-## ENSG00000100097    7.3408293  7.529772844  7.7671703   5.8879309
-## ENSG00000105640    8.7257752  5.639000815  5.8250723   5.9462279
-## ENSG00000105583    4.7734689  6.050782462  5.9837778   6.3521033
-## ENSG00000087086    8.6736624  9.166821085 11.0366695  12.3749061
-##                 Atlas_heart Atlas_brain Atlas_kidney
-## ENSG00000171560    6.006096   0.0000000    4.7029345
-## ENSG00000148677   11.916107   0.4885150    0.3368546
-## ENSG00000135218    9.807328   3.2873245    4.2060180
-## ENSG00000057593    4.789312   4.0628125    4.3330659
-## ENSG00000118194   13.416243   3.2799170    5.4800389
-## ENSG00000188257   11.199806   2.0204133    4.6852674
-## ENSG00000105372    2.124328   1.9800253    2.0436945
-## ENSG00000063177    2.317304   2.6189434    1.8491987
-## ENSG00000100097    1.649845   1.1070182    0.4135941
-## ENSG00000105640    0.000000   0.0000000    0.0000000
-## ENSG00000105583    0.496718   0.4350952    0.5380415
-## ENSG00000087086    4.164304   3.1210154    5.3886029
-```
-
-```
-##                 Gene Symbol  HPA_heart  HPA_brain HPA_kidney AltIso_heart
-## ENSG00000168314        MOBP  0.0000000  7.1189411  0.1375035    0.0000000
-## ENSG00000104833      TUBB4A  0.3785116  7.8832542  1.3219281    1.9781956
-## ENSG00000104435       STMN2  0.1375035  7.8881344  0.2630344    0.0000000
-## ENSG00000132639      SNAP25  1.1375035  9.6508722  1.4329594    0.2016339
-## ENSG00000123560        PLP1  3.6892992 10.3400726  0.7655347    1.8318772
-## ENSG00000131095        GFAP  2.0000000 10.4231159  1.2630344    1.4329594
-## ENSG00000111245        MYL2 12.3697336  0.2630344  1.8479969   14.0345720
-## ENSG00000114854       TNNC1 11.5928775  0.3785116  3.9068906   12.0017706
-## ENSG00000160808        MYL3 10.2460280  2.0703893  4.6948802   11.9332517
-## ENSG00000198125          MB 11.9433573  0.9259994  1.7224660   12.7867883
-## ENSG00000104879         CKM 10.1959873  0.1375035  1.8479969   11.6979970
-## ENSG00000159251       ACTC1 11.5094781  1.3785116  0.4854268   11.7559015
-##                 AltIso_brain   GTEx_heart GTEx_brain GTEx_kidney
-## ENSG00000168314    6.6687432  0.009869043   8.929758  0.03961531
-## ENSG00000104833   10.9939573  0.616771713   8.601983  1.54254283
-## ENSG00000104435    7.4747605  0.025597456   7.768418  0.20861636
-## ENSG00000132639    9.0681602  0.053219797   6.886338  0.72840981
-## ENSG00000123560   10.5942593  1.778879231  10.187001  0.50210934
-## ENSG00000131095    9.7058570  1.417556650  11.827667  0.89045476
-## ENSG00000111245    1.0214797 13.944545412   3.485504  1.72869135
-## ENSG00000114854    0.7570232 11.354971267   2.004721  2.64099420
-## ENSG00000160808    0.8797058 11.965052361   2.771638  4.38192535
-## ENSG00000198125    1.2326608 11.402433501   1.884217  0.76369654
-## ENSG00000104879    0.3334237 11.438653292   2.458929  1.25771168
-## ENSG00000159251    0.5058909 12.377383717   2.218173  1.02944816
-##                 Atlas_heart Atlas_brain Atlas_kidney
-## ENSG00000168314   0.2338881  7.26797581   0.18776775
-## ENSG00000104833   0.4936473  6.38637987   0.47404660
-## ENSG00000104435   0.1440464  7.13405661   0.00000000
-## ENSG00000132639   0.4286784  8.15825623   0.23878686
-## ENSG00000123560   2.6054943  9.60872609   0.59741199
-## ENSG00000131095   0.6313371  9.43652000   0.18269230
-## ENSG00000111245  10.0573149  0.00000000   0.44148348
-## ENSG00000114854   8.3089533  0.81803247   1.01006368
-## ENSG00000160808   6.3516990  0.26783539   1.86155842
-## ENSG00000198125  10.4681699  0.04544297   0.00000000
-## ENSG00000104879   5.8799263  0.00000000   0.08406426
-## ENSG00000159251   8.2810862  0.50690655   0.39066769
-```
-
-![plot of chunk :published log PC 1-3](figure/:published log PC 1-3-1.png) 
-
-```
-##                 Gene Symbol  HPA_heart HPA_brain HPA_kidney AltIso_heart
-## ENSG00000145692        BHMT  0.0000000 1.0000000  9.0754791    0.0000000
-## ENSG00000163586       FABP1  0.1375035 1.8073549  8.4333768    0.0000000
-## ENSG00000124253        PCK1  0.5849625 0.7655347  8.9384034    0.9486008
-## ENSG00000164825       DEFB1  0.1375035 0.6780719  9.3733002    0.8797058
-## ENSG00000169344        UMOD  0.1375035 1.3219281 10.4784663    0.0000000
-## ENSG00000136872       ALDOB  0.4854268 1.7655347 10.8337598    0.0000000
-## ENSG00000111245        MYL2 12.3697336 0.2630344  1.8479969   14.0345720
-## ENSG00000129991       TNNI3 11.0758134 0.5849625  0.1375035   11.3984017
-## ENSG00000198125          MB 11.9433573 0.9259994  1.7224660   12.7867883
-## ENSG00000092054        MYH7 10.8165037 1.6322682  0.8479969   12.0077877
-## ENSG00000159251       ACTC1 11.5094781 1.3785116  0.4854268   11.7559015
-## ENSG00000148677      ANKRD1 11.2600374 0.2630344  0.3785116   10.0900330
-##                 AltIso_brain  GTEx_heart GTEx_brain GTEx_kidney
-## ENSG00000145692    0.3334237  0.02785409 0.06576311   7.7254576
-## ENSG00000163586    0.6870607  0.04083557 0.23143149   8.1462766
-## ENSG00000124253    0.0000000  0.02165083 1.28242694  10.1141517
-## ENSG00000164825    0.2868811  0.17881712 0.46343925   9.5066072
-## ENSG00000169344    0.0000000  0.00000000 0.00000000   8.1644528
-## ENSG00000136872    0.5753123  0.21783084 0.29847871  10.9135112
-## ENSG00000111245    1.0214797 13.94454541 3.48550444   1.7286914
-## ENSG00000129991    0.5558162 12.49005431 2.34931390   0.6862479
-## ENSG00000198125    1.2326608 11.40243350 1.88421664   0.7636965
-## ENSG00000092054    0.8718436 12.20303369 2.90438454   0.7558945
-## ENSG00000159251    0.5058909 12.37738372 2.21817305   1.0294482
-## ENSG00000148677    0.1375035 10.52402417 1.62011610   0.6416908
-##                 Atlas_heart Atlas_brain Atlas_kidney
-## ENSG00000145692   0.0731347  0.14535139    6.8821172
-## ENSG00000163586   1.2461040  0.00000000    7.8733703
-## ENSG00000124253   0.9433588  0.13619139    7.0081933
-## ENSG00000164825   0.0000000  0.11370050    7.4967979
-## ENSG00000169344   0.0000000  0.00000000    8.5404923
-## ENSG00000136872   1.2939590  0.16992500    9.6255445
-## ENSG00000111245  10.0573149  0.00000000    0.4414835
-## ENSG00000129991   9.9665905  0.74416110    0.1788740
-## ENSG00000198125  10.4681699  0.04544297    0.0000000
-## ENSG00000092054  11.0623902  0.70929064    0.4372277
-## ENSG00000159251   8.2810862  0.50690655    0.3906677
-## ENSG00000148677  11.9161071  0.48851501    0.3368546
 ```
 
 To further validate the above results, indicating that tissue specificity appears mainly in PC 2 and 3, we will extract the 500 genes with highest loadings in each component and plot the corresponding published FPKM values in a heatmap (not shown in paper):
 
-
-```r
+```{r:published log top 500 loadings heatmap}
      load.pc1 <- abs(p.log$rotation[,1])[order(abs(p.log$rotation[,1]),decreasing=TRUE)]
      top.pc1 <- names(load.pc1[1:500]) 
 
@@ -1032,67 +535,34 @@ To further validate the above results, indicating that tissue specificity appear
      top.pc3 <- names(load.pc3[1:500])
 
      pheatmap(cor(published[top.pc1,]),method="spearman")
-```
-
-![plot of chunk :published log top 500 loadings heatmap](figure/:published log top 500 loadings heatmap-1.png) 
-
-```r
      pheatmap(cor(published[top.pc2,]),method="spearman")
-```
-
-![plot of chunk :published log top 500 loadings heatmap](figure/:published log top 500 loadings heatmap-2.png) 
-
-```r
      pheatmap(cor(published[top.pc3,]),method="spearman")
 ```
 
-![plot of chunk :published log top 500 loadings heatmap](figure/:published log top 500 loadings heatmap-3.png) 
-
 Perform Anova on logged values to estimate influence of different sample properties (**Figure 2e**):
 
-
-```r
+```{r:published log anova}
 do_anova(published.log,sampleinfo_published,"ANOVA, published data (log)")
 ```
-
-```
-## Using  as id variables
-```
-
-![plot of chunk :published log anova](figure/:published log anova-1.png) 
 Analyses relating to Figure 3
 -----------------------------
 
 Combat analysis is performed on log2 values (n=13,323):
 
-
-```r
+```{r:published log combat}
 meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas",3)),tissue=c("Heart","Brain","Kidney","Heart","Brain","Heart","Brain","Kidney","Heart","Brain","Kidney"))
 batch <- meta$study
 design <- model.matrix(~1,data=meta)
 combat <- ComBat(dat=published.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
 ```
-
-```
-## Found 4 batches
-## Found 0  categorical covariate(s)
-## Standardizing Data across genes
-## Fitting L/S model and finding priors
-## Finding parametric adjustments
-## Adjusting the Data
-```
 Heatmap of Spearman correlations between published expression profiles after combat run (# genes = 13,323), **Figure 3a**:
 
-
-```r
+```{r:published log combat heatmap spearman}
 pheatmap(cor(combat, method="spearman")) 
 ```
 
-![plot of chunk :published log combat heatmap spearman](figure/:published log combat heatmap spearman-1.png) 
-
 PCA analysis of published FPKM values after ComBat run, **Figure 3b**:
-
-```r
+```{r:published log combat PCA}
 colors <- c("indianred", "dodgerblue", "forestgreen",
             "indianred", "dodgerblue",
             "indianred", "dodgerblue", "forestgreen", 
@@ -1103,170 +573,30 @@ plot(p.combat$x[,1],p.combat$x[,2],pch=shapes,col=colors,xlab=paste("PC1 54% of 
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("topright",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
 ```
-
-![plot of chunk :published log combat PCA](figure/:published log combat PCA-1.png) 
 Loadings of PCs 1-3 after ComBat (not shown in paper):
 
-
-```r
+```{r:published log combat PC 1-3}
 plot.highest.loadings(p.combat,combat,caption="Published ComBat adj log F/RPKM")
-```
-
-```
-##                 Gene Symbol   HPA_heart HPA_brain HPA_kidney AltIso_heart
-## ENSG00000104833      TUBB4A  0.75030203 6.7711146  1.5071746    1.0548571
-## ENSG00000168314        MOBP  0.14576179 5.8865118  0.2566453    0.4443956
-## ENSG00000104435       STMN2  0.08377078 6.2225910  0.1831964    0.2951304
-## ENSG00000132639      SNAP25  0.51370505 7.2165860  0.7463281    0.5478543
-## ENSG00000123560        PLP1  3.04588474 8.3645193  0.7077455    1.8716123
-## ENSG00000131095        GFAP  1.61602673 8.4005718  1.0224250    1.6333861
-## ENSG00000111245        MYL2 10.33859746 0.7027856  1.9642690   10.9663185
-## ENSG00000198125          MB  9.55312472 0.7730989  1.4078244    9.9076461
-## ENSG00000114854       TNNC1  9.14995294 0.3185859  3.0972013    9.6747088
-## ENSG00000148677      ANKRD1  9.13494762 0.4477017  0.5389247    8.7175639
-## ENSG00000118194       TNNT2 10.05438530 3.2136273  4.3919900   10.8461187
-## ENSG00000129991       TNNI3  9.24386135 0.9215019  0.5665340    9.3071293
-##                 AltIso_brain GTEx_heart GTEx_brain GTEx_kidney Atlas_heart
-## ENSG00000104833    7.6647941  1.2877094   8.054561   2.0722292   1.7688386
-## ENSG00000168314    5.7716295  0.5154919   7.760050   0.5396512   0.6460333
-## ENSG00000104435    6.1115778  0.6844591   7.252615   0.8397122   0.7307560
-## ENSG00000132639    7.2394349  1.2351476   7.322782   1.8366752   1.1867333
-## ENSG00000123560    8.6642034  2.8344734   9.910097   1.7600429   3.3261443
-## ENSG00000131095    8.2358812  1.9612003  10.500894   1.5288044   1.9277404
-## ENSG00000111245    1.1974802 12.1396540   3.230426   1.7339366  12.3434317
-## ENSG00000198125    1.1075727 10.7961851   2.569006   1.6004715  11.9168242
-## ENSG00000114854    1.3432696 10.3655091   2.312580   2.8605720  10.3711686
-## ENSG00000148677    0.8714522  9.9808035   2.178868   1.3215357  11.8479670
-## ENSG00000118194    3.5399712 11.4699025   3.270407   5.2123764  12.7294965
-## ENSG00000129991    0.9289914 10.9774447   2.437918   1.0374491  11.2273496
-##                 Atlas_brain Atlas_kidney
-## ENSG00000104833    7.979034    1.7481819
-## ENSG00000168314    7.683552    0.5998905
-## ENSG00000104435    7.706017    0.5870135
-## ENSG00000132639    8.755622    1.0007894
-## ENSG00000123560   10.305947    1.3247798
-## ENSG00000131095   10.626570    1.4845145
-## ENSG00000111245    1.994925    2.4491906
-## ENSG00000198125    1.660699    1.6159827
-## ENSG00000114854    2.437420    2.6408028
-## ENSG00000148677    1.095657    0.9529588
-## ENSG00000118194    3.029652    5.1350343
-## ENSG00000129991    1.874360    1.3010701
-```
-
-```
-##                 Gene Symbol     HPA_heart    HPA_brain HPA_kidney
-## ENSG00000095932      SMIM24 -0.5341031141  0.647839833  6.0607390
-## ENSG00000145692        BHMT -0.7511704428  0.005393214  6.1150072
-## ENSG00000124253        PCK1  0.0007210293  0.140970623  6.4887984
-## ENSG00000164825       DEFB1 -0.4663635847 -0.050538341  6.6381537
-## ENSG00000169344        UMOD -0.8798790933  0.018535053  6.9639866
-## ENSG00000136872       ALDOB -0.3972534983  0.600339791  7.6672443
-## ENSG00000129991       TNNI3  9.2438613540  0.921501868  0.5665340
-## ENSG00000092054        MYH7  9.1496845380  1.721517945  1.0872030
-## ENSG00000111245        MYL2 10.3385974570  0.702785559  1.9642690
-## ENSG00000148677      ANKRD1  9.1349476238  0.447701710  0.5389247
-## ENSG00000198125          MB  9.5531247174  0.773098940  1.4078244
-## ENSG00000159251       ACTC1  9.2487473947  1.254180413  0.5494277
-##                 AltIso_heart AltIso_brain  GTEx_heart GTEx_brain
-## ENSG00000095932     1.680089    3.4563075  0.31940438  0.9884549
-## ENSG00000145692     2.096778    2.3936674  0.32309431  0.3545066
-## ENSG00000124253     3.148532    2.3057291  0.08895047  1.0798358
-## ENSG00000164825     2.885889    2.3582921  0.28718669  0.5173622
-## ENSG00000169344     2.518483    2.5184832  0.44615959  0.4461596
-## ENSG00000136872     2.923505    3.4355902  0.61768936  0.6826461
-## ENSG00000129991     9.307129    0.9289914 10.97744467  2.4379184
-## ENSG00000092054     9.761267    1.2410577 11.03337431  3.1231914
-## ENSG00000111245    10.966319    1.1974802 12.13965402  3.2304263
-## ENSG00000148677     8.717564    0.8714522  9.98080355  2.1788683
-## ENSG00000198125     9.907646    1.1075727 10.79618508  2.5690058
-## ENSG00000159251     9.415927    0.8927029 10.85028220  2.3295725
-##                 GTEx_kidney Atlas_heart Atlas_brain Atlas_kidney
-## ENSG00000095932    6.841947   0.5095461   0.5673106    7.1174710
-## ENSG00000145692    6.701498   0.2400027   0.3110831    6.9418502
-## ENSG00000124253    8.020978   1.1985946   0.3747591    7.3886687
-## ENSG00000164825    7.830622   0.3469299   0.4592793    7.7546434
-## ENSG00000169344    7.360412   0.1485998   0.1485998    8.2350298
-## ENSG00000136872    9.232380   1.2279833   0.1385701    9.3029524
-## ENSG00000129991    1.037449  11.2273496   1.8743599    1.3010701
-## ENSG00000092054    1.295512  11.9890053   1.9091501    1.6442676
-## ENSG00000111245    1.733937  12.3434317   1.9949248    2.4491906
-## ENSG00000148677    1.321536  11.8479670   1.0956572    0.9529588
-## ENSG00000198125    1.600472  11.9168242   1.6606993    1.6159827
-## ENSG00000159251    1.332568  10.3396677   2.0586112    1.9347935
-```
-
-![plot of chunk :published log combat PC 1-3](figure/:published log combat PC 1-3-1.png) 
-
-```
-##                 Gene Symbol HPA_heart HPA_brain  HPA_kidney AltIso_heart
-## ENSG00000163631         ALB 0.1290007 0.1290007  5.44809286    2.1113595
-## ENSG00000173432        SAA1 1.2844092 1.7496026  1.69262171    3.0931159
-## ENSG00000161610        HCRT 0.3059610 0.3059610  0.42852362    0.7390413
-## ENSG00000140575      IQGAP1 4.1072033 3.6923431  4.82584463    4.3925277
-## ENSG00000188257     PLA2G2A 5.2365996 1.1865406  1.91557838    6.4184158
-## ENSG00000183395        PMCH 0.6751752 0.4407352  0.44073523    1.1217834
-## ENSG00000129824      RPS4Y1 4.6796529 5.0257224  5.18482619    5.5697836
-## ENSG00000170345         FOS 5.3000032 5.0090831  6.14164185    4.6655388
-## ENSG00000104888     SLC17A7 0.2671218 5.4124387 -0.09090673    0.1906338
-## ENSG00000103316        CRYM 5.5041583 4.5850972  4.22748622    4.7758036
-## ENSG00000070808      CAMK2A 2.1978347 5.2375165  0.46992526    0.9787545
-## ENSG00000170579      DLGAP1 0.1152404 4.2993371  0.39695734    0.1411353
-##                 AltIso_brain GTEx_heart GTEx_brain GTEx_kidney Atlas_heart
-## ENSG00000163631    2.1113595  0.9319022   1.494787   4.2601696   4.2906833
-## ENSG00000173432    0.9073893  0.7924284   1.302444   3.7362918   4.3365038
-## ENSG00000161610    0.7390413 -0.5453642   4.234178  -0.5066962   0.6633806
-## ENSG00000140575    4.1131768  3.4890453   6.632465   3.6323697   5.1851408
-## ENSG00000188257    0.8331762  3.9225654   2.760832   2.7409397   8.0654260
-## ENSG00000183395    1.1331051 -0.7966714   6.330630  -0.7966714   1.1193044
-## ENSG00000129824    5.1032390  6.4147908   2.576067   6.3819482   5.4323509
-## ENSG00000170345    6.0028215  7.3774210   4.058978   5.1755383   4.5477157
-## ENSG00000104888    5.3818967  2.5379594   2.064691   1.8341037   1.0481279
-## ENSG00000103316    5.0656438  5.7676365   3.248331   5.4908593   4.4616074
-## ENSG00000070808    5.9687424  2.8275991   3.832796   1.9254855   1.8243250
-## ENSG00000170579    4.4046652  1.3513314   2.404211   1.8497028   0.2360075
-##                 Atlas_brain Atlas_kidney
-## ENSG00000163631  -0.6902915    3.7074014
-## ENSG00000173432  -0.7850498    3.1145880
-## ENSG00000161610   0.9885744    0.6633806
-## ENSG00000140575   3.2885769    4.8592817
-## ENSG00000188257   0.3641900    2.5999229
-## ENSG00000183395   1.2076708    1.1193044
-## ENSG00000129824   6.0134205    4.1956475
-## ENSG00000170345   6.1717937    5.8764859
-## ENSG00000104888   4.9457419    1.0094455
-## ENSG00000103316   5.8811099    4.0716048
-## ENSG00000070808   6.9386180    0.7326712
-## ENSG00000170579   5.3240972    0.8119564
 ```
 
 Revisit Anova with "combated"" values, **Figure 3c**:
 
-
-```r
+```{r:published log combat anova}
 do_anova(combat, sampleinfo_published, caption="ANOVA, ComBat adj log F/RPKM")
 ```
-
-```
-## Using  as id variables
-```
-
-![plot of chunk :published log combat anova](figure/:published log combat anova-1.png) 
 Analyses relating to Figure 4 (data consistently reprocessed from FASTQ)
 ------------------------------------------------------------------------
 
 All of the preceding analysis was for studies with published F/RPKM values.
 We now turn to FPKMs for FASTQ files reprocessed with TopHat and Cufflinks:
 
-
-```r
+```{r:cufflinks download data}
 cufflinks <- read.delim("fpkm_table_tophat.txt")
 sampleinfo_cufflinks <- read.delim("sample_info_reprocessed.txt")
 ```
 First, we will restrict the data set to only include protein coding genes using the ensembl based R package biomaRt:
 
-
-```r
+```{r:cufflinks filter protein coding}
 gene_ids <- as.vector(cufflinks[,1])
 ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
 gene_type <- getBM(attributes=c("ensembl_gene_id", "gene_biotype"), 
@@ -1279,22 +609,17 @@ cufflinks_pc <- cufflinks[match(pc,cufflinks[,1]),]
 
 Let's remove all lines where FPKM is close to zero in all samples before we proceed with this version of the data set:
 
-
-```r
+```{r:cufflinks filter zeros}
 cufflinks_pc_nozero <- cufflinks_pc[-which(rowSums(cufflinks_pc[,3:16])<=0.01),]
 ```
 Heatmap of Spearman correlations between reprocessed expression profiles (# genes = 19,475), **Figure 4a**:
-
-```r
+```{r:cufflinks heatmap spearman}
 pheatmap(cor(cufflinks_pc_nozero[,3:16], method="spearman")) 
 ```
 
-![plot of chunk :cufflinks heatmap spearman](figure/:cufflinks heatmap spearman-1.png) 
-
 Let's look at a few PCA plots, **Figure 4b**:
 
-
-```r
+```{r:cufflinks PCA}
 cufflinks_fpkms <- cufflinks_pc_nozero[,3:16]
 rownames(cufflinks_fpkms) <- cufflinks_pc_nozero[,1]
 p.cufflinks <- prcomp(t(cufflinks_fpkms))
@@ -1309,12 +634,9 @@ legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodg
 legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
 
-![plot of chunk :cufflinks PCA](figure/:cufflinks PCA-1.png) 
-
 All pairwise combinations of principal components 1 to 5 (not shown in paper):
 
-
-```r
+```{r:cufflinks PCA pairwise}
 colors <- c("dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
@@ -1330,212 +652,30 @@ for (i in 1:6){
 }
 ```
 
-![plot of chunk :cufflinks PCA pairwise](figure/:cufflinks PCA pairwise-1.png) 
-
 Look at PCA loadings for PC1-3 (not shown in paper):
 
-
-```r
+```{r:cufflinks PC 1-3}
 plot.highest.loadings(p.cufflinks,cufflinks_fpkms,caption="Cufflinks FPKM")    
-```
-
-```
-##                 Gene Symbol  EoGE_brain  EoGE_heart EoGE_kidney
-## ENSG00000198888      MT-ND1 9.78313e+03 1.29704e+04   12927.400
-## ENSG00000198804      MT-CO1 9.52453e+03 3.87410e+04    3772.820
-## ENSG00000198938      MT-CO3 1.03779e+04 2.79864e+04   13574.300
-## ENSG00000198899     MT-ATP6 1.45439e+04 4.36996e+04   27038.300
-## ENSG00000198840      MT-ND3 1.11546e+04 1.12741e+04   16370.800
-## ENSG00000228253     MT-ATP8 3.59405e+04 1.25506e+04   29657.800
-## ENSG00000060138        YBX3 9.07246e+00 2.25311e+02     243.229
-## ENSG00000211445        GPX3 3.09235e+01 5.42119e+02   18989.300
-## ENSG00000166598     HSP90B1 1.02055e+02 6.23045e+01     197.881
-## ENSG00000130203        APOE 8.03945e+02 6.57937e+01    7062.530
-## ENSG00000136872       ALDOB 2.32646e-01 2.62751e-01    3923.870
-## ENSG00000109971       HSPA8 6.27816e+02 4.84668e+02     508.538
-##                 Atlas_brain Atlas_heart Atlas_kidney BodyMap_brain
-## ENSG00000198888 6609.070000 11043.30000     9043.730   1.26450e+04
-## ENSG00000198804 4331.870000 12564.70000    12148.200   1.41602e+04
-## ENSG00000198938 2072.480000  3861.35000     4634.460   1.24644e+04
-## ENSG00000198899 8168.860000 16937.60000    16023.400   2.62130e+04
-## ENSG00000198840 4281.000000 11015.10000    11389.900   2.17279e+04
-## ENSG00000228253 5519.300000 12604.10000    11548.200   2.71870e+05
-## ENSG00000060138 2266.430000 29731.30000     2030.770   4.95210e+01
-## ENSG00000211445   11.297300   392.65900     2265.160   2.87217e+01
-## ENSG00000166598 1934.760000  5957.27000     2593.600   1.05416e+02
-## ENSG00000130203   97.184500     9.90770      131.672   2.36936e+02
-## ENSG00000136872    0.141965     1.94897      839.917   4.26264e-01
-## ENSG00000109971 2205.090000  2103.80000     1276.960   4.20237e+02
-##                 BodyMap_heart BodyMap_kidney   HPA_brain   HPA_heart
-## ENSG00000198888   2.88022e+04      12167.300 3.65390e+03 2.35580e+04
-## ENSG00000198804   4.93494e+04      30835.800 1.12354e+04 6.49431e+04
-## ENSG00000198938   3.89022e+04      29411.400 7.53832e+03 5.67093e+04
-## ENSG00000198899   4.91401e+04      33007.100 8.50714e+03 5.36826e+04
-## ENSG00000198840   3.45605e+04      32774.300 5.55203e+03 4.18535e+04
-## ENSG00000228253   5.17674e+04     172497.000 1.55311e+04 1.42989e+05
-## ENSG00000060138   3.20109e+02        123.268 1.76349e+01 2.08790e+02
-## ENSG00000211445   3.66150e+02       3920.100 8.35414e+01 7.29493e+02
-## ENSG00000166598   9.51998e+01        415.542 1.44129e+02 1.00780e+02
-## ENSG00000130203   7.50127e+00        318.506 7.02494e+02 1.75460e+01
-## ENSG00000136872   2.48512e-01        492.240 2.34255e-01 2.95117e-01
-## ENSG00000109971   2.98899e+02        605.504 6.47549e+02 2.97209e+02
-##                 HPA_kidney AltIso_brain AltIso_heart
-## ENSG00000198888  6011.1400  2.61690e+04  3.01527e+04
-## ENSG00000198804 18088.5000  1.69366e+04  3.74794e+04
-## ENSG00000198938 15282.4000  2.02301e+04  3.17234e+04
-## ENSG00000198899 16901.4000  3.76973e+04  6.11711e+04
-## ENSG00000198840 12978.9000  6.82735e+04  1.23074e+05
-## ENSG00000228253 34584.4000  1.93776e+05  3.27884e+05
-## ENSG00000060138    41.4174  2.45855e+01  3.08346e+02
-## ENSG00000211445  8203.3100  2.39292e+01  4.08317e+02
-## ENSG00000166598   192.4100  6.63249e+01  6.66813e+01
-## ENSG00000130203  1933.3900  2.60673e+02  2.13628e+01
-## ENSG00000136872  3730.3700  2.18647e-01  1.61570e-01
-## ENSG00000109971   716.9350  2.93391e+02  1.23311e+02
-```
-
-```
-##                 Gene Symbol  EoGE_brain  EoGE_heart EoGE_kidney
-## ENSG00000123560        PLP1  2829.73000     8.54714     0.00000
-## ENSG00000131095        GFAP  1848.19000     9.74111     5.94327
-## ENSG00000060138        YBX3     9.07246   225.31100   243.22900
-## ENSG00000120885         CLU  5495.28000   275.90600  2845.96000
-## ENSG00000197971         MBP  6099.71000     9.18006    28.51080
-## ENSG00000228253     MT-ATP8 35940.50000 12550.60000 29657.80000
-## ENSG00000198804      MT-CO1  9524.53000 38741.00000  3772.82000
-## ENSG00000198899     MT-ATP6 14543.90000 43699.60000 27038.30000
-## ENSG00000198938      MT-CO3 10377.90000 27986.40000 13574.30000
-## ENSG00000212907     MT-ND4L  9785.53000 61755.40000 17136.40000
-## ENSG00000198840      MT-ND3 11154.60000 11274.10000 16370.80000
-## ENSG00000198886      MT-ND4  9043.37000 31881.50000 17645.40000
-##                 Atlas_brain Atlas_heart Atlas_kidney BodyMap_brain
-## ENSG00000123560      474.81     2.27603  3.28358e-01      1993.670
-## ENSG00000131095      934.18     0.96437  5.57265e+00      2412.650
-## ENSG00000060138     2266.43 29731.30000  2.03077e+03        49.521
-## ENSG00000120885     3538.52   170.58400  3.30082e+02      2412.680
-## ENSG00000197971     2304.66    12.39860  2.30044e+01      3361.860
-## ENSG00000228253     5519.30 12604.10000  1.15482e+04    271870.000
-## ENSG00000198804     4331.87 12564.70000  1.21482e+04     14160.200
-## ENSG00000198899     8168.86 16937.60000  1.60234e+04     26213.000
-## ENSG00000198938     2072.48  3861.35000  4.63446e+03     12464.400
-## ENSG00000212907     3655.66  8937.97000  1.23879e+04     13244.600
-## ENSG00000198840     4281.00 11015.10000  1.13899e+04     21727.900
-## ENSG00000198886    10485.30 23653.50000  2.22740e+04     13637.500
-##                 BodyMap_heart BodyMap_kidney  HPA_brain   HPA_heart
-## ENSG00000123560       3.17969    2.66083e-01  1789.8700 1.36904e+01
-## ENSG00000131095       1.40515    4.52636e-01  2752.7200 2.58878e+00
-## ENSG00000060138     320.10900    1.23268e+02    17.6349 2.08790e+02
-## ENSG00000120885      94.74010    5.58195e+02  5895.8000 2.14378e+02
-## ENSG00000197971       6.55905    1.28627e+01  2097.8600 1.04630e+01
-## ENSG00000228253   51767.40000    1.72497e+05 15531.1000 1.42989e+05
-## ENSG00000198804   49349.40000    3.08358e+04 11235.4000 6.49431e+04
-## ENSG00000198899   49140.10000    3.30071e+04  8507.1400 5.36826e+04
-## ENSG00000198938   38902.20000    2.94114e+04  7538.3200 5.67093e+04
-## ENSG00000212907   22257.20000    1.94946e+04  7248.3700 3.87762e+04
-## ENSG00000198840   34560.50000    3.27743e+04  5552.0300 4.18535e+04
-## ENSG00000198886   30344.00000    2.33878e+04  7150.8100 3.85014e+04
-##                  HPA_kidney AltIso_brain AltIso_heart
-## ENSG00000123560 2.36948e-01    2404.6500  3.63968e+00
-## ENSG00000131095 5.72929e-01    1472.6400  1.15580e+01
-## ENSG00000060138 4.14174e+01      24.5855  3.08346e+02
-## ENSG00000120885 7.29142e+02    6333.5200  2.06256e+02
-## ENSG00000197971 1.98815e+01   15257.1000  1.19544e+01
-## ENSG00000228253 3.45844e+04  193776.0000  3.27884e+05
-## ENSG00000198804 1.80885e+04   16936.6000  3.74794e+04
-## ENSG00000198899 1.69014e+04   37697.3000  6.11711e+04
-## ENSG00000198938 1.52824e+04   20230.1000  3.17234e+04
-## ENSG00000212907 1.29200e+04   21268.1000  2.95195e+04
-## ENSG00000198840 1.29789e+04   68273.5000  1.23074e+05
-## ENSG00000198886 1.04462e+04   21114.9000  2.56405e+04
-```
-
-![plot of chunk :cufflinks PC 1-3](figure/:cufflinks PC 1-3-1.png) 
-
-```
-##                 Gene Symbol  EoGE_brain EoGE_heart EoGE_kidney Atlas_brain
-## ENSG00000060138        YBX3 9.07246e+00    225.311 2.43229e+02 2.26643e+03
-## ENSG00000111245        MYL2 0.00000e+00   9422.800 1.39516e-01 3.66549e-01
-## ENSG00000118194       TNNT2 3.71590e+01   6316.890 1.10142e+02 1.45246e+01
-## ENSG00000198888      MT-ND1 9.78313e+03  12970.400 1.29274e+04 6.60907e+03
-## ENSG00000198695      MT-ND6 3.82118e+03   5483.280 6.60388e+03 1.16186e+04
-## ENSG00000198840      MT-ND3 1.11546e+04  11274.100 1.63708e+04 4.28100e+03
-## ENSG00000198804      MT-CO1 9.52453e+03  38741.000 3.77282e+03 4.33187e+03
-## ENSG00000198938      MT-CO3 1.03779e+04  27986.400 1.35743e+04 2.07248e+03
-## ENSG00000228253     MT-ATP8 3.59405e+04  12550.600 2.96578e+04 5.51930e+03
-## ENSG00000212907     MT-ND4L 9.78553e+03  61755.400 1.71364e+04 3.65566e+03
-## ENSG00000175206        NPPA 2.84121e+00    451.672 3.93243e-01 6.99760e-01
-## ENSG00000106631        MYL7 6.93233e-01   4082.360 2.47695e-01 0.00000e+00
-##                 Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart
-## ENSG00000060138   29731.300   2030.77000   4.95210e+01       320.109
-## ENSG00000111245    2115.710      2.47691   5.07789e-01      6846.970
-## ENSG00000118194   18168.900     69.13160   1.14161e+01      2903.310
-## ENSG00000198888   11043.300   9043.73000   1.26450e+04     28802.200
-## ENSG00000198695   17693.000  20262.40000   8.16544e+03     12493.100
-## ENSG00000198840   11015.100  11389.90000   2.17279e+04     34560.500
-## ENSG00000198804   12564.700  12148.20000   1.41602e+04     49349.400
-## ENSG00000198938    3861.350   4634.46000   1.24644e+04     38902.200
-## ENSG00000228253   12604.100  11548.20000   2.71870e+05     51767.400
-## ENSG00000212907    8937.970  12387.90000   1.32446e+04     22257.200
-## ENSG00000175206     425.586      0.16033   9.12246e-01       262.600
-## ENSG00000106631     317.582      0.00000   1.87680e-01       462.302
-##                 BodyMap_kidney   HPA_brain   HPA_heart HPA_kidney
-## ENSG00000060138    1.23268e+02    17.63490 2.08790e+02    41.4174
-## ENSG00000111245    0.00000e+00     0.00000 5.94298e+00     0.0000
-## ENSG00000118194    2.37429e+01     6.30235 3.83771e+03    19.3001
-## ENSG00000198888    1.21673e+04  3653.90000 2.35580e+04  6011.1400
-## ENSG00000198695    1.55920e+04  4505.17000 2.12975e+04  5803.0100
-## ENSG00000198840    3.27743e+04  5552.03000 4.18535e+04 12978.9000
-## ENSG00000198804    3.08358e+04 11235.40000 6.49431e+04 18088.5000
-## ENSG00000198938    2.94114e+04  7538.32000 5.67093e+04 15282.4000
-## ENSG00000228253    1.72497e+05 15531.10000 1.42989e+05 34584.4000
-## ENSG00000212907    1.94946e+04  7248.37000 3.87762e+04 12920.0000
-## ENSG00000175206    3.06539e-01    11.06860 2.55263e+04     0.0000
-## ENSG00000106631    0.00000e+00     0.00000 1.00109e+04     0.0000
-##                 AltIso_brain AltIso_heart
-## ENSG00000060138  2.45855e+01      308.346
-## ENSG00000111245  1.76461e+00    15922.700
-## ENSG00000118194  2.61744e+01    12212.100
-## ENSG00000198888  2.61690e+04    30152.700
-## ENSG00000198695  1.41279e+04    28571.200
-## ENSG00000198840  6.82735e+04   123074.000
-## ENSG00000198804  1.69366e+04    37479.400
-## ENSG00000198938  2.02301e+04    31723.400
-## ENSG00000228253  1.93776e+05   327884.000
-## ENSG00000212907  2.12681e+04    29519.500
-## ENSG00000175206  3.20302e+00      737.390
-## ENSG00000106631  0.00000e+00      851.308
 ```
 Mitochondrially encoded genes have relatively high expression levels, FPKM values of several thousands.
 
 Anova analysis of different sample properties, **Figure 4c**:
 
-
-```r
+```{r:cufflinks anova}
 do_anova(cufflinks_fpkms,sampleinfo_cufflinks,caption="ANOVA, Cufflinks FPKM")
 ```
-
-```
-## Using  as id variables
-```
-
-![plot of chunk :cufflinks anova](figure/:cufflinks anova-1.png) 
 Try log2 transformation of the reprocessed FPKM values:
-
-```r
+```{r:cufflinks log transform}
 pseudo <- 1
 cufflinks_log <- log2(cufflinks_fpkms + pseudo)
 ```
 Heatmap of Spearman correlations between log2 reprocessed cufflinks FPKM values, **Figure 4d**:
 
-
-```r
+```{r:cufflinks log heatmap spearman }
 pheatmap(cor(cufflinks_log) ,method="spearman")
 ```
-
-![plot of chunk :cufflinks log heatmap spearman](figure/:cufflinks log heatmap spearman-1.png) 
 PCA analysis of log2 reprocessed cufflinks FPKM values, **Figure 4e**:
-
-```r
+```{r:cufflinks log PCA 1&2}
 colors <- c("dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
@@ -1547,21 +687,15 @@ plot(p.log.cufflinks$x[,1],p.log.cufflinks$x[,2],pch=shapes_cufflinks,col=colors
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
-
-![plot of chunk :cufflinks log PCA 1&2](figure/:cufflinks log PCA 1&2-1.png) 
 **Figure 4f**:
 
-
-```r
+```{r:cufflinks log PCA 2&3}
 plot(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],pch=shapes_cufflinks,col=colors,xlab=paste("PC2 25% of variance"),ylab=paste("PC3 22% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("topleft",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
-
-![plot of chunk :cufflinks log PCA 2&3](figure/:cufflinks log PCA 2&3-1.png) 
 All pairwise combinations of principal components 1 to 5. (not shown in paper):
-
-```r
+```{r:cufflinks log PCA pairwise}
 par(mfrow=c(4,4))
 for (i in 1:6){
   for(j in 1:6){
@@ -1571,11 +705,8 @@ for (i in 1:6){
 	}
 }
 ```
-
-![plot of chunk :cufflinks log PCA pairwise](figure/:cufflinks log PCA pairwise-1.png) 
 Cross-validation by leaving out one of the studies, in this case AltIso, **Figure 4g**: 
-
-```r
+```{r:leave-one-out-pca cufflinks}
 colors <- c("dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
             "dodgerblue", "indianred", "forestgreen",
@@ -1592,184 +723,13 @@ plot(p.original.plus.new[,2],p.original.plus.new[,3],pch=c(shapes_cufflinks[1:12
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("topleft",legend=c("HPA","GTEx","Atlas","AltIso"),col="black",pch=c(11,8,17,15,22),ncol=2)
 ```
-
-![plot of chunk :leave-one-out-pca cufflinks](figure/:leave-one-out-pca cufflinks-1.png) 
 Loadings for PCs 1-3 for logged FPKM values from Cufflinks (not shown in paper):
-
-```r
+```{r:cufflinks log PC 1-3}
 plot.highest.loadings(p.log.cufflinks,cufflinks_log,caption="Cufflinks log FPKM")
-```
-
-```
-##                 Gene Symbol EoGE_brain EoGE_heart EoGE_kidney Atlas_brain
-## ENSG00000148677      ANKRD1  0.0000000  8.6509799   0.0000000   0.5574424
-## ENSG00000111245        MYL2  0.0000000 13.2020932   0.1884212   0.4505372
-## ENSG00000159251       ACTC1  0.8329734 12.9866011   1.7958210   0.5454762
-## ENSG00000175084         DES  1.4792099 13.6718506   2.4885073   2.6656452
-## ENSG00000198125          MB  0.5082927 12.5858170   1.0087665   0.1237050
-## ENSG00000114854       TNNC1  0.9675951 12.4191833   5.2853282   1.5989654
-## ENSG00000123560        PLP1 11.4669584  3.2550686   0.0000000   8.8942418
-## ENSG00000132639      SNAP25 10.3246756  0.4002231   0.4996923  10.0476829
-## ENSG00000131095        GFAP 10.8526778  3.4250712   2.7956153   9.8691003
-## ENSG00000197971         MBP 12.5747614  3.3476742   4.8831711  11.1709641
-## ENSG00000125462     C1orf61  8.0670417  0.0000000   0.0000000   4.5940409
-## ENSG00000091513          TF  9.5866784  3.8123750   0.4145967   8.0016052
-##                 Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart
-## ENSG00000148677  12.0772964    0.5249012    0.06546299   9.637333107
-## ENSG00000111245  11.0476079    1.7978057    0.59243455  12.741460666
-## ENSG00000159251   8.2655869    0.4463780    0.48875972  11.297329002
-## ENSG00000175084  10.8757417    2.9284916    3.13943348  11.695706790
-## ENSG00000198125   9.3354774    0.0000000    0.31641108  12.155893402
-## ENSG00000114854   9.5722341    1.6376798    0.59928446  10.908302543
-## ENSG00000123560   1.7119486    0.4096440   10.96193437   2.063395944
-## ENSG00000132639   1.4747320    0.2522788    9.95196073   0.198409915
-## ENSG00000131095   0.9740667    2.7164752   11.23700077   1.266126872
-## ENSG00000197971   3.7440104    4.5852270   11.71547300   2.918204932
-## ENSG00000125462   0.2918263    0.5237035    7.53766881   0.008546265
-## ENSG00000091513   4.0766788    2.1566296    9.46690441   0.576166076
-##                 BodyMap_kidney   HPA_brain HPA_heart HPA_kidney
-## ENSG00000148677      0.3548425  0.06964278 10.860218  0.1107553
-## ENSG00000111245      0.0000000  0.00000000  2.795555  0.0000000
-## ENSG00000159251      2.5666350  0.26708629 12.038309  0.5436097
-## ENSG00000175084      4.8991756  0.42593296 11.478669  4.0290818
-## ENSG00000198125      0.3753153  0.81309202 12.551206  0.6898788
-## ENSG00000114854      2.8595542  0.00000000 10.700526  3.2569593
-## ENSG00000123560      0.3403720 10.80644490  3.876802  0.3067849
-## ENSG00000132639      0.7578442  8.58646453  1.813114  0.9485156
-## ENSG00000131095      0.5386732 11.42716616  1.843493  0.6534536
-## ENSG00000197971      3.7931364 11.03539022  3.518913  4.3841534
-## ENSG00000125462      0.0440393 10.20888056  0.000000  0.0000000
-## ENSG00000091513      0.2392123  8.89796341  1.214554  0.5380623
-##                 AltIso_brain AltIso_heart
-## ENSG00000148677    0.3943308    9.6330824
-## ENSG00000111245    1.4670760   13.9588880
-## ENSG00000159251    1.1469680   10.7538519
-## ENSG00000175084    3.7489335   13.4514043
-## ENSG00000198125    0.8559084   12.8299387
-## ENSG00000114854    0.6311490   12.0126001
-## ENSG00000123560   11.2322110    2.2140253
-## ENSG00000132639    9.2211859    0.1350817
-## ENSG00000131095   10.5251684    3.6505348
-## ENSG00000197971   13.8972877    3.6953703
-## ENSG00000125462    8.2330780    0.1869265
-## ENSG00000091513    9.7097955    0.4821503
-```
-
-```
-##                   Gene Symbol EoGE_brain EoGE_heart  EoGE_kidney
-## ENSG00000111245          MYL2  0.0000000 13.2020932 1.884212e-01
-## ENSG00000258644 SYNJ2BP-COX16  3.1804582  1.6296597 1.008104e-05
-## ENSG00000092054          MYH7  1.0835334 12.9342861 1.691105e-01
-## ENSG00000148677        ANKRD1  0.0000000  8.6509799 0.000000e+00
-## ENSG00000077522         ACTN2  5.7033914 10.3184411 0.000000e+00
-## ENSG00000129991         TNNI3  1.0435545 11.9043787 0.000000e+00
-## ENSG00000162366      PDZK1IP1  0.0000000  0.4205255 1.205671e+01
-## ENSG00000137731         FXYD2  0.1181378  1.0407382 1.142270e+01
-## ENSG00000169344          UMOD  0.0000000  0.0000000 1.043218e+01
-## ENSG00000136872         ALDOB  0.3017585  0.3365702 1.193843e+01
-## ENSG00000164825         DEFB1  0.0000000  0.0000000 1.052250e+01
-## ENSG00000095932        SMIM24  2.9925020  0.0000000 9.995273e+00
-##                 Atlas_brain Atlas_heart Atlas_kidney BodyMap_brain
-## ENSG00000111245  0.45053719 11.04760791    1.7978057  5.924346e-01
-## ENSG00000258644  8.04005953  7.78249375    7.4244603  3.609621e-12
-## ENSG00000092054  0.96717304 11.58007009    0.5318899  5.392501e-01
-## ENSG00000148677  0.55744244 12.07729642    0.5249012  6.546299e-02
-## ENSG00000077522  5.28876459 10.47373619    1.7007238  3.715630e+00
-## ENSG00000129991  1.53024058 11.60421035    0.5119244  5.094151e-01
-## ENSG00000162366  0.00000000  0.23456631    5.1359452  2.876827e-01
-## ENSG00000137731  0.00000000  0.04472172    6.3999230  1.094314e-01
-## ENSG00000169344  0.00000000  0.00000000    9.4557279  0.000000e+00
-## ENSG00000136872  0.19151843  1.56021115    9.7158196  5.122410e-01
-## ENSG00000164825  0.19500736  0.00000000    8.2375446  5.290193e-01
-## ENSG00000095932  0.09064128  0.00000000    7.9002932  2.589481e+00
-##                 BodyMap_heart BodyMap_kidney  HPA_brain  HPA_heart
-## ENSG00000111245   12.74146067     0.00000000 0.00000000  2.7955550
-## ENSG00000258644    3.86672009     1.56030409 2.54325088  2.7819220
-## ENSG00000092054   11.43734115     0.07657551 2.40167688  8.3647606
-## ENSG00000148677    9.63733311     0.35484254 0.06964278 10.8602179
-## ENSG00000077522    8.94245586     0.50301385 4.05474431  9.2343624
-## ENSG00000129991   10.53301819     0.00000000 0.18733829 10.1093083
-## ENSG00000162366    0.09602984     9.04113892 0.00000000  0.2843021
-## ENSG00000137731    0.31361388    10.28232396 0.32095828  0.7981492
-## ENSG00000169344    0.00000000    10.40769265 0.00000000  0.0000000
-## ENSG00000136872    0.32020969     8.94614599 0.30364049  0.3730824
-## ENSG00000164825    0.96771311     8.18218576 0.00000000  0.0000000
-## ENSG00000095932    0.00000000     7.48462153 0.96574735  0.0000000
-##                   HPA_kidney AltIso_brain AltIso_heart
-## ENSG00000111245  0.000000000   1.46707598   13.9588880
-## ENSG00000258644  0.001467859   3.41348171    4.3366262
-## ENSG00000092054  0.102119514   0.71596452   11.3988559
-## ENSG00000148677  0.110755304   0.39433084    9.6330824
-## ENSG00000077522  0.395966532   4.05233764    9.1306761
-## ENSG00000129991  0.000000000   1.04881510   11.7341465
-## ENSG00000162366 10.350839758   0.00000000    0.3585437
-## ENSG00000137731 10.554166725   0.02523338    0.2000046
-## ENSG00000169344 11.034276252   0.00000000    0.0000000
-## ENSG00000136872 11.865489709   0.28528029    0.2160761
-## ENSG00000164825  9.818548626   0.32712972    1.0684163
-## ENSG00000095932  9.292459683   2.63545259    0.6595273
-```
-
-![plot of chunk :cufflinks log PC 1-3](figure/:cufflinks log PC 1-3-1.png) 
-
-```
-##                 Gene Symbol EoGE_brain EoGE_heart EoGE_kidney Atlas_brain
-## ENSG00000092054        MYH7  1.0835334 12.9342861   0.1691105   0.9671730
-## ENSG00000173991        TCAP  2.1794028 12.4492854   0.9858924   0.2969460
-## ENSG00000159251       ACTC1  0.8329734 12.9866011   1.7958210   0.5454762
-## ENSG00000104879         CKM  0.1110735 11.8794990   0.9422885   0.0000000
-## ENSG00000106631        MYL7  0.7597805 11.9955410   0.3192653   0.0000000
-## ENSG00000198125          MB  0.5082927 12.5858170   1.0087665   0.1237050
-## ENSG00000136872       ALDOB  0.3017585  0.3365702  11.9384292   0.1915184
-## ENSG00000169344        UMOD  0.0000000  0.0000000  10.4321765   0.0000000
-## ENSG00000145692        BHMT  1.1586537  0.2959992   9.0377117   1.6332964
-## ENSG00000164825       DEFB1  0.0000000  0.0000000  10.5225031   0.1950074
-## ENSG00000163586       FABP1  0.0000000  0.6074245   9.8342877   0.0000000
-## ENSG00000118785        SPP1  8.3516504  0.9288137  12.4887841   7.3747439
-##                 Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart
-## ENSG00000092054   11.580070   0.53188995    0.53925015   11.43734115
-## ENSG00000173991    9.113492   0.28620813    0.64370199    9.24646509
-## ENSG00000159251    8.265587   0.44637799    0.48875972   11.29732900
-## ENSG00000104879    6.131653   0.04120288    0.06686568   10.21575139
-## ENSG00000106631    8.315521   0.00000000    0.24814618    8.85580910
-## ENSG00000198125    9.335477   0.00000000    0.31641108   12.15589340
-## ENSG00000136872    1.560211   9.71581960    0.51224105    0.32020969
-## ENSG00000169344    0.000000   9.45572791    0.00000000    0.00000000
-## ENSG00000145692    1.772899  10.47692843    0.32139131    0.07721797
-## ENSG00000164825    0.000000   8.23754460    0.52901931    0.96771311
-## ENSG00000163586    1.754939   8.48040247    0.17074550    0.00000000
-## ENSG00000118785    3.924356   9.76926263    9.08433272    3.32507838
-##                 BodyMap_kidney  HPA_brain   HPA_heart HPA_kidney
-## ENSG00000092054     0.07657551 2.40167688  8.36476064  0.1021195
-## ENSG00000173991     0.55636271 1.35331200  9.57889533  0.2272889
-## ENSG00000159251     2.56663496 0.26708629 12.03830859  0.5436097
-## ENSG00000104879     0.08361873 0.04296646 10.25540631  0.3685046
-## ENSG00000106631     0.00000000 0.00000000 13.28942817  0.0000000
-## ENSG00000198125     0.37531529 0.81309202 12.55120597  0.6898788
-## ENSG00000136872     8.94614599 0.30364049  0.37308244 11.8654897
-## ENSG00000169344    10.40769265 0.00000000  0.00000000 11.0342763
-## ENSG00000145692     5.70007345 0.12071768  0.08554118  9.5915280
-## ENSG00000164825     8.18218576 0.00000000  0.00000000  9.8185486
-## ENSG00000163586     6.13980303 0.00000000  0.00000000  8.7764594
-## ENSG00000118785    12.45290271 7.58463185  2.46986254 10.7481845
-##                 AltIso_brain AltIso_heart
-## ENSG00000092054    0.7159645   11.3988559
-## ENSG00000173991    1.1466357   11.2293536
-## ENSG00000159251    1.1469680   10.7538519
-## ENSG00000104879    0.2836326   11.1711017
-## ENSG00000106631    0.0000000    9.7352311
-## ENSG00000198125    0.8559084   12.8299387
-## ENSG00000136872    0.2852803    0.2160761
-## ENSG00000169344    0.0000000    0.0000000
-## ENSG00000145692    1.0067432    0.4330705
-## ENSG00000164825    0.3271297    1.0684163
-## ENSG00000163586    0.2680786    0.0000000
-## ENSG00000118785    7.8230870    4.0466046
 ```
 To further validate the above results, indicating that tissue specificity appears mainly in PC 3, we will extract the 500 genes with highest loadings in each component and plot the corresponding cufflinks FPKM values in a heatmap (not shown in paper):
 
-
-```r
+```{r:cufflinks log top 500 loadings heatmap}
      cufflinks_values <- cufflinks_pc_nozero[,3:16]
      rownames(cufflinks_values) <- cufflinks_pc_nozero[,1]
      load.pc1 <- abs(p.log.cufflinks$rotation[,1])[order(abs(p.log.cufflinks$rotation[,1]),decreasing=TRUE)]
@@ -1780,261 +740,48 @@ To further validate the above results, indicating that tissue specificity appear
      top.pc3 <- names(load.pc3[1:500])
      
      pheatmap(cor(cufflinks_values[top.pc1,]),method="spearman")
-```
-
-![plot of chunk :cufflinks log top 500 loadings heatmap](figure/:cufflinks log top 500 loadings heatmap-1.png) 
-
-```r
      pheatmap(cor(cufflinks_values[top.pc2,]),method="spearman")
-```
-
-![plot of chunk :cufflinks log top 500 loadings heatmap](figure/:cufflinks log top 500 loadings heatmap-2.png) 
-
-```r
      pheatmap(cor(cufflinks_values[top.pc3,]),method="spearman")
-```
 
-![plot of chunk :cufflinks log top 500 loadings heatmap](figure/:cufflinks log top 500 loadings heatmap-3.png) 
+```
 Anova on logged Cufflinks values (not shown in paper):
 
-
-```r
+```{r:cufflinks log anova}
 do_anova(cufflinks_log,sampleinfo_cufflinks,caption="ANOVA, Cufflinks log FPKM")
 ```
-
-```
-## Using  as id variables
-```
-
-![plot of chunk :cufflinks log anova](figure/:cufflinks log anova-1.png) 
 Combat analysis for removal of batch effects (n=19,475):
-
-```r
+```{r:cufflinks log combat}
 meta <- data.frame(study=c(rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HPA",3),rep("AltIso",2)),tissue=c("Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart"),prep=c(rep("poly-A",3),rep("rRNA-depl",3),rep("poly-A",8)),layout=c(rep("PE",3),rep("SE",3),rep("PE",6),rep("SE",2)))
 batch <- meta$study
 design <- model.matrix(~1,data=meta)
 combat.cufflinks <- ComBat(dat=cufflinks_log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-```
-
-```
-## Found 5 batches
-## Found 0  categorical covariate(s)
-## Standardizing Data across genes
-## Fitting L/S model and finding priors
-## Finding parametric adjustments
-## Adjusting the Data
-```
-
-```r
 rownames(combat.cufflinks) <- rownames(cufflinks_log)
 ```
 
 Heatmap of Spearman correlations between reprocessed cufflinks FPKM values after ComBat run, **Figure 4h**:
 
-
-```r
+```{r:cufflinks log combat heatmap spearman}
 pheatmap(cor(combat.cufflinks),method="spearman")
 ```
 
-![plot of chunk :cufflinks log combat heatmap spearman](figure/:cufflinks log combat heatmap spearman-1.png) 
-
 PCA analysis on reprocessed cufflinks FPKM values after ComBat run, **Figure 4i**:
-
-```r
+```{r:cufflinks log combat PCA}
 p.combat.cufflinks <- prcomp(t(combat.cufflinks))
 shapes_cufflinks <- c(rep(11,3),rep(8,3),rep(17,3),rep(15,3),rep(16,2))
 plot(p.combat.cufflinks$x[,1],p.combat.cufflinks$x[,2],pch=shapes_cufflinks,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 37% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
-
-![plot of chunk :cufflinks log combat PCA](figure/:cufflinks log combat PCA-1.png) 
 Loadings for PCs 1-3 in prcomp (not shown in paper):
-
-```r
+```{r:cufflinks log combat PC 1-3}
 plot.highest.loadings(p.combat.cufflinks,combat.cufflinks,caption="Cufflinks ComBat adj log FPKM")
 ```
-
-```
-##                 Gene Symbol EoGE_brain EoGE_heart EoGE_kidney Atlas_brain
-## ENSG00000106631        MYL7  0.7874040  9.4909386   0.4461686   0.9976763
-## ENSG00000111245        MYL2  0.4983155 10.4441841   0.6402636   0.3944252
-## ENSG00000175084         DES  2.5460213 11.6940893   3.3032913   3.4099644
-## ENSG00000159251       ACTC1  0.9933817 10.3087569   1.7313742   1.9184351
-## ENSG00000114854       TNNC1  0.9252247  9.8907665   4.3056131   2.4922655
-## ENSG00000198125          MB  0.9605449 10.4101190   1.3521206   1.5037923
-## ENSG00000132639      SNAP25  8.6801726  1.0006117   1.0775812   9.7310087
-## ENSG00000123560        PLP1  9.6102915  3.2632149   0.7473299  10.0682280
-## ENSG00000131095        GFAP  9.1175024  3.1068106   2.5974318  10.3917777
-## ENSG00000197971         MBP 10.9794523  3.7557843   4.9578885  11.5348941
-## ENSG00000104435       STMN2  6.8719274  0.4243591   0.3014972   7.6700427
-## ENSG00000125462     C1orf61  6.7815359  0.4538309   0.4538309   5.9531064
-##                 Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart
-## ENSG00000106631   9.5298686    0.9976763      1.226396     9.3000857
-## ENSG00000111245  10.7225770    1.7075045      1.227915    11.6135264
-## ENSG00000175084  11.6535043    3.6738815      3.327799    11.3625955
-## ENSG00000159251   9.9393787    1.8154753      1.010854    10.7730994
-## ENSG00000114854  10.5652331    2.5314640      1.516807    10.8117728
-## ENSG00000198125  10.8671508    1.3780516      1.261782    11.7417914
-## ENSG00000132639   1.6861707    0.5390234      9.618304     1.0102329
-## ENSG00000123560   2.8589286    1.5517273     10.667582     2.8375513
-## ENSG00000131095   1.6971123    3.4002715     10.982040     2.4783106
-## ENSG00000197971   4.0939255    4.9367295     11.768880     3.9326510
-## ENSG00000104435   0.5354908    0.2516501      7.349412     0.6222567
-## ENSG00000125462   1.1435401    1.4027620      7.473221     0.6506037
-##                 BodyMap_kidney  HPA_brain  HPA_heart HPA_kidney
-## ENSG00000106631      0.9936431  0.2936835 10.6386435  0.2936835
-## ENSG00000111245      0.7214719  2.1354265  4.7785247  2.1354265
-## ENSG00000175084      4.9802909  1.6761466 10.8241497  4.6583601
-## ENSG00000159251      2.8875809  0.9973972 10.4847641  1.2202695
-## ENSG00000114854      3.5547442  0.8991855  9.8492390  3.6233468
-## ENSG00000198125      1.3139224  1.1359780 10.8365451  1.0341526
-## ENSG00000132639      1.5039659  7.8524913  1.9288082  1.1726673
-## ENSG00000123560      1.3214225  9.5060294  3.7121129  0.7272002
-## ENSG00000131095      1.8578967 10.2053235  2.5241842  1.5703888
-## ENSG00000197971      4.7120024 10.5345713  4.0586131  4.8040770
-## ENSG00000104435      0.6146783  6.1389984  0.5492004  0.5519056
-## ENSG00000125462      0.6827662  8.0519660  0.1874708  0.1874708
-##                 AltIso_brain AltIso_heart
-## ENSG00000106631   0.06313818   8.49986298
-## ENSG00000111245   0.17137405  10.21251888
-## ENSG00000175084   2.86536699  11.02210683
-## ENSG00000159251   0.94552093   9.24405185
-## ENSG00000114854   1.08800566  10.21709002
-## ENSG00000198125   0.34377431  10.31939042
-## ENSG00000132639   8.12188073   0.42582060
-## ENSG00000123560   9.29314194   1.58834678
-## ENSG00000131095   8.82700891   2.63240185
-## ENSG00000197971  11.45112547   3.43042228
-## ENSG00000104435   6.27098508  -0.01331059
-## ENSG00000125462   6.69233004  -0.07111219
-```
-
-```
-##                 Gene Symbol  EoGE_brain  EoGE_heart EoGE_kidney
-## ENSG00000095932      SMIM24  2.12028528 -0.14923964   7.4312132
-## ENSG00000164825       DEFB1  0.07055691  0.07055691   7.9145879
-## ENSG00000162366    PDZK1IP1 -0.32349740 -0.01861972   8.4175238
-## ENSG00000137731       FXYD2 -0.15620419  0.53418454   8.3030842
-## ENSG00000136872       ALDOB  0.26324875  0.28937067   8.9951585
-## ENSG00000169344        UMOD  0.04542904  0.04542904   8.1131434
-## ENSG00000198125          MB  0.96054492 10.41011897   1.3521206
-## ENSG00000092054        MYH7  1.37558650 10.40968189   0.6785013
-## ENSG00000129991       TNNI3  1.45299122  9.88983105   0.6423435
-## ENSG00000106631        MYL7  0.78740398  9.49093863   0.4461686
-## ENSG00000175206        NPPA  2.45619192  8.05274926   1.2661491
-## ENSG00000148677      ANKRD1  0.99070272  7.99745807   0.9907027
-##                 Atlas_brain Atlas_heart Atlas_kidney BodyMap_brain
-## ENSG00000095932  0.82880801  0.74466920    8.0782069     2.7118047
-## ENSG00000164825  0.41944847  0.23311370    8.1043088     0.6828248
-## ENSG00000162366  0.77231230  1.03045339    6.4244389     0.5452045
-## ENSG00000137731  0.74032839  0.78720440    7.4485420     0.4257565
-## ENSG00000136872 -0.04463777  1.27836681    9.1617341     1.0282379
-## ENSG00000169344  0.06212804  0.06212804    9.0338348     0.3342492
-## ENSG00000198125  1.50379229 10.86715080    1.3780516     1.2617819
-## ENSG00000092054  1.35547220 11.32021875    0.9467727     1.5105522
-## ENSG00000129991  1.59015282 11.12993893    0.6258340     1.5325395
-## ENSG00000106631  0.99767629  9.52986856    0.9976763     1.2263956
-## ENSG00000175206  1.86908691  9.71636850    1.3268646     2.1007362
-## ENSG00000148677  0.50877110 10.77959747    0.4797581     0.9042302
-##                 BodyMap_heart BodyMap_kidney   HPA_brain   HPA_heart
-## ENSG00000095932     0.3166643      7.2395658  1.11861858  0.35025517
-## ENSG00000164825     1.0870125      7.7340200  0.15905228  0.15905228
-## ENSG00000162366     0.3754041      8.3005840 -0.05393037  0.17181103
-## ENSG00000137731     0.6001280      9.1133908  0.16005048  0.54344848
-## ENSG00000136872     0.8517896      8.7777446  0.30999698  0.36463951
-## ENSG00000169344     0.3342492      9.3866115 -0.01279979 -0.01279979
-## ENSG00000198125    11.7417914      1.3139224  1.13597804 10.83654513
-## ENSG00000092054    11.1290748      1.1022012  2.87373170  8.20049327
-## ENSG00000129991    10.5882351      1.0723149  1.07728039  9.46189485
-## ENSG00000106631     9.3000857      0.9936431  0.29368347 10.63864350
-## ENSG00000175206     8.8069611      1.5822020  2.76066114 10.93463331
-## ENSG00000148677     9.6195161      1.1677133  0.55130623  9.38534616
-##                 HPA_kidney AltIso_brain AltIso_heart
-## ENSG00000095932  7.7434787   4.02605607     2.057573
-## ENSG00000164825  7.9820615   2.22863386     2.976250
-## ENSG00000162366  8.1648380   2.23495987     2.596876
-## ENSG00000137731  8.3818986   2.51149474     2.687892
-## ENSG00000136872  9.4077928   2.97733449     2.907482
-## ENSG00000169344  8.8205755   2.57694331     2.576943
-## ENSG00000198125  1.0341526   0.34377431    10.319390
-## ENSG00000092054  0.8195607   0.51999615     9.554116
-## ENSG00000129991  0.9189691   0.50461607     9.535329
-## ENSG00000106631  0.2936835   0.06313818     8.499863
-## ENSG00000175206  0.1018617   1.48454143     8.142969
-## ENSG00000148677  0.5849643   0.26159708     8.274991
-```
-
-![plot of chunk :cufflinks log combat PC 1-3](figure/:cufflinks log combat PC 1-3-1.png) 
-
-```
-##                 Gene Symbol EoGE_brain EoGE_heart EoGE_kidney Atlas_brain
-## ENSG00000106538     RARRES2   3.454292  4.3734334  5.85301829   4.6638371
-## ENSG00000198838        RYR3   3.466138  0.2420144  0.73831359   4.6314107
-## ENSG00000105697        HAMP   1.482594  2.7530754  0.99761556   3.1960332
-## ENSG00000223865    HLA-DPB1   3.606303  5.2578969  5.86698479   5.2879513
-## ENSG00000163220      S100A9   2.109038  4.3845658  5.90121584   4.9339158
-## ENSG00000118271         TTR   2.289298  1.6155176  3.51793627   8.2383241
-## ENSG00000175445         LPL   2.345448  7.3506027  3.73374493   2.3663699
-## ENSG00000257017          HP   2.023408  4.5057893  3.81275012   0.2333785
-## ENSG00000005513        SOX8   4.355092  0.7950111  0.03861219   2.3552743
-## ENSG00000157150       TIMP4   1.244654  3.4611182  0.70035491   1.2447382
-## ENSG00000125676       THOC2   3.762021  2.6541550  4.03177539   1.3099525
-## ENSG00000101311      FERMT1   1.537791  0.7800861  1.94562545   0.8685919
-##                 Atlas_heart Atlas_kidney BodyMap_brain BodyMap_heart
-## ENSG00000106538  3.70740198    4.9372278      4.293566     2.9445309
-## ENSG00000198838 -0.01197427    0.5110309      2.940782     0.6244439
-## ENSG00000105697  2.27649916    0.5081875      4.186638     0.9345491
-## ENSG00000223865  4.75914665    4.2931430      5.186772     4.1803908
-## ENSG00000163220  6.23093282    2.3570366      4.094015     5.0272179
-## ENSG00000118271  0.72087472    0.4501375      8.294170     0.4319428
-## ENSG00000175445  8.08568770    3.6935980      3.441644     7.3182587
-## ENSG00000257017  6.49620545    5.4771289      1.446374     4.1858712
-## ENSG00000005513  1.42861425    1.4025444      4.164458     0.6308993
-## ENSG00000157150  2.52358436    1.7706944      1.662774     3.2451052
-## ENSG00000125676  4.84787943    4.9173109      3.854102     3.1886528
-## ENSG00000101311  1.05114712    3.3185776      1.225331     1.2548285
-##                 BodyMap_kidney HPA_brain HPA_heart HPA_kidney AltIso_brain
-## ENSG00000106538      6.2385880  2.140544 4.9994483 5.80809805     4.333232
-## ENSG00000198838      0.9098192  1.615736 1.1242570 1.06105959     3.861873
-## ENSG00000105697      0.9509897  0.979518 4.7688231 0.33280120     3.640498
-## ENSG00000223865      5.3595672  3.084638 5.4626039 5.54265571     4.250878
-## ENSG00000163220      4.9530394  2.656622 5.1188864 3.69744799     3.543123
-## ENSG00000118271      1.2860477  1.440192 1.8676613 2.98639017     4.798128
-## ENSG00000175445      3.1699140  5.980005 4.1716886 3.43398024     2.620977
-## ENSG00000257017      5.1685580  2.117524 4.2395318 1.91158110     1.939969
-## ENSG00000005513      0.5970393  5.131690 0.5089856 0.07173446     3.975875
-## ENSG00000157150      1.2925218  3.953592 1.3061657 0.70794783     1.234218
-## ENSG00000125676      4.2642541  4.225550 3.1898532 3.74116503     3.805093
-## ENSG00000101311      1.4927324  3.241046 0.5404811 1.76622510     1.549969
-##                 AltIso_heart
-## ENSG00000106538   4.50586964
-## ENSG00000198838   0.08413511
-## ENSG00000105697   1.11893789
-## ENSG00000223865   5.54478836
-## ENSG00000163220   5.64628247
-## ENSG00000118271   1.00758509
-## ENSG00000175445   6.64440626
-## ENSG00000257017   5.04871675
-## ENSG00000005513   0.09897549
-## ENSG00000157150   2.89431600
-## ENSG00000125676   3.37981375
-## ENSG00000101311   1.24734014
-```
 Revisit ANOVA analysis on reprocessed Cufflinks FPKM values after ComBat run, **Figure 4j**:
-
-```r
+```{r:cufflinks log combat anova}
 do_anova(combat.cufflinks,sampleinfo_cufflinks,caption="ANOVA, Cufflinks ComBat adj log FPKM")
 ```
-
-```
-## Using  as id variables
-```
-
-![plot of chunk :cufflinks log combat anova](figure/:cufflinks log combat anova-1.png) 
 Perform a joint analysis of both published and reprocessed data to try to quantify the influence of using different bioinformatics pipelines.
-
-```r
+```{r:joint}
 j <- merge(published.nozero, cufflinks_pc_nozero, by.x=0, by.y="ENSEMBL_ID")
 j <- j[,-which(colnames(j)=="Gene_ID"),]
 rown <- j[,1]
@@ -2042,17 +789,13 @@ j <- j[,2:ncol(j)]
 rownames(j) <- rown
 ```
 Heatmap and PCA of untransformed joint data (not shown in paper).
-
-```r
+```{r}
 pheatmap(cor(j))
 ```
-
-![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9-1.png) 
 Here, RNA-seq Atlas forms its own group, whereas the other studies form tissue-specific groups.
 
 PCA (not shown):
-
-```r
+```{r}
 #par(mfrow=c(2,2))
 colors <- c("indianred", "dodgerblue", "forestgreen","indianred", "dodgerblue", "indianred", "dodgerblue", "forestgreen","indianred", "dodgerblue", "forestgreen","dodgerblue","indianred","forestgreen","dodgerblue","indianred","forestgreen","dodgerblue","indianred","forestgreen","dodgerblue","indianred","forestgreen","dodgerblue","indianred")
 shapes <- c(rep(0,3),rep(1,2),rep(8,3),rep(2,3),rep(6,3),rep(17,3),rep(5,3),rep(15,3),rep(16,2))
@@ -2062,58 +805,32 @@ legend("topright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerb
 legend("top",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atlas-R", "GTeX-P","EoGE-P", "BodyMap-R"),col="black",pch=c(0,15,1,16,2,17,8,6,5),ncol=2)
 ```
 
-![plot of chunk unnamed-chunk-10](figure/unnamed-chunk-10-1.png) 
-
 After log transformation (not shown):
-
-```r
+```{r}
 j.log <- log2(j+1)
 p.joint.log <- prcomp(t(j.log))
 plot(p.joint.log$x[,1],p.joint.log$x[,2],pch=shapes,col=colors,main="log F/RPKM PC1/2")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("bottomleft",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atlas-R", "GTeX-P","EoGE-P", "BodyMap-R"),col="black",pch=c(0,15,1,16,2,17,8,6,5),ncol=2)
-```
-
-![plot of chunk unnamed-chunk-11](figure/unnamed-chunk-11-1.png) 
-
-```r
 plot(p.joint.log$x[,2],p.joint.log$x[,3],pch=shapes,col=colors,main="log F/RPKM PC2/3")
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("bottomleft",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atlas-R", "GTeX-P","EoGE-P", "BodyMap-R"),col="black",pch=c(0,15,1,16,2,17,8,6,5),ncol=2)
 ```
 
-![plot of chunk unnamed-chunk-11](figure/unnamed-chunk-11-2.png) 
-
 ComBat (not shown):
-
-```r
+```{r}
 meta <- data.frame(study=c(rep("HPA",3),rep("AltIso",2),rep("GTex",3),rep("Atlas",3),rep("EoGE",3),rep("Atlas",3),rep("BodyMap",3),rep("HPA",3),rep("AltIso",2)),tissue=c("Heart","Brain","Kidney","Heart","Brain","Heart","Brain","Kidney","Heart","Brain","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart","Kidney","Brain","Heart"),quantification=c(rep("other",11),rep("tophatcufflinks",14)))
 batch <- meta$study
 design <- model.matrix(~1,data=meta)
 combat.j <- ComBat(dat=j.log,batch=batch,mod=design,numCovs=NULL,par.prior=TRUE)
-```
-
-```
-## Found 6 batches
-## Found 0  categorical covariate(s)
-## Standardizing Data across genes
-## Fitting L/S model and finding priors
-## Finding parametric adjustments
-## Adjusting the Data
-```
-
-```r
 p.com <- prcomp(t(combat.j))
 plot(p.com$x[,1],p.com$x[,2],pch=shapes,col=colors,main="ComBat PC1/2")
 legend("topright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("bottom",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atlas-R", "GTeX-P","EoGE-P", "BodyMap-R"),col="black",pch=c(0,15,1,16,2,17,8,6,5),ncol=2)
 ```
 
-![plot of chunk unnamed-chunk-12](figure/unnamed-chunk-12-1.png) 
-
 ANOVAs including quantification method (**Figure 4k**?).
-
-```r
+```{r}
 sampleinfo_cufflinks$quantification <- "topcuff"
 sampleinfo_published$quantification <- c(rep("topcuff",3),rep("custom_AltIso",2),rep("fluxcapacitor",3),rep("custom_Atlas",3))
 studylabels_cuff <- c("EoGE_brain","EoEG_heart","EoEG_kidney","Atlas_brain","Atlas_heart","Atlas_kidney","BodyMap_brain","BodyMap_heart","BodyMap_kidney","HPA_brain","HPA_heart","HPA_kidney","AltIso_brain","AltIso_heart")
@@ -2121,285 +838,33 @@ sampleinfo_cufflinks <- data.frame(Study_labels=studylabels_cuff, sampleinfo_cuf
 sampleinfo <- rbind(sampleinfo_published, sampleinfo_cufflinks)
 par(mfrow=c(3,1))
 do_anova(j, sampleinfo, caption="Joint analysis, raw F/RPKM", include.quant=T)
-```
-
-```
-## Using  as id variables
-```
-
-```r
 do_anova(j.log, sampleinfo, caption="Joint analysis, log F/RPKM", include.quant=T)
-```
-
-```
-## Using  as id variables
-```
-
-```r
 do_anova(combat.j, sampleinfo, caption="Joint analysis, ComBat adj log F/RPKM", include.quant=T)
 ```
-
-```
-## Using  as id variables
-```
-
-![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13-1.png) 
 Analyses relating to Supplementary Figure X.
 --------------------------------------------
 Correlations between PCs 1 and 2 and various factors (Supplementary figure X).
 
-
-```r
+```{r}
 print_PCA_corrs(published,sampleinfo_published,caption="Published F/RPKM")
-```
-
-```
-## Number_of_rawreads~PCAs: PCA1="0.248381"PCA2="0.402136"PCA3="0.693511
-## Number_of_mappedreads~PCAs: PCA1="0.451197"PCA2="0.485476"PCA3="0.503067
-## Tissues~PCAs: PCA1="0.027159"PCA2="0.618127"PCA3="0.374913"
-## LibPrep~PCAs: PCA1="0.414216"PCA2="0.041227"PCA3="1.000000"
-## Study~PCAs: PCA1="0.535538"PCA2="0.048584"PCA3="0.168499"
-## Study~PCAs: PCA1="0.715001"PCA2="0.465209"PCA3="0.100348"
-## ReadType~PCAs: PCA1="0.715001"PCA2="0.465209"PCA3="0.100348"
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-1.png) 
-
-```r
 print_PCA_corrs(published.log,sampleinfo_published,caption="Published log F/RPKM")
-```
-
-```
-## Number_of_rawreads~PCAs: PCA1="0.418167"PCA2="0.614426"PCA3="0.902918
-## Number_of_mappedreads~PCAs: PCA1="0.172787"PCA2="0.902918"PCA3="0.967576
-## Tissues~PCAs: PCA1="0.618127"PCA2="0.019757"PCA3="0.021968"
-## LibPrep~PCAs: PCA1="0.014306"PCA2="0.220671"PCA3="0.220671"
-## Study~PCAs: PCA1="0.033146"PCA2="0.594709"PCA3="0.294275"
-## Study~PCAs: PCA1="0.028460"PCA2="0.201243"PCA3="0.855132"
-## ReadType~PCAs: PCA1="0.028460"PCA2="0.201243"PCA3="0.855132"
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-2.png) 
-
-```r
 print_PCA_corrs(combat,sampleinfo_published,caption="Published ComBat adj log F/RPKM")
-```
 
-```
-## Number_of_rawreads~PCAs: PCA1="0.313026"PCA2="0.796592"PCA3="0.881472
-## Number_of_mappedreads~PCAs: PCA1="0.576258"PCA2="0.860104"PCA3="0.633870
-## Tissues~PCAs: PCA1="0.011626"PCA2="0.021968"PCA3="0.977529"
-## LibPrep~PCAs: PCA1="0.683091"PCA2="0.838256"PCA3="0.683091"
-## Study~PCAs: PCA1="0.947648"PCA2="0.895044"PCA3="0.970466"
-## Study~PCAs: PCA1="1.000000"PCA2="0.855132"PCA3="0.715001"
-## ReadType~PCAs: PCA1="1.000000"PCA2="0.855132"PCA3="0.715001"
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-3.png) 
-
-```r
 print_PCA_corrs(cufflinks_fpkms,sampleinfo_cufflinks,caption="Reprocessed F/RPKM")
-```
-
-```
-## Number_of_rawreads~PCAs: PCA1="0.542316"PCA2="0.615812"PCA3="0.252961
-## Number_of_mappedreads~PCAs: PCA1="0.583826"PCA2="0.382464"PCA3="0.552566
-## Tissues~PCAs: PCA1="0.824600"PCA2="0.012962"PCA3="0.945809"
-## LibPrep~PCAs: PCA1="0.015807"PCA2="0.242908"PCA3="0.139101"
-## Study~PCAs: PCA1="0.031955"PCA2="0.749770"PCA3="0.045886"
-## Study~PCAs: PCA1="0.245278"PCA2="0.897279"PCA3="0.009823"
-## ReadType~PCAs: PCA1="0.245278"PCA2="0.897279"PCA3="0.009823"
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-4.png) 
-
-```r
 print_PCA_corrs(cufflinks_log,sampleinfo_cufflinks,caption="Reprocessed log F/RPKM")
-```
-
-```
-## Number_of_rawreads~PCAs: PCA1="0.648476"PCA2="0.252961"PCA3="0.773199
-## Number_of_mappedreads~PCAs: PCA1="0.573323"PCA2="0.087184"PCA3="0.435614
-## Tissues~PCAs: PCA1="0.003071"PCA2="0.138662"PCA3="0.017724"
-## LibPrep~PCAs: PCA1="0.585788"PCA2="0.015807"PCA3="0.035558"
-## Study~PCAs: PCA1="0.896532"PCA2="0.096954"PCA3="0.223881"
-## Study~PCAs: PCA1="0.796253"PCA2="0.796253"PCA3="1.000000"
-## ReadType~PCAs: PCA1="0.796253"PCA2="0.796253"PCA3="1.000000"
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-5.png) 
-
-```r
 print_PCA_corrs(combat.cufflinks,sampleinfo_cufflinks,caption="Reprocessed ComBat adj log F/RPKM")
-```
 
-```
-## Number_of_rawreads~PCAs: PCA1="0.692996"PCA2="0.391062"PCA3="0.325291
-## Number_of_mappedreads~PCAs: PCA1="0.583826"PCA2="0.492398"PCA3="0.233428
-## Tissues~PCAs: PCA1="0.003071"PCA2="0.003071"PCA3="0.990050"
-## LibPrep~PCAs: PCA1="0.815335"PCA2="0.937947"PCA3="0.585788"
-## Study~PCAs: PCA1="0.968205"PCA2="0.999600"PCA3="0.959836"
-## Study~PCAs: PCA1="0.796253"PCA2="0.897279"PCA3="0.698535"
-## ReadType~PCAs: PCA1="0.796253"PCA2="0.897279"PCA3="0.698535"
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-6.png) 
-
-```r
 print_PCA_corrs(j,sampleinfo,caption="Joint analysis, F/RPKM",include.quant=T)
-```
-
-```
-## Warning in cor.test.default(x[, 1], sampleinfo$NumberRaw, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 2], sampleinfo$NumberRaw, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 3], sampleinfo$NumberRaw, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Number_of_rawreads~PCAs: PCA1="0.803591"PCA2="0.438636"PCA3="0.782412
-```
-
-```
-## Warning in cor.test.default(x[, 1], sampleinfo$Numbermapped, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 2], sampleinfo$Numbermapped, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 3], sampleinfo$Numbermapped, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Number_of_mappedreads~PCAs: PCA1="0.593636"PCA2="0.188381"PCA3="0.892388
-## Tissues~PCAs: PCA1="0.000230"PCA2="0.075868"PCA3="0.832643"
-## LibPrep~PCAs: PCA1="0.252080"PCA2="0.000287"PCA3="0.018560"
-## Study~PCAs: PCA1="0.871625"PCA2="0.007401"PCA3="0.007750"
-## Study~PCAs: PCA1="0.327545"PCA2="0.513941"PCA3="0.301387"
-## ReadType~PCAs: PCA1="0.327545"PCA2="0.513941"PCA3="0.301387"
-## QuantificationMethod~PCAs: PCA1="0.327545"PCA2="0.513941"PCA3="0.301387"
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-7.png) 
-
-```r
 print_PCA_corrs(j.log,sampleinfo,caption="Joint analysis, log F/RPKM",include.quant=T)
-```
-
-```
-## Warning in cor.test.default(x[, 1], sampleinfo$NumberRaw, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 2], sampleinfo$NumberRaw, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 3], sampleinfo$NumberRaw, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Number_of_rawreads~PCAs: PCA1="0.741902"PCA2="0.174526"PCA3="0.707503
-```
-
-```
-## Warning in cor.test.default(x[, 1], sampleinfo$Numbermapped, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 2], sampleinfo$Numbermapped, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 3], sampleinfo$Numbermapped, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Number_of_mappedreads~PCAs: PCA1="0.362139"PCA2="0.063942"PCA3="0.371112
-## Tissues~PCAs: PCA1="0.000054"PCA2="0.015439"PCA3="0.001266"
-## LibPrep~PCAs: PCA1="0.252080"PCA2="0.003423"PCA3="0.001822"
-## Study~PCAs: PCA1="0.710896"PCA2="0.022280"PCA3="0.030101"
-## Study~PCAs: PCA1="0.703389"PCA2="0.102725"PCA3="0.663459"
-## ReadType~PCAs: PCA1="0.703389"PCA2="0.102725"PCA3="0.663459"
-## QuantificationMethod~PCAs: PCA1="0.703389"PCA2="0.102725"PCA3="0.663459"
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-8.png) 
-
-```r
 print_PCA_corrs(combat.j,sampleinfo,caption="Joint analysis, ComBat adj log F/RPKM",include.quant=T)
 ```
-
-```
-## Warning in cor.test.default(x[, 1], sampleinfo$NumberRaw, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 2], sampleinfo$NumberRaw, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 3], sampleinfo$NumberRaw, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Number_of_rawreads~PCAs: PCA1="0.345634"PCA2="0.348530"PCA3="0.953366
-```
-
-```
-## Warning in cor.test.default(x[, 1], sampleinfo$Numbermapped, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 2], sampleinfo$Numbermapped, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Warning in cor.test.default(x[, 3], sampleinfo$Numbermapped, method =
-## "spearman"): Cannot compute exact p-value with ties
-```
-
-```
-## Number_of_mappedreads~PCAs: PCA1="0.453001"PCA2="0.431960"PCA3="0.982501
-## Tissues~PCAs: PCA1="0.000024"PCA2="0.000053"PCA3="0.889393"
-## LibPrep~PCAs: PCA1="0.656031"PCA2="0.949266"PCA3="1.000000"
-## Study~PCAs: PCA1="0.989826"PCA2="0.999314"PCA3="0.991491"
-## Study~PCAs: PCA1="0.913372"PCA2="0.785650"PCA3="0.785650"
-## ReadType~PCAs: PCA1="0.913372"PCA2="0.785650"PCA3="0.785650"
-## QuantificationMethod~PCAs: PCA1="0.913372"PCA2="0.785650"PCA3="0.785650"
-```
-
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-9.png) 
 Analyses relating to Supplementary Figure Y.
 --------------------------------------------
 Let's compare the FPKM distribution in the samples before and after merge
 
+```{r:FPKM distribution for merged data vs non-merged data}
 
-```r
+#-----------DOWNLOAD DATA BEFORE MERGE-----------
 altIso_all <- read.delim("altiso_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 atlas_all <- read.delim("atlas_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 gtex_all <- read.delim("gtex_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
@@ -2420,12 +885,21 @@ gtex_pc <- getPcs(gtex_all)
 HPA_pc <- getPcs(HPA_all)
 
 
-#download data that is left after merge:
-
+#-----------DOWNLOAD MERGED DATA-----------
 merged_data <- read.delim("published_rpkms.txt",sep=" ")
 
-#-----------DATA BEFORE MERGE-----------
+#-----------DOWNLOAD REPROCESSED DATA-----------
+reprocessed_data <- read.table("fpkm_table_tophat.txt",sep="\t",header=T)
+ensembl = useMart("ensembl",dataset= "hsapiens_gene_ensembl")
+getPcs <- function(x) {
+            type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),filters = "ensembl_gene_id",values = x$ENSEMBL_ID,mart = ensembl)
+            results <- x[which(type[,2]=="protein_coding"),]
+            return(results)
+          }
 
+reprocessed_data_pc <- getPcs(reprocessed_data)
+
+#-----------ADJUST DATA-----------
 get_data <- function(x,y,z,k) {
   
   if(k==1){
@@ -2461,7 +935,7 @@ get_data <- function(x,y,z,k) {
             return(data)
   }
   }
-            
+           
 #-----------NON-MERGED DATA-----------
 all_altIso_heart <- get_data(altIso_pc,"heart","AltIso",1)
 all_atlas_heart <- get_data(atlas_pc,"heart","atlas",1)
@@ -2492,9 +966,45 @@ merg_atlas_kidney <- get_data(atlas_pc,"kidney","Atlas",2)
 merg_gtex_kidney <- get_data(gtex_pc,"kidney","GTEx",2)
 merg_HPA_kidney <- get_data(HPA_pc,"kidney","HPA",2)
 
+#--------------RE-PROCESSED DATA-----------------------------
 
-#--------------NON-MERGED DATA-----------------------------
+get_data <- function(x,y,z) {
+    if(y=="heart"){
+              tissue_data <- data.frame(x[grep("heart", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else if(y=="brain"){
+                tissue_data <- data.frame(x[grep("brain", names(x), value = TRUE)])
+                data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else{
+              tissue_data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+            }
+            colnames(data) <- "FPKM"
+            data$study <- paste(z,"_repr.",sep ="")
+            return(data)
+  }
+  
 
+repr_altIso_heart <- get_data(reprocessed_data_pc,"heart","AltIso")
+repr_atlas_heart <- get_data(reprocessed_data_pc,"heart","Atlas")
+repr_Bodymap_heart <- get_data(reprocessed_data_pc,"heart","BodyMap")
+repr_EoGE_heart <- get_data(reprocessed_data_pc,"heart","EoGE")
+repr_HPA_heart <- get_data(reprocessed_data_pc,"heart","HPA")
+
+repr_altIso_brain <- get_data(reprocessed_data_pc,"brain","AltIso")
+repr_atlas_brain <- get_data(reprocessed_data_pc,"brain","Atlas")
+repr_Bodymap_brain <- get_data(reprocessed_data_pc,"brain","BodyMap")
+repr_EoGE_brain <- get_data(reprocessed_data_pc,"brain","EoGE")
+repr_HPA_brain <- get_data(reprocessed_data_pc,"brain","HPA")
+
+repr_atlas_kidney <- get_data(reprocessed_data_pc,"kidney","Atlas")
+repr_Bodymap_kidney <- get_data(reprocessed_data_pc,"kidney","BodyMap")
+repr_EoGE_kidney <- get_data(reprocessed_data_pc,"kidney","EoGE")
+repr_HPA_kidney <- get_data(reprocessed_data_pc,"kidney","HPA")
+
+#--------------PLOT DISTRIBUTIONS NON-MERGED DATA-----------------------------
 
 all_altiso <- rbind(all_altIso_brain,all_altIso_heart)
 all_atlas <- rbind(all_atlas_brain,all_atlas_heart,all_atlas_kidney)
@@ -2521,91 +1031,12 @@ kidney_data_beforemerge <- rbind(all_atlas_kidney,
 
 
 ggplot(all_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-```
-
-```
-## Warning: Removed 662 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 94 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 309 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 1439 rows containing non-finite values (stat_density).
-```
-
-![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-1.png) 
-
-```r
 ggplot(brain_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-```
-
-```
-## Warning: Removed 344 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 39 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 101 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 357 rows containing non-finite values (stat_density).
-```
-
-![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-2.png) 
-
-```r
 ggplot(heart_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-```
-
-```
-## Warning: Removed 318 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 33 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 105 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 562 rows containing non-finite values (stat_density).
-```
-
-![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-3.png) 
-
-```r
 ggplot(kidney_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-```
 
-```
-## Warning: Removed 22 rows containing non-finite values (stat_density).
-```
 
-```
-## Warning: Removed 103 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 520 rows containing non-finite values (stat_density).
-```
-
-![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-4.png) 
-
-```r
-#--------------MERGED DATA-----------------------------
-
+#--------------PLOT DISTRIBUTIONS MERGED DATA-----------------------------
 merg_altiso <- rbind(merg_altIso_brain,merg_altIso_heart)
 merg_atlas <- rbind(merg_atlas_brain,merg_atlas_heart,merg_atlas_kidney)
 merg_gtex <- rbind(merg_gtex_brain,merg_gtex_heart,merg_gtex_kidney)
@@ -2630,84 +1061,41 @@ kidney_data_merged <- rbind(merg_atlas_kidney,
 
 
 ggplot(merged_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0,7) + theme_bw()
-```
-
-```
-## Warning: Removed 662 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 94 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 309 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 1439 rows containing non-finite values (stat_density).
-```
-
-![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-5.png) 
-
-```r
 ggplot(brain_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-```
-
-```
-## Warning: Removed 344 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 39 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 101 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 357 rows containing non-finite values (stat_density).
-```
-
-![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-6.png) 
-
-```r
 ggplot(heart_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-```
-
-```
-## Warning: Removed 318 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 33 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 105 rows containing non-finite values (stat_density).
-```
-
-```
-## Warning: Removed 562 rows containing non-finite values (stat_density).
-```
-
-![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-7.png) 
-
-```r
 ggplot(kidney_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-```
 
-```
-## Warning: Removed 22 rows containing non-finite values (stat_density).
-```
+#--------------PLOT DISTRIBUTIONS  DATA-----------------------------
 
-```
-## Warning: Removed 103 rows containing non-finite values (stat_density).
-```
+repr_altiso <- rbind(repr_altIso_brain,repr_altIso_heart)
+repr_atlas <- rbind(repr_atlas_brain,repr_atlas_heart,repr_atlas_kidney)
+repr_BodyMap <- rbind(repr_Bodymap_brain,repr_Bodymap_heart,repr_Bodymap_kidney)
+repr_EoGE <- rbind(repr_EoGE_brain,repr_EoGE_heart,repr_EoGE_kidney)
+repr_HPA <- rbind(repr_HPA_brain,repr_HPA_heart,repr_HPA_kidney)
 
-```
-## Warning: Removed 520 rows containing non-finite values (stat_density).
-```
 
-![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-8.png) 
+repr_data <- rbind(repr_altiso,repr_atlas,repr_BodyMap,repr_EoGE,repr_HPA)
+
+brain_data_repr <- rbind(repr_altIso_brain,
+                           repr_atlas_brain,
+                           repr_Bodymap_brain,
+                           repr_EoGE_brain,
+                           repr_HPA_brain)
+
+heart_data_repr <- rbind(repr_altIso_heart,
+                           repr_atlas_heart,
+                           repr_Bodymap_heart,
+                           repr_EoGE_heart,
+                           repr_HPA_heart)
+
+kidney_data_repr <- rbind(repr_atlas_kidney,
+                           repr_Bodymap_kidney,
+                           repr_EoGE_kidney,
+                           repr_HPA_kidney)
+
+ggplot(repr_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0,7) + theme_bw()
+ggplot(brain_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(heart_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+
