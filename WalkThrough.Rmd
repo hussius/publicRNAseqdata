@@ -935,7 +935,7 @@ do_anova(combat.j, sampleinfo, caption="Joint analysis, ComBat adj log F/RPKM", 
 ```
 Analyses relating to Supplementary Figure 1.
 --------------------------------------------
-Correlations between PCs 1 and 2 and various factors (Supplementary figure 1 and 2).
+Correlations between PCs 1 and 2 and various factors (Supplementary figure 1).
 
 ```{r}
 print_PCA_corrs(published,sampleinfo_published,caption="Published F/RPKM")
@@ -1114,9 +1114,18 @@ ggplot(heart_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha 
 ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 
 ```
+
 Analyses relating to Supplementary Figure 3.
---------------------------------------------
+
+```{r:published-data-distributions}
+#pdf("Boxplot_distributions_published.pdf")
+boxplot(published.nozero,outline=F,las=2,main="F/RPKM distributions, published data\n(Outliers not shown for clarity)",cex.axis=0.8)
+#dev.off()
+```
+
+Analyses relating to Supplementary Figure 4.
 Quantile normalization
+
 ```{r:quantile normalization}
 
 published.qn <- quantile_normalisation(published.nozero)
