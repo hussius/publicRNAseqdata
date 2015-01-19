@@ -37,7 +37,7 @@ plot.pca.published <- function(df,x,y,z){
   
   shapes <- c(rep(15,3),rep(16,2),rep(17,3),rep(8,3))
 
-  plot(p$x[,x],p$x[,y],pch=shapes,cex=1.5,col=colors,xlab=paste("PC1",round(v.x),"% of variance"),ylab=paste("PC2",round(v.y),"% of variance"),main=paste(z," Published FPKM/RPKM values \n n=13,078"))
+  plot(p$x[,x],p$x[,y],pch=shapes,cex=1.5,col=colors,xlab=paste(paste("PC",x),round(v.x),"% of variance"),ylab=paste(paste("PC",y),round(v.y),"% of variance"),main=paste(z," Published FPKM/RPKM values \n n=13,078"))
   
 }
 
@@ -57,7 +57,7 @@ plot.pca.reprocessed <- function(df,x,y,z){
  
   shapes_repr <- c(rep(11,3),rep(8,3),rep(17,3),rep(15,3),rep(16,2))
   
-  plot(p_repr$x[,x],p_repr$x[,y],pch=shapes_repr,col=colors_repr,xlab=paste("PC1",round(v.x),"% of variance"),ylab=paste("PC2",round(v.y),"% of variance"),main=paste(z," reprocessed  cufflinks FPKM values \n n=18,175"))
+  plot(p_repr$x[,x],p_repr$x[,y],pch=shapes_repr,col=colors_repr,xlab=paste(paste("PC",x),round(v.x),"% of variance"),ylab=paste(paste("PC",y),round(v.y),"% of variance"),main=paste(z," reprocessed  cufflinks FPKM values \n n=18,175"))
   
 }
 ```
@@ -273,7 +273,45 @@ distr_data <- function(x,y,z,k) {
   }
   }
 ```
+**Function for adjusting data before distribution plots with ggplot, for re-processed data.**
 
+```{r}
+distr_data_repr <- function(x,y,z) {
+    if(y=="heart"){
+              tissue_data <- data.frame(x[grep("heart", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else if(y=="brain"){
+                tissue_data <- data.frame(x[grep("brain", names(x), value = TRUE)])
+                data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else{
+              tissue_data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+            }
+            colnames(data) <- "FPKM"
+            data$study <- paste(z,"_repr.",sep ="")
+            return(data)
+  }
+
+```
+**Function for quantile normalization.**
+```{r}
+quantile_normalisation <- function(df){
+  df_rank <- apply(df,2,rank,ties.method="min")
+  df_sorted <- data.frame(apply(df, 2, sort))
+  df_mean <- apply(df_sorted, 1, mean)
+  
+  index_to_mean <- function(my_index, my_mean){
+    return(my_mean[my_index])
+  }
+  
+  df_final <- apply(df_rank, 2, index_to_mean, my_mean=df_mean)
+  rownames(df_final) <- rownames(df)
+  return(df_final)
+}
+
+```
 Downloading public data sets
 ----------------------------
 Data from four different public sources are downloaded and brain, heart and kidney samples are extracted. Please uncomment the next blocks to download; we have commented this code out because the downloading of the GTEx data in particular takes a fair amount of time.
@@ -918,7 +956,6 @@ Let's compare the FPKM distribution in the samples before and after merge
 
 ```{r:FPKM distribution for merged data vs non-merged data}
 
-#-----------DOWNLOAD DATA BEFORE MERGE-----------
 altIso_all <- read.delim("altiso_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 atlas_all <- read.delim("atlas_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 gtex_all <- read.delim("gtex_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
@@ -935,89 +972,62 @@ gtex_pc <- getPcs(gtex_all)
 
 colnames(HPA_all)[1] <- "ENSEMBL_ID"
 HPA_pc <- getPcs(HPA_all)
-                       
-#merged data=published.nozero
-#reprocessed data = cufflinks_pc_nozero
-
-get_data = distr_data (=funktion som flyttats upp!)
-           
+                                  
 #-----------NON-MERGED DATA-----------
-all_altIso_heart <- get_data(altIso_pc,"heart","AltIso",1)
-all_atlas_heart <- get_data(atlas_pc,"heart","atlas",1)
-all_gtex_heart <- get_data(gtex_pc,"heart","gtex",1)
-all_HPA_heart <- get_data(HPA_pc,"heart","HPA",1)
+all_altIso_heart <- distr_data(altIso_pc,"heart","AltIso",1)
+all_atlas_heart <- distr_data(atlas_pc,"heart","Atlas",1)
+all_gtex_heart <- distr_data(gtex_pc,"heart","gtex",1)
+all_HPA_heart <- distr_data(HPA_pc,"heart","HPA",1)
 
-all_altIso_brain <- get_data(altIso_pc,"brain","AltIso",1)
-all_atlas_brain <- get_data(atlas_pc,"brain","atlas",1)
-all_gtex_brain <- get_data(gtex_pc,"brain","gtex",1)
-all_HPA_brain <- get_data(HPA_pc,"brain","HPA",1)
+all_altIso_brain <- distr_data(altIso_pc,"brain","AltIso",1)
+all_atlas_brain <- distr_data(atlas_pc,"brain","Atlas",1)
+all_gtex_brain <- distr_data(gtex_pc,"brain","gtex",1)
+all_HPA_brain <- distr_data(HPA_pc,"brain","HPA",1)
 
-all_atlas_kidney <- get_data(atlas_pc,"kidney","atlas",1)
-all_gtex_kidney <- get_data(gtex_pc,"kidney","gtex",1)
-all_HPA_kidney <- get_data(HPA_pc,"kidney","HPA",1)
+all_atlas_kidney <- distr_data(atlas_pc,"kidney","Atlas",1)
+all_gtex_kidney <- distr_data(gtex_pc,"kidney","gtex",1)
+all_HPA_kidney <- distr_data(HPA_pc,"kidney","HPA",1)
 
 #-----------MERGED DATA-----------
 
-merg_altIso_heart <- get_data(merged_data_co,"heart","AltIso",2)
-merg_atlas_heart <- get_data(merged_data_co,"heart","Atlas",2)
-merg_gtex_heart <- get_data(merged_data_co,"heart","GTEx",2)
-merg_HPA_heart <- get_data(merged_data_co,"heart","HPA",2)
+merg_altIso_heart <- distr_data(published.nozero,"heart","AltIso",2)
+merg_atlas_heart <- distr_data(published.nozero,"heart","Atlas",2)
+merg_gtex_heart <- distr_data(published.nozero,"heart","GTEx",2)
+merg_HPA_heart <- distr_data(published.nozero,"heart","HPA",2)
 
-merg_altIso_brain <- get_data(merged_data_co,"brain","AltIso",2)
-merg_atlas_brain <- get_data(merged_data_co,"brain","Atlas",2)
-merg_gtex_brain <- get_data(merged_data_co,"brain","GTEx",2)
-merg_HPA_brain <- get_data(merged_data_co,"brain","HPA",2)
+merg_altIso_brain <- distr_data(published.nozero,"brain","AltIso",2)
+merg_atlas_brain <- distr_data(published.nozero,"brain","Atlas",2)
+merg_gtex_brain <- distr_data(published.nozero,"brain","GTEx",2)
+merg_HPA_brain <- distr_data(published.nozero,"brain","HPA",2)
 
-merg_atlas_kidney <- get_data(merged_data_co,"kidney","Atlas",2)
-merg_gtex_kidney <- get_data(merged_data_co,"kidney","GTEx",2)
-merg_HPA_kidney <- get_data(merged_data_co,"kidney","HPA",2)
+merg_atlas_kidney <- distr_data(published.nozero,"kidney","Atlas",2)
+merg_gtex_kidney <- distr_data(published.nozero,"kidney","GTEx",2)
+merg_HPA_kidney <- distr_data(published.nozero,"kidney","HPA",2)
 
 #--------------RE-PROCESSED DATA-----------------------------
 
-get_data <- function(x,y,z) {
-    if(y=="heart"){
-              tissue_data <- data.frame(x[grep("heart", names(x), value = TRUE)])
-              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
-              }
-            else if(y=="brain"){
-                tissue_data <- data.frame(x[grep("brain", names(x), value = TRUE)])
-                data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
-              }
-            else{
-              tissue_data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
-              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
-            }
-            colnames(data) <- "FPKM"
-            data$study <- paste(z,"_repr.",sep ="")
-            return(data)
-  }
-  
+repr_altIso_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","AltIso")
+repr_atlas_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","Atlas")
+repr_Bodymap_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","BodyMap")
+repr_EoGE_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","EoGE")
+repr_HPA_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","HPA")
 
-repr_altIso_heart <- get_data(reprocessed_data_pc_co,"heart","AltIso")
-repr_atlas_heart <- get_data(reprocessed_data_pc_co,"heart","Atlas")
-repr_Bodymap_heart <- get_data(reprocessed_data_pc_co,"heart","BodyMap")
-repr_EoGE_heart <- get_data(reprocessed_data_pc_co,"heart","EoGE")
-repr_HPA_heart <- get_data(reprocessed_data_pc_co,"heart","HPA")
+repr_altIso_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","AltIso")
+repr_atlas_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","Atlas")
+repr_Bodymap_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","BodyMap")
+repr_EoGE_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","EoGE")
+repr_HPA_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","HPA")
 
-repr_altIso_brain <- get_data(reprocessed_data_pc_co,"brain","AltIso")
-repr_atlas_brain <- get_data(reprocessed_data_pc_co,"brain","Atlas")
-repr_Bodymap_brain <- get_data(reprocessed_data_pc_co,"brain","BodyMap")
-repr_EoGE_brain <- get_data(reprocessed_data_pc_co,"brain","EoGE")
-repr_HPA_brain <- get_data(reprocessed_data_pc_co,"brain","HPA")
-
-repr_atlas_kidney <- get_data(reprocessed_data_pc_co,"kidney","Atlas")
-repr_Bodymap_kidney <- get_data(reprocessed_data_pc_co,"kidney","BodyMap")
-repr_EoGE_kidney <- get_data(reprocessed_data_pc_co,"kidney","EoGE")
-repr_HPA_kidney <- get_data(reprocessed_data_pc_co,"kidney","HPA")
+repr_atlas_kidney <- distr_data_repr(cufflinks_pc_nozero,"kidney","Atlas")
+repr_Bodymap_kidney <- distr_data_repr(cufflinks_pc_nozero,"kidney","BodyMap")
+repr_EoGE_kidney <- distr_data_repr(cufflinks_pc_nozero,"kidney","EoGE")
+repr_HPA_kidney <- distr_data_repr(cufflinks_pc_nozero,"kidney","HPA")
 
 #--------------PLOT DISTRIBUTIONS NON-MERGED DATA-----------------------------
 
 all_altiso <- rbind(all_altIso_brain,all_altIso_heart)
-
 all_atlas <- rbind(all_atlas_brain,all_atlas_heart,all_atlas_kidney)
-
 all_gtex <- rbind(all_gtex_brain,all_gtex_heart,all_gtex_kidney)
-
 all_hpa <- rbind(all_HPA_brain,all_HPA_heart,all_HPA_kidney)
 
 all_data_beforemerge <- rbind(all_altiso,all_atlas,all_gtex,all_hpa)
@@ -1050,7 +1060,6 @@ merg_gtex <- rbind(merg_gtex_brain,merg_gtex_heart,merg_gtex_kidney)
 merg_hpa <- rbind(merg_HPA_brain,merg_HPA_heart,merg_HPA_kidney)
 
 merged_data <- rbind(merg_altiso,merg_atlas,merg_gtex,merg_hpa)
-
 brain_data_merged <- rbind(merg_altIso_brain,
                            merg_atlas_brain,
                            merg_gtex_brain,
@@ -1079,7 +1088,6 @@ repr_atlas <- rbind(repr_atlas_brain,repr_atlas_heart,repr_atlas_kidney)
 repr_BodyMap <- rbind(repr_Bodymap_brain,repr_Bodymap_heart,repr_Bodymap_kidney)
 repr_EoGE <- rbind(repr_EoGE_brain,repr_EoGE_heart,repr_EoGE_kidney)
 repr_HPA <- rbind(repr_HPA_brain,repr_HPA_heart,repr_HPA_kidney)
-
 
 repr_data <- rbind(repr_altiso,repr_atlas,repr_BodyMap,repr_EoGE,repr_HPA)
 
@@ -1111,37 +1119,13 @@ Quantile normalization
 
 ```{r:quantile normalization}
 
-quantile_normalisation <- function(df){
-  df_rank <- apply(df,2,rank,ties.method="min")
-  df_sorted <- data.frame(apply(df, 2, sort))
-  df_mean <- apply(df_sorted, 1, mean)
-  
-  index_to_mean <- function(my_index, my_mean){
-    return(my_mean[my_index])
-  }
-  
-  df_final <- apply(df_rank, 2, index_to_mean, my_mean=df_mean)
-  rownames(df_final) <- rownames(df)
-  return(df_final)
-}
-
-published.nozero.qn <- quantile_normalisation(published.nozero)
+published.qn <- quantile_normalisation(published.nozero)
 published.log.qn <- quantile_normalisation(published.log)
 
 
+plot.pca.published(published.qn,1,2,"Quantile normalized")
+plot.pca.published(published.qn,2,3,"Quantile normalized")
 
-pheatmap(cor(published.nozero.qn, method="spearman")) 
-
-colors <- c("indianred", "dodgerblue", "forestgreen",
-            "indianred", "dodgerblue",
-            "indianred", "dodgerblue", "forestgreen", 
-            "indianred", "dodgerblue", "forestgreen")
-  
-p <- prcomp(t(published.log.qn))
-shapes <- c(rep(15,3),rep(16,2),rep(17,3),rep(8,3))
-plot(p$x[,1],p$x[,2],pch=shapes,cex=1.5,col=colors,xlab=paste("PC1 58% of variance"),ylab=paste("PC2 13% of variance"),main="Quantile normalized Published FPKM/RPKM values \n n=13,323")
-legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20)
-legend("top",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
-
-do_anova(published.nozero.qn,sampleinfo_published,"ANOVA, published data")
+plot.pca.published(published.log.qn,1,2,"Quantile normalized log2")
+plot.pca.published(published.log.qn,2,3,"Quantile normalized log2")
 
