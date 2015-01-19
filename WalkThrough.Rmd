@@ -1115,6 +1115,12 @@ ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha
 
 ```
 
+```{r:published-data-distributions}
+#pdf("Boxplot_distributions_published.pdf")
+boxplot(published,outline=F,las=2,main="F/RPKM distributions, published data\n(Outliers not shown for clarity)",cex.axis=0.8)
+#dev.off()
+```
+
 Quantile normalization
 
 ```{r:quantile normalization}
