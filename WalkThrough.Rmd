@@ -13,14 +13,69 @@ library(ops)
 library(calibrate)
 library(biomaRt)
 library(sva)
+library(ggplot2)
 ```
 Function definitions
 --------------------
-Define functions for (a) computing and plotting p-values for correlations between PCA scores and various sample features and (b) quantifying and plotting the importance of various sample features using ANOVA.
+Define functions for (a) Principle component analysis for published and reprocessed data, (b) computing and plotting p-values for correlations between PCA scores and various sample features and (c) quantifying and plotting the importance of various sample features using ANOVA.
 
+**Principal component analysis.**
+```{r}
+
+plot.pca.published <- function(df,x,y,z){
+  
+  p <- prcomp(t(df))
+  
+  v <- 100*(p$sdev)^2 / sum(p$sdev^2)
+  v.x <- v[x]
+  v.y <- v[y]
+ 
+  colors <- c("indianred", "dodgerblue", "forestgreen",
+            "indianred", "dodgerblue",
+            "indianred", "dodgerblue", "forestgreen", 
+            "indianred", "dodgerblue", "forestgreen")
+  
+  shapes <- c(rep(15,3),rep(16,2),rep(17,3),rep(8,3))
+
+  plot(p$x[,x],p$x[,y],pch=shapes,cex=1.5,col=colors,xlab=paste(paste("PC",x),round(v.x),"% of variance"),ylab=paste(paste("PC",y),round(v.y),"% of variance"),main=paste(z," Published FPKM/RPKM values \n n=13,078"))
+  
+}
+
+plot.pca.reprocessed <- function(df,x,y,z){
+  
+  p_repr <- prcomp(t(df))
+  
+  v <- 100*(p_repr$sdev)^2 / sum(p_repr$sdev^2)
+  v.x <- v[x]
+  v.y <- v[y]
+ 
+  colors_repr <- c("dodgerblue", "indianred", "forestgreen",
+                   "dodgerblue", "indianred", "forestgreen",
+                   "dodgerblue", "indianred", "forestgreen",
+                   "dodgerblue", "indianred", "forestgreen",
+                   "dodgerblue", "indianred")          
+ 
+  shapes_repr <- c(rep(11,3),rep(8,3),rep(17,3),rep(15,3),rep(16,2))
+  
+  plot(p_repr$x[,x],p_repr$x[,y],pch=shapes_repr,col=colors_repr,xlab=paste(paste("PC",x),round(v.x),"% of variance"),ylab=paste(paste("PC",y),round(v.y),"% of variance"),main=paste(z," reprocessed  cufflinks FPKM values \n n=18,175"))
+  
+}
+```
+**Restrict data to only include protein coding genes using ensembl BiomaRt.**
+```{r}
+
+getPcs <- function(x) {
+            ensembl = useMart("ensembl",dataset= "hsapiens_gene_ensembl")
+            type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),filters = "ensembl_gene_id",values = as.vector(x$ENSEMBL_ID),mart = ensembl)
+            pc <- subset(type[,1],type[,2]=="protein_coding")
+            results <- x[match(pc,x$ENSEMBL_ID),]              
+            return(results)
+          }
+
+```
 **Correlations between PCs and experimental factors.**
 ```{r}
- print_PCA_corrs <- function(data,sampleinfo,caption="PCA correlations",include.quant=F){
+print_PCA_corrs <- function(data,sampleinfo,caption="PCA correlations",include.quant=F){
 pca <- prcomp(t(data[,]))
 rot <- pca$r
 x <- pca$x
@@ -180,7 +235,83 @@ plot.highest.loadings <- function(p, fpkm.table, caption="Highest loading"){
      }
 }
 ```
+**Function for adjusting data before distribution plots with ggplot.**
+```{r}
+distr_data <- function(x,y,z,k) {
+  
+  if(k==1){
+    if(y=="heart"){
+              data <- data.frame(x[grep("heart", names(x), value = TRUE)])
+              }
+            else if(y=="brain"){
+                data <- data.frame(x[grep("brain", names(x), value = TRUE)])
+              }
+            else{
+              data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
+            }
+            colnames(data) <- "FPKM"
+            data$study <- z
+            return(data)
+  }
+  #om det är det mergade datat:
+  else if(k==2){
+    if(y=="heart"){
+              tissue_data <- data.frame(x[grep("heart", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else if(y=="brain"){
+                tissue_data <- data.frame(x[grep("brain", names(x), value = TRUE)])
+                data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else{
+              tissue_data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+            }
+            colnames(data) <- "FPKM"
+            data$study <- z
+            return(data)
+  }
+  }
+```
+**Function for adjusting data before distribution plots with ggplot, for re-processed data.**
 
+```{r}
+distr_data_repr <- function(x,y,z) {
+    if(y=="heart"){
+              tissue_data <- data.frame(x[grep("heart", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else if(y=="brain"){
+                tissue_data <- data.frame(x[grep("brain", names(x), value = TRUE)])
+                data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+              }
+            else{
+              tissue_data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
+              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
+            }
+            colnames(data) <- "FPKM"
+            data$study <- paste(z,"_repr.",sep ="")
+            return(data)
+  }
+
+```
+**Function for quantile normalization.**
+```{r}
+quantile_normalisation <- function(df){
+  df_rank <- apply(df,2,rank,ties.method="min")
+  df_sorted <- data.frame(apply(df, 2, sort))
+  df_mean <- apply(df_sorted, 1, mean)
+  
+  index_to_mean <- function(my_index, my_mean){
+    return(my_mean[my_index])
+  }
+  
+  df_final <- apply(df_rank, 2, index_to_mean, my_mean=df_mean)
+  rownames(df_final) <- rownames(df)
+  return(df_final)
+}
+
+```
 Downloading public data sets
 ----------------------------
 Data from four different public sources are downloaded and brain, heart and kidney samples are extracted. Please uncomment the next blocks to download; we have commented this code out because the downloading of the GTEx data in particular takes a fair amount of time.
@@ -408,10 +539,10 @@ Figure 1 deals with untransformed (but combined) published data.
 The published FPKM values are first filtered by removing all lines where FPKM is less or equal to 0.01 in all samples:
 
 ```{r:published filter zeros}
-published.nozero <- published[-which(rowSums(published[,])<=0.01),]
+published.nozero <- published[-which(rowMeans(published[,])<=0.01),]
 ```
 
-Heatmap of Spearman correlations between published expression profiles (# genes = 13,323), **Figure 1b**:
+Heatmap of Spearman correlations between published expression profiles (# genes = 13,078), **Figure 1b**:
 
 ```{r:published heatmap spearman}
 pheatmap(cor(published.nozero, method="spearman")) 
@@ -422,36 +553,18 @@ pheatmap(cor(published.nozero))
 ```
 PCA analysis of published FPKM values, **Figure 1c**:
 ```{r:published PCA}
-colors <- c("indianred", "dodgerblue", "forestgreen",
-            "indianred", "dodgerblue",
-            "indianred", "dodgerblue", "forestgreen", 
-            "indianred", "dodgerblue", "forestgreen")
-  
-p <- prcomp(t(published.nozero))
-shapes <- c(rep(15,3),rep(16,2),rep(17,3),rep(8,3))
-plot(p$x[,1],p$x[,2],pch=shapes,cex=1.5,col=colors,xlab=paste("PC1 58% of variance"),ylab=paste("PC2 13% of variance"),main="Published FPKM/RPKM values \n n=13,323")
+plot.pca.published(published.nozero,1,2,"")
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20)
 legend("top",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
 ```
-
-We can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
-```{r:published pairwise PCA}
-par(mfrow=c(4,4))
-for (i in 1:6){
-  for(j in 1:6){
-  	if (i<j){ 
-		plot(p$x[,i],p$x[,j],pch=20,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Published FPKM values \n n=13,323")
-		}
-	}
-}
-
-```
 Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
 ```{r:published PC 1-3}
+p <- prcomp(t(published.nozero))
 plot.highest.loadings(p,published.nozero,caption="Published F/RPKM")
 ```
              
 Try Anova on a "melted" expression matrix with some metadata, **Figure 1d**:
+
 ```{r:published anova}
 do_anova(published.nozero,sampleinfo_published,"ANOVA, published data")
 ```
@@ -471,21 +584,15 @@ pheatmap(cor(published.log),method="spearman")
 PCA analysis of log2 transformed published FPKM values, **Figure 2b**:
 
 ```{r:published log PCA 1&2}
-colors <- c("indianred", "dodgerblue", "forestgreen",
-            "indianred", "dodgerblue",
-            "indianred", "dodgerblue", "forestgreen", 
-            "indianred", "dodgerblue", "forestgreen")
-p.log <- prcomp(t(published.log))
-shapes <- c(rep(15,3),rep(16,2),rep(17,3),rep(8,3))
-plot(p.log$x[,1],p.log$x[,2],pch=shapes,col=colors,xlab=paste("PC1 31% of variance"),ylab=paste("PC2 27% of variance"),main="log2 Published FPKM/RPKM values \n n=13,323")
-legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+plot.pca.published(published.log,1,2,"log2")
+legend("left",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20)
 legend("top",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
 ```
 **Figure 2c**, PCs 2 and 3 for log transformed public data:
 
 ```{r:published log PCA 2&3}
-plot(p.log$x[,2],p.log$x[,3],pch=shapes,col=colors,xlab=paste("PC2 27% of variance"),ylab=paste("PC3 19% of variance"),main="log2 Published FPKM values \n n=13,323")
-legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
+plot.pca.published(published.log,2,3,"log2")
+legend("bottom",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20)
 legend("topright",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
 ```
 Cross-validation by leaving out one of the studies, in this case AltIso, **Figure 2d**: 
@@ -519,6 +626,7 @@ for (i in 1:6){
 Loadings for PCs 1-3 after taking logs (not shown in paper):
 
 ```{r:published log PC 1-3}
+p.log <- prcomp(t(published.log))
 plot.highest.loadings(p.log,published.log,caption="Published log F/RPKM")
 ```
 
@@ -563,19 +671,14 @@ pheatmap(cor(combat, method="spearman"))
 
 PCA analysis of published FPKM values after ComBat run, **Figure 3b**:
 ```{r:published log combat PCA}
-colors <- c("indianred", "dodgerblue", "forestgreen",
-            "indianred", "dodgerblue",
-            "indianred", "dodgerblue", "forestgreen", 
-            "indianred", "dodgerblue", "forestgreen")
-p.combat <- prcomp(t(combat))
-shapes <- c(rep(15,3),rep(16,2),rep(17,3),rep(8,3))
-plot(p.combat$x[,1],p.combat$x[,2],pch=shapes,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 38% of variance"),main="Published FPKM values \n COMBAT \n n=13,323")
-legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
-legend("topright",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
+plot.pca.published(combat,1,2,"COMBAT")
+legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20)
+legend("top",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,8),ncol=2)
 ```
 Loadings of PCs 1-3 after ComBat (not shown in paper):
 
 ```{r:published log combat PC 1-3}
+p.combat <- prcomp(t(combat))
 plot.highest.loadings(p.combat,combat,caption="Published ComBat adj log F/RPKM")
 ```
 
@@ -597,22 +700,17 @@ sampleinfo_cufflinks <- read.delim("sample_info_reprocessed.txt")
 First, we will restrict the data set to only include protein coding genes using the ensembl based R package biomaRt:
 
 ```{r:cufflinks filter protein coding}
-gene_ids <- as.vector(cufflinks[,1])
-ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl") #select the ensembl database
-gene_type <- getBM(attributes=c("ensembl_gene_id", "gene_biotype"), 
-                   filters = "ensembl_gene_id",
-                   values=gene_ids,
-                   mart=ensembl)
-pc <- subset(gene_type[,1],gene_type[,2]=="protein_coding")
-cufflinks_pc <- cufflinks[match(pc,cufflinks[,1]),]
+
+cufflinks_pc <- getPcs(cufflinks)
+
 ```
 
-Let's remove all lines where FPKM is close to zero in all samples before we proceed with this version of the data set:
+Let's remove all lines where the mean of FPKM is close to zero before we proceed with this version of the data set:
 
 ```{r:cufflinks filter zeros}
-cufflinks_pc_nozero <- cufflinks_pc[-which(rowSums(cufflinks_pc[,3:16])<=0.01),]
+cufflinks_pc_nozero <- cufflinks_pc[-which(rowMeans(cufflinks_pc[,3:16])<=0.01),]
 ```
-Heatmap of Spearman correlations between reprocessed expression profiles (# genes = 19,475), **Figure 4a**:
+Heatmap of Spearman correlations between reprocessed expression profiles (# genes = 18,175), **Figure 4a**:
 ```{r:cufflinks heatmap spearman}
 pheatmap(cor(cufflinks_pc_nozero[,3:16], method="spearman")) 
 ```
@@ -620,16 +718,11 @@ pheatmap(cor(cufflinks_pc_nozero[,3:16], method="spearman"))
 Let's look at a few PCA plots, **Figure 4b**:
 
 ```{r:cufflinks PCA}
+
 cufflinks_fpkms <- cufflinks_pc_nozero[,3:16]
 rownames(cufflinks_fpkms) <- cufflinks_pc_nozero[,1]
-p.cufflinks <- prcomp(t(cufflinks_fpkms))
-colors <- c("dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred")          
-shapes_cufflinks <- c(rep(11,3),rep(8,3),rep(17,3),rep(15,3),rep(16,2))
-plot(p.cufflinks$x[,1],p.cufflinks$x[,2],pch=shapes_cufflinks,col=colors,xlab=paste("PC1 87% of variance"),ylab=paste("PC2 7.7% of variance"),main="Reprocessed FPKM values \n n=19,475")
+plot.pca.reprocessed(cufflinks_fpkms,1,2,"")
+
 legend("bottomright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
@@ -655,6 +748,7 @@ for (i in 1:6){
 Look at PCA loadings for PC1-3 (not shown in paper):
 
 ```{r:cufflinks PC 1-3}
+p.cufflinks <- prcomp(t(cufflinks_fpkms))
 plot.highest.loadings(p.cufflinks,cufflinks_fpkms,caption="Cufflinks FPKM")    
 ```
 Mitochondrially encoded genes have relatively high expression levels, FPKM values of several thousands.
@@ -676,21 +770,16 @@ pheatmap(cor(cufflinks_log) ,method="spearman")
 ```
 PCA analysis of log2 reprocessed cufflinks FPKM values, **Figure 4e**:
 ```{r:cufflinks log PCA 1&2}
-colors <- c("dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred")          
-p.log.cufflinks <- prcomp(t(cufflinks_log))
-shapes_cufflinks <- c(rep(11,3),rep(8,3),rep(17,3),rep(15,3),rep(16,2))
-plot(p.log.cufflinks$x[,1],p.log.cufflinks$x[,2],pch=shapes_cufflinks,col=colors,xlab=paste("PC1 33% of variance"),ylab=paste("PC2 25% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
+
+plot.pca.reprocessed(cufflinks_log,1,2,"log2")
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
 **Figure 4f**:
 
 ```{r:cufflinks log PCA 2&3}
-plot(p.log.cufflinks$x[,2],p.log.cufflinks$x[,3],pch=shapes_cufflinks,col=colors,xlab=paste("PC2 25% of variance"),ylab=paste("PC3 22% of variance"),main="log2 reprocessed cufflinks FPKM values \n n=19,475")
+
+plot.pca.reprocessed(cufflinks_log,2,3,"log2")
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("topleft",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
@@ -725,6 +814,7 @@ legend("topleft",legend=c("HPA","GTEx","Atlas","AltIso"),col="black",pch=c(11,8,
 ```
 Loadings for PCs 1-3 for logged FPKM values from Cufflinks (not shown in paper):
 ```{r:cufflinks log PC 1-3}
+p.log.cufflinks <- prcomp(t(cufflinks_log))
 plot.highest.loadings(p.log.cufflinks,cufflinks_log,caption="Cufflinks log FPKM")
 ```
 To further validate the above results, indicating that tissue specificity appears mainly in PC 3, we will extract the 500 genes with highest loadings in each component and plot the corresponding cufflinks FPKM values in a heatmap (not shown in paper):
@@ -766,14 +856,15 @@ pheatmap(cor(combat.cufflinks),method="spearman")
 
 PCA analysis on reprocessed cufflinks FPKM values after ComBat run, **Figure 4i**:
 ```{r:cufflinks log combat PCA}
-p.combat.cufflinks <- prcomp(t(combat.cufflinks))
-shapes_cufflinks <- c(rep(11,3),rep(8,3),rep(17,3),rep(15,3),rep(16,2))
-plot(p.combat.cufflinks$x[,1],p.combat.cufflinks$x[,2],pch=shapes_cufflinks,col=colors,xlab=paste("PC1 54% of variance"),ylab=paste("PC2 37% of variance"),main="Cufflinks FPKM values \n COMBAT \n n=19,475")
+
+plot.pca.reprocessed(combat.cufflinks,1,2,"COMBAT")
+
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c(11,8,17,15,16),ncol=2)
 ```
 Loadings for PCs 1-3 in prcomp (not shown in paper):
 ```{r:cufflinks log combat PC 1-3}
+p.combat.cufflinks <- prcomp(t(combat.cufflinks))
 plot.highest.loadings(p.combat.cufflinks,combat.cufflinks,caption="Cufflinks ComBat adj log FPKM")
 ```
 Revisit ANOVA analysis on reprocessed Cufflinks FPKM values after ComBat run, **Figure 4j**:
@@ -829,7 +920,8 @@ legend("topright",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerb
 legend("bottom",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atlas-R", "GTeX-P","EoGE-P", "BodyMap-R"),col="black",pch=c(0,15,1,16,2,17,8,6,5),ncol=2)
 ```
 
-ANOVAs including quantification method (**Figure 4k**?).
+ANOVAs including quantification method (**Figure 4k-l**).
+
 ```{r}
 sampleinfo_cufflinks$quantification <- "topcuff"
 sampleinfo_published$quantification <- c(rep("topcuff",3),rep("custom_AltIso",2),rep("fluxcapacitor",3),rep("custom_Atlas",3))
@@ -841,9 +933,9 @@ do_anova(j, sampleinfo, caption="Joint analysis, raw F/RPKM", include.quant=T)
 do_anova(j.log, sampleinfo, caption="Joint analysis, log F/RPKM", include.quant=T)
 do_anova(combat.j, sampleinfo, caption="Joint analysis, ComBat adj log F/RPKM", include.quant=T)
 ```
-Analyses relating to Supplementary Figure X.
+Analyses relating to Supplementary Figure 1.
 --------------------------------------------
-Correlations between PCs 1 and 2 and various factors (Supplementary figure X).
+Correlations between PCs 1 and 2 and various factors (Supplementary figure 1).
 
 ```{r}
 print_PCA_corrs(published,sampleinfo_published,caption="Published F/RPKM")
@@ -858,151 +950,78 @@ print_PCA_corrs(j,sampleinfo,caption="Joint analysis, F/RPKM",include.quant=T)
 print_PCA_corrs(j.log,sampleinfo,caption="Joint analysis, log F/RPKM",include.quant=T)
 print_PCA_corrs(combat.j,sampleinfo,caption="Joint analysis, ComBat adj log F/RPKM",include.quant=T)
 ```
-Analyses relating to Supplementary Figure Y.
+Analyses relating to Supplementary Figure 2.
 --------------------------------------------
 Let's compare the FPKM distribution in the samples before and after merge
 
 ```{r:FPKM distribution for merged data vs non-merged data}
 
-#-----------DOWNLOAD DATA BEFORE MERGE-----------
 altIso_all <- read.delim("altiso_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 atlas_all <- read.delim("atlas_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 gtex_all <- read.delim("gtex_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 HPA_all <- read.delim("hpa_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 
-#filter out all protein coding genes from the non merged lists:
-
-ensembl = useMart("ensembl",dataset= "hsapiens_gene_ensembl")
-getPcs <- function(x) {
-            type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),filters = "ensembl_gene_id",values = x$ENSG_ID,mart = ensembl)
-            results <- x[which(type[,2]=="protein_coding"),]
-            return(results)
-          }
-
+colnames(altIso_all)[1] <- "ENSEMBL_ID"
 altIso_pc <- getPcs(altIso_all)
+
+colnames(atlas_all)[1] <- "ENSEMBL_ID"
 atlas_pc <- getPcs(atlas_all)
+
+colnames(gtex_all)[1] <- "ENSEMBL_ID"
 gtex_pc <- getPcs(gtex_all)
+
+colnames(HPA_all)[1] <- "ENSEMBL_ID"
 HPA_pc <- getPcs(HPA_all)
-
-
-#-----------DOWNLOAD MERGED DATA-----------
-merged_data <- read.delim("published_rpkms.txt",sep=" ")
-
-#-----------DOWNLOAD REPROCESSED DATA-----------
-reprocessed_data <- read.table("fpkm_table_tophat.txt",sep="\t",header=T)
-ensembl = useMart("ensembl",dataset= "hsapiens_gene_ensembl")
-getPcs <- function(x) {
-            type <- getBM(attributes=c("ensembl_gene_id","gene_biotype"),filters = "ensembl_gene_id",values = x$ENSEMBL_ID,mart = ensembl)
-            results <- x[which(type[,2]=="protein_coding"),]
-            return(results)
-          }
-
-reprocessed_data_pc <- getPcs(reprocessed_data)
-
-#-----------ADJUST DATA-----------
-get_data <- function(x,y,z,k) {
-  
-  if(k==1){
-    if(y=="heart"){
-              data <- data.frame(x[grep("heart", names(x), value = TRUE)])
-              }
-            else if(y=="brain"){
-                data <- data.frame(x[grep("brain", names(x), value = TRUE)])
-              }
-            else{
-              data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
-            }
-            colnames(data) <- "FPKM"
-            data$study <- z
-            return(data)
-  }
-  #om det är det mergade datat:
-  else if(k==2){
-    if(y=="heart"){
-              tissue_data <- data.frame(x[grep("heart", names(x), value = TRUE)])
-              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
-              }
-            else if(y=="brain"){
-                tissue_data <- data.frame(x[grep("brain", names(x), value = TRUE)])
-                data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
-              }
-            else{
-              tissue_data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
-              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
-            }
-            colnames(data) <- "FPKM"
-            data$study <- z
-            return(data)
-  }
-  }
-           
+                                  
 #-----------NON-MERGED DATA-----------
-all_altIso_heart <- get_data(altIso_pc,"heart","AltIso",1)
-all_atlas_heart <- get_data(atlas_pc,"heart","atlas",1)
-all_gtex_heart <- get_data(gtex_pc,"heart","gtex",1)
-all_HPA_heart <- get_data(HPA_pc,"heart","HPA",1)
+all_altIso_heart <- distr_data(altIso_pc,"heart","AltIso",1)
+all_atlas_heart <- distr_data(atlas_pc,"heart","Atlas",1)
+all_gtex_heart <- distr_data(gtex_pc,"heart","gtex",1)
+all_HPA_heart <- distr_data(HPA_pc,"heart","HPA",1)
 
-all_altIso_brain <- get_data(altIso_pc,"brain","AltIso",1)
-all_atlas_brain <- get_data(atlas_pc,"brain","atlas",1)
-all_gtex_brain <- get_data(gtex_pc,"brain","gtex",1)
-all_HPA_brain <- get_data(HPA_pc,"brain","HPA",1)
+all_altIso_brain <- distr_data(altIso_pc,"brain","AltIso",1)
+all_atlas_brain <- distr_data(atlas_pc,"brain","Atlas",1)
+all_gtex_brain <- distr_data(gtex_pc,"brain","gtex",1)
+all_HPA_brain <- distr_data(HPA_pc,"brain","HPA",1)
 
-all_atlas_kidney <- get_data(atlas_pc,"kidney","atlas",1)
-all_gtex_kidney <- get_data(gtex_pc,"kidney","gtex",1)
-all_HPA_kidney <- get_data(HPA_pc,"kidney","HPA",1)
+all_atlas_kidney <- distr_data(atlas_pc,"kidney","Atlas",1)
+all_gtex_kidney <- distr_data(gtex_pc,"kidney","gtex",1)
+all_HPA_kidney <- distr_data(HPA_pc,"kidney","HPA",1)
 
 #-----------MERGED DATA-----------
-merg_altIso_heart <- get_data(altIso_pc,"heart","AltIso",2)
-merg_atlas_heart <- get_data(atlas_pc,"heart","Atlas",2)
-merg_gtex_heart <- get_data(gtex_pc,"heart","GTEx",2)
-merg_HPA_heart <- get_data(HPA_pc,"heart","HPA",2)
 
-merg_altIso_brain <- get_data(altIso_pc,"brain","AltIso",2)
-merg_atlas_brain <- get_data(atlas_pc,"brain","Atlas",2)
-merg_gtex_brain <- get_data(gtex_pc,"brain","GTEx",2)
-merg_HPA_brain <- get_data(HPA_pc,"brain","HPA",2)
+merg_altIso_heart <- distr_data(published.nozero,"heart","AltIso",2)
+merg_atlas_heart <- distr_data(published.nozero,"heart","Atlas",2)
+merg_gtex_heart <- distr_data(published.nozero,"heart","GTEx",2)
+merg_HPA_heart <- distr_data(published.nozero,"heart","HPA",2)
 
-merg_atlas_kidney <- get_data(atlas_pc,"kidney","Atlas",2)
-merg_gtex_kidney <- get_data(gtex_pc,"kidney","GTEx",2)
-merg_HPA_kidney <- get_data(HPA_pc,"kidney","HPA",2)
+merg_altIso_brain <- distr_data(published.nozero,"brain","AltIso",2)
+merg_atlas_brain <- distr_data(published.nozero,"brain","Atlas",2)
+merg_gtex_brain <- distr_data(published.nozero,"brain","GTEx",2)
+merg_HPA_brain <- distr_data(published.nozero,"brain","HPA",2)
+
+merg_atlas_kidney <- distr_data(published.nozero,"kidney","Atlas",2)
+merg_gtex_kidney <- distr_data(published.nozero,"kidney","GTEx",2)
+merg_HPA_kidney <- distr_data(published.nozero,"kidney","HPA",2)
 
 #--------------RE-PROCESSED DATA-----------------------------
 
-get_data <- function(x,y,z) {
-    if(y=="heart"){
-              tissue_data <- data.frame(x[grep("heart", names(x), value = TRUE)])
-              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
-              }
-            else if(y=="brain"){
-                tissue_data <- data.frame(x[grep("brain", names(x), value = TRUE)])
-                data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
-              }
-            else{
-              tissue_data <- data.frame(x[grep("kidney", names(x), value = TRUE)])
-              data <- data.frame(tissue_data[grep(z, names(tissue_data), value = TRUE)])
-            }
-            colnames(data) <- "FPKM"
-            data$study <- paste(z,"_repr.",sep ="")
-            return(data)
-  }
-  
+repr_altIso_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","AltIso")
+repr_atlas_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","Atlas")
+repr_Bodymap_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","BodyMap")
+repr_EoGE_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","EoGE")
+repr_HPA_heart <- distr_data_repr(cufflinks_pc_nozero,"heart","HPA")
 
-repr_altIso_heart <- get_data(reprocessed_data_pc,"heart","AltIso")
-repr_atlas_heart <- get_data(reprocessed_data_pc,"heart","Atlas")
-repr_Bodymap_heart <- get_data(reprocessed_data_pc,"heart","BodyMap")
-repr_EoGE_heart <- get_data(reprocessed_data_pc,"heart","EoGE")
-repr_HPA_heart <- get_data(reprocessed_data_pc,"heart","HPA")
+repr_altIso_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","AltIso")
+repr_atlas_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","Atlas")
+repr_Bodymap_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","BodyMap")
+repr_EoGE_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","EoGE")
+repr_HPA_brain <- distr_data_repr(cufflinks_pc_nozero,"brain","HPA")
 
-repr_altIso_brain <- get_data(reprocessed_data_pc,"brain","AltIso")
-repr_atlas_brain <- get_data(reprocessed_data_pc,"brain","Atlas")
-repr_Bodymap_brain <- get_data(reprocessed_data_pc,"brain","BodyMap")
-repr_EoGE_brain <- get_data(reprocessed_data_pc,"brain","EoGE")
-repr_HPA_brain <- get_data(reprocessed_data_pc,"brain","HPA")
-
-repr_atlas_kidney <- get_data(reprocessed_data_pc,"kidney","Atlas")
-repr_Bodymap_kidney <- get_data(reprocessed_data_pc,"kidney","BodyMap")
-repr_EoGE_kidney <- get_data(reprocessed_data_pc,"kidney","EoGE")
-repr_HPA_kidney <- get_data(reprocessed_data_pc,"kidney","HPA")
+repr_atlas_kidney <- distr_data_repr(cufflinks_pc_nozero,"kidney","Atlas")
+repr_Bodymap_kidney <- distr_data_repr(cufflinks_pc_nozero,"kidney","BodyMap")
+repr_EoGE_kidney <- distr_data_repr(cufflinks_pc_nozero,"kidney","EoGE")
+repr_HPA_kidney <- distr_data_repr(cufflinks_pc_nozero,"kidney","HPA")
 
 #--------------PLOT DISTRIBUTIONS NON-MERGED DATA-----------------------------
 
@@ -1029,12 +1048,10 @@ kidney_data_beforemerge <- rbind(all_atlas_kidney,
                                  all_HPA_kidney)
 
 
-
 ggplot(all_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 ggplot(brain_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 ggplot(heart_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 ggplot(kidney_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-
 
 #--------------PLOT DISTRIBUTIONS MERGED DATA-----------------------------
 merg_altiso <- rbind(merg_altIso_brain,merg_altIso_heart)
@@ -1043,7 +1060,6 @@ merg_gtex <- rbind(merg_gtex_brain,merg_gtex_heart,merg_gtex_kidney)
 merg_hpa <- rbind(merg_HPA_brain,merg_HPA_heart,merg_HPA_kidney)
 
 merged_data <- rbind(merg_altiso,merg_atlas,merg_gtex,merg_hpa)
-
 brain_data_merged <- rbind(merg_altIso_brain,
                            merg_atlas_brain,
                            merg_gtex_brain,
@@ -1073,7 +1089,6 @@ repr_BodyMap <- rbind(repr_Bodymap_brain,repr_Bodymap_heart,repr_Bodymap_kidney)
 repr_EoGE <- rbind(repr_EoGE_brain,repr_EoGE_heart,repr_EoGE_kidney)
 repr_HPA <- rbind(repr_HPA_brain,repr_HPA_heart,repr_HPA_kidney)
 
-
 repr_data <- rbind(repr_altiso,repr_atlas,repr_BodyMap,repr_EoGE,repr_HPA)
 
 brain_data_repr <- rbind(repr_altIso_brain,
@@ -1098,4 +1113,19 @@ ggplot(brain_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha 
 ggplot(heart_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
 
+```
+
+Quantile normalization
+
+```{r:quantile normalization}
+
+published.qn <- quantile_normalisation(published.nozero)
+published.log.qn <- quantile_normalisation(published.log)
+
+
+plot.pca.published(published.qn,1,2,"Quantile normalized")
+plot.pca.published(published.qn,2,3,"Quantile normalized")
+
+plot.pca.published(published.log.qn,1,2,"Quantile normalized log2")
+plot.pca.published(published.log.qn,2,3,"Quantile normalized log2")
 
