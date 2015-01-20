@@ -597,6 +597,11 @@ legend("topright",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,1
 Cross-validation by leaving out one of the studies, in this case AltIso, **Figure 2d**: 
 
 ```{r:leave-one-out-pca}
+colors <- c("indianred","dodgerblue","forestgreen",
+            "indianred","dodgerblue","indianred",
+            "dodgerblue","forestgreen", "indianred", 
+            "dodgerblue", "forestgreen")
+
 p.loo <- published.log[,-c(4,5)]
 colors.loo <- colors[-c(4,5)]
 p.loo.log <- prcomp(t(p.loo))
@@ -607,19 +612,6 @@ col.original.plus.new <- c(colors.loo, colors[c(4,5)])
 plot(p.original.plus.new[,2],p.original.plus.new[,3],pch=c(rep(15,3),rep(17,3),rep(8,3),rep(22,nrow(projection))),col=col.original.plus.new,xlab="PC2",ylab="PC3",main="log2 Published FPKM/RPKM values; AltIso projected onto existing PCs \n n=13,323",xlim=c(-150,100))
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("top",legend=c("HPA","GTEx","Atlas","AltIso"),col="black",pch=c(15,17,8,22),ncol=2)
-```
-
-In order to convince ourselves that there is no obviously superior combination of PCs, can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
-
-```{r:published log PCA pairwise}
-par(mfrow=c(4,4))
-for (i in 1:6){
-  for(j in 1:6){
-    if (i<j){ 
-		plot(p.log$x[,i],p.log$x[,j],pch=shapes,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="log2 Published FPKM values \n n=13323")
-		}
-	}
-}
 ```
 
 Loadings for PCs 1-3 after taking logs (not shown in paper):
@@ -924,14 +916,30 @@ Let's compare the FPKM distribution in the samples before and after merge
 ```{r:FPKM distribution for merged data vs non-merged data}
 
 altIso_all <- read.delim("altiso_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
-atlas_all <- read.delim("atlas_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 gtex_all <- read.delim("gtex_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 HPA_all <- read.delim("hpa_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
+
+#Atlas requires a little bit of extra work:
+atlas <- read.delim("atlas_fpkms_all.txt",sep="\t",stringsAsFactors=FALSE)
+library(org.Hs.eg.db)
+library(data.table)
+m <- org.Hs.egENSEMBL
+mapped_genes <- mappedkeys(m)
+ensg.for.entrez <- as.list(m[mapped_genes])
+remapped.ensg <- ensg.for.entrez[as.character(atlas$entrez_gene_id)]
+atlas$remapped_ensg <- as.character(remapped.ensg)
+
+# And add expression values
+data.dt <- data.table(atlas[,6:ncol(atlas)])
+setkey(data.dt, remapped_ensg)
+temp <- data.dt[, lapply(.SD, sum), by=remapped_ensg]
+collapsed <- as.data.frame(temp)
+atlas_all <- collapsed[,c("remapped_ensg","hypothalamus","heart","kidney")]
 
 colnames(altIso_all)[1] <- "ENSEMBL_ID"
 altIso_pc <- getPcs(altIso_all)
 
-colnames(atlas_all)[1] <- "ENSEMBL_ID"
+colnames(atlas_all)[c(1:2)] <- c("ENSEMBL_ID","brain")
 atlas_pc <- getPcs(atlas_all)
 
 colnames(gtex_all)[1] <- "ENSEMBL_ID"
@@ -1015,10 +1023,14 @@ kidney_data_beforemerge <- rbind(all_atlas_kidney,
                                  all_HPA_kidney)
 
 
-ggplot(all_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-ggplot(brain_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-ggplot(heart_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-ggplot(kidney_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+ggplot(all_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
+
+ggplot(brain_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+ggplot(heart_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+ggplot(kidney_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 #--------------PLOT DISTRIBUTIONS MERGED DATA-----------------------------
 merg_altiso <- rbind(merg_altIso_brain,merg_altIso_heart)
@@ -1043,10 +1055,10 @@ kidney_data_merged <- rbind(merg_atlas_kidney,
 
 
 
-ggplot(merged_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0,7) + theme_bw()
-ggplot(brain_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-ggplot(heart_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-ggplot(kidney_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(merged_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggplot(brain_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggplot(heart_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggplot(kidney_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 #--------------PLOT DISTRIBUTIONS  DATA-----------------------------
 
@@ -1075,10 +1087,10 @@ kidney_data_repr <- rbind(repr_atlas_kidney,
                            repr_EoGE_kidney,
                            repr_HPA_kidney)
 
-ggplot(repr_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0,7) + theme_bw()
-ggplot(brain_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-ggplot(heart_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
-ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(repr_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggplot(brain_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggplot(heart_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 ```
 
