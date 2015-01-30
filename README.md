@@ -80,7 +80,7 @@ library(ggplot2)
 ```
 Function definitions
 --------------------
-Define functions for (a) Principle component analysis for published and reprocessed data, (b) computing and plotting p-values for correlations between PCA scores and various sample features and (c) quantifying and plotting the importance of various sample features using ANOVA.
+Define functions for (a) Principle component analysis for published and reprocessed data (b) Restricting the data to only include protein coding genes (c) computing and plotting p-values for correlations between PCA scores and various sample features and (d) quantifying and plotting the importance of various sample features using ANOVA.
 
 **Principal component analysis.**
 
@@ -300,7 +300,7 @@ plot.highest.loadings <- function(p, fpkm.table, caption="Highest loading"){
      }
 }
 ```
-**Function for adjusting data before distribution plots with ggplot.**
+**Function for adjusting data for distribution plots with ggplot.**
 
 ```r
 distr_data <- function(x,y,z,k) {
@@ -339,7 +339,7 @@ distr_data <- function(x,y,z,k) {
   }
   }
 ```
-**Function for adjusting data before distribution plots with ggplot, for re-processed data.**
+**Function for adjusting data for distribution plots with ggplot, for re-processed data.**
 
 
 ```r
@@ -631,24 +631,7 @@ library(org.Hs.eg.db) # for transferring gene identifiers
 ```r
 library(data.table) # for collapsing transcript RPKMs
 library(pheatmap) # for nicer visualization
-library(edgeR) # for TMM normalization
-```
 
-```
-## Warning: package 'edgeR' was built under R version 3.1.2
-```
-
-```
-## Loading required package: limma
-## 
-## Attaching package: 'limma'
-## 
-## The following object is masked from 'package:BiocGenerics':
-## 
-##     plotMA
-```
-
-```r
 #hpa.fpkms <- read.delim("hpa_fpkms.txt")
 #altiso.fpkms <- read.delim("altiso_fpkms.txt")
 #gtex.fpkms <- read.delim("gtex_fpkms.txt")
@@ -773,7 +756,7 @@ legend("top",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,
 ```
 
 ![plot of chunk :published PCA](figure/:published PCA-1.png) 
-Look a bit closer at PCs 1-3 in prcomp (not shown in paper):
+Look a bit closer at PCs 1-3 in prcomp and the genes that have the highest loadings (not shown in paper):
 
 ```r
 p <- prcomp(t(published.nozero))
@@ -907,7 +890,7 @@ plot.highest.loadings(p,published.nozero,caption="Published F/RPKM")
 ## ENSG00000071082     378.917     484.379      259.057
 ## ENSG00000106211      61.190       6.808       17.175
 ```
-             
+
 Try Anova on a "melted" expression matrix with some metadata, **Figure 1d**:
 
 
@@ -947,7 +930,7 @@ legend("top",legend=c("HPA","AltIso","GTEx","Atlas"),col="black",pch=c(15,16,17,
 ```
 
 ![plot of chunk :published log PCA 1&2](figure/:published log PCA 1&2-1.png) 
-**Figure 2c**, PCs 2 and 3 for log transformed public data:
+PCA analysis of log2 transformed published FPKM values, PC 2 and 3, **Figure 2c**:
 
 
 ```r
@@ -961,58 +944,24 @@ Cross-validation by leaving out one of the studies, in this case AltIso, **Figur
 
 
 ```r
+colors <- c("indianred","dodgerblue","forestgreen",
+            "indianred","dodgerblue","indianred",
+            "dodgerblue","forestgreen", "indianred", 
+            "dodgerblue", "forestgreen")
+
 p.loo <- published.log[,-c(4,5)]
 colors.loo <- colors[-c(4,5)]
-```
-
-```
-## Error in colors[-c(4, 5)]: object of type 'closure' is not subsettable
-```
-
-```r
 p.loo.log <- prcomp(t(p.loo))
 p.add <- published.log[,c(4,5)]
 projection <- t(p.add) %*% p.loo.log$rotation
 p.original.plus.new <- rbind(p.loo.log$x, projection)
 col.original.plus.new <- c(colors.loo, colors[c(4,5)])
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'colors.loo' not found
-```
-
-```r
 plot(p.original.plus.new[,2],p.original.plus.new[,3],pch=c(rep(15,3),rep(17,3),rep(8,3),rep(22,nrow(projection))),col=col.original.plus.new,xlab="PC2",ylab="PC3",main="log2 Published FPKM/RPKM values; AltIso projected onto existing PCs \n n=13,323",xlim=c(-150,100))
-```
-
-```
-## Error in plot.xy(xy, type, ...): object 'col.original.plus.new' not found
-```
-
-```r
 legend("bottomleft",legend=c("Heart","Brain","Kidney"),col=c("indianred", "dodgerblue", "forestgreen"),cex=1.5,pch=20,bty="n")
 legend("top",legend=c("HPA","GTEx","Atlas","AltIso"),col="black",pch=c(15,17,8,22),ncol=2)
 ```
 
 ![plot of chunk :leave-one-out-pca](figure/:leave-one-out-pca-1.png) 
-
-In order to convince ourselves that there is no obviously superior combination of PCs, can plot all pairwise combinations of principal components 1 to 5. (not shown in paper):
-
-
-```r
-par(mfrow=c(4,4))
-for (i in 1:6){
-  for(j in 1:6){
-    if (i<j){ 
-		plot(p.log$x[,i],p.log$x[,j],pch=shapes,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="log2 Published FPKM values \n n=13323")
-		}
-	}
-}
-```
-
-```
-## Error in plot(p.log$x[, i], p.log$x[, j], pch = shapes, col = colors, : error in evaluating the argument 'x' in selecting a method for function 'plot': Error: object 'p.log' not found
-```
 
 Loadings for PCs 1-3 after taking logs (not shown in paper):
 
@@ -1150,37 +1099,7 @@ plot.highest.loadings(p.log,published.log,caption="Published log F/RPKM")
 ## ENSG00000148677  11.9161071  0.48851501    0.3368546
 ```
 
-To further validate the above results, indicating that tissue specificity appears mainly in PC 2 and 3, we will extract the 500 genes with highest loadings in each component and plot the corresponding published FPKM values in a heatmap (not shown in paper):
-
-
-```r
-     load.pc1 <- abs(p.log$rotation[,1])[order(abs(p.log$rotation[,1]),decreasing=TRUE)]
-     top.pc1 <- names(load.pc1[1:500]) 
-
-     load.pc2 <- abs(p.log$rotation[,2])[order(abs(p.log$rotation[,2]),decreasing=TRUE)]
-     top.pc2 <- names(load.pc2[1:500])
-
-     load.pc3 <- abs(p.log$rotation[,3])[order(abs(p.log$rotation[,3]),decreasing=TRUE)]
-     top.pc3 <- names(load.pc3[1:500])
-
-     pheatmap(cor(published[top.pc1,]),method="spearman")
-```
-
-![plot of chunk :published log top 500 loadings heatmap](figure/:published log top 500 loadings heatmap-1.png) 
-
-```r
-     pheatmap(cor(published[top.pc2,]),method="spearman")
-```
-
-![plot of chunk :published log top 500 loadings heatmap](figure/:published log top 500 loadings heatmap-2.png) 
-
-```r
-     pheatmap(cor(published[top.pc3,]),method="spearman")
-```
-
-![plot of chunk :published log top 500 loadings heatmap](figure/:published log top 500 loadings heatmap-3.png) 
-
-Perform Anova on logged values to estimate influence of different sample properties (**Figure 2e**):
+Perform Anova on logged values to estimate influence of different sample properties, **Figure 2e**:
 
 
 ```r
@@ -1192,10 +1111,11 @@ do_anova(published.log,sampleinfo_published,"ANOVA, published data (log)")
 ```
 
 ![plot of chunk :published log anova](figure/:published log anova-1.png) 
+
 Analyses relating to Figure 3
 -----------------------------
 
-Combat analysis is performed on log2 values (n=13,323):
+Combat analysis is performed on log2 F/RPKM values (n=13,078):
 
 
 ```r
@@ -1213,7 +1133,7 @@ combat <- ComBat(dat=published.log,batch=batch,mod=design,numCovs=NULL,par.prior
 ## Finding parametric adjustments
 ## Adjusting the Data
 ```
-Heatmap of Spearman correlations between published expression profiles after combat run (# genes = 13,323), **Figure 3a**:
+Heatmap of Spearman correlations between published expression profiles after combat run (# genes = 13,078), **Figure 3a**:
 
 
 ```r
@@ -1379,12 +1299,14 @@ do_anova(combat, sampleinfo_published, caption="ANOVA, ComBat adj log F/RPKM")
 ```
 
 ![plot of chunk :published log combat anova](figure/:published log combat anova-1.png) 
-Analyses relating to Figure 4 (data consistently reprocessed from FASTQ)
-------------------------------------------------------------------------
 
-All of the preceding analysis was for studies with published F/RPKM values.
-We now turn to FPKMs for FASTQ files reprocessed with TopHat and Cufflinks:
+Analyses relating to Figure 4 (data consistently reprocessed from FASTQ):
+--------------------------------------------------------------------------
 
+All of the preceding analysis was for studies with published F/RPKM values,
+we now turn to FPKMs for FASTQ files reprocessed with TopHat and Cufflinks.
+
+Download the data and sample descriptions from local files:
 
 ```r
 cufflinks <- read.delim("fpkm_table_tophat.txt")
@@ -1411,7 +1333,7 @@ pheatmap(cor(cufflinks_pc_nozero[,3:16], method="spearman"))
 
 ![plot of chunk :cufflinks heatmap spearman](figure/:cufflinks heatmap spearman-1.png) 
 
-Let's look at a few PCA plots, **Figure 4b**:
+Let's look at a few PCA plots, first PC 1 & 2, **Figure 4b**:
 
 
 ```r
@@ -1425,30 +1347,7 @@ legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c
 
 ![plot of chunk :cufflinks PCA](figure/:cufflinks PCA-1.png) 
 
-All pairwise combinations of principal components 1 to 5 (not shown in paper):
-
-
-```r
-colors <- c("dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred", "forestgreen",
-            "dodgerblue", "indianred")
-par(mfrow=c(4,4))
-for (i in 1:6){
-  for(j in 1:6){
-    if (i<j){ 
-      plot(p.cufflinks$x[,i],p.cufflinks$x[,j],pch=shapes_cufflinks,col=colors,xlab=paste("PC",i),ylab=paste("PC",j),main="Cufflinks FPKM values \n n=19475")
-		}
-	}
-}
-```
-
-```
-## Error in plot(p.cufflinks$x[, i], p.cufflinks$x[, j], pch = shapes_cufflinks, : error in evaluating the argument 'x' in selecting a method for function 'plot': Error: object 'p.cufflinks' not found
-```
-
-Look at PCA loadings for PC1-3 (not shown in paper):
+Look at PCA loadings for PCs 1-3 (not shown in paper):
 
 
 ```r
@@ -1622,7 +1521,6 @@ plot.highest.loadings(p.cufflinks,cufflinks_fpkms,caption="Cufflinks FPKM")
 ## ENSG00000175206  3.20302e+00      737.390
 ## ENSG00000106631  0.00000e+00      851.308
 ```
-Mitochondrially encoded genes have relatively high expression levels, FPKM values of several thousands.
 
 Anova analysis of different sample properties, **Figure 4c**:
 
@@ -1642,6 +1540,7 @@ Try log2 transformation of the reprocessed FPKM values:
 pseudo <- 1
 cufflinks_log <- log2(cufflinks_fpkms + pseudo)
 ```
+
 Heatmap of Spearman correlations between log2 reprocessed cufflinks FPKM values, **Figure 4d**:
 
 
@@ -1650,7 +1549,7 @@ pheatmap(cor(cufflinks_log) ,method="spearman")
 ```
 
 ![plot of chunk :cufflinks log heatmap spearman](figure/:cufflinks log heatmap spearman-1.png) 
-PCA analysis of log2 reprocessed cufflinks FPKM values, **Figure 4e**:
+PCA analysis of log2 reprocessed cufflinks FPKM values, PCs 1&2, **Figure 4e**:
 
 ```r
 plot.pca.reprocessed(cufflinks_log,1,2,"log2")
@@ -1659,8 +1558,7 @@ legend("top",legend=c("EoGE","Atlas","BodyMap","HPA","AltIso"),col="black",pch=c
 ```
 
 ![plot of chunk :cufflinks log PCA 1&2](figure/:cufflinks log PCA 1&2-1.png) 
-**Figure 4f**:
-
+PCA analysis of log2 reprocessed cufflinks FPKM values, PCs 2&3, **Figure 4f**:
 
 ```r
 plot.pca.reprocessed(cufflinks_log,2,3,"log2")
@@ -1957,8 +1855,7 @@ pheatmap(cor(combat.cufflinks),method="spearman")
 ```
 
 ![plot of chunk :cufflinks log combat heatmap spearman](figure/:cufflinks log combat heatmap spearman-1.png) 
-
-PCA analysis on reprocessed cufflinks FPKM values after ComBat run, **Figure 4i**:
+PCA analysis on reprocessed cufflinks FPKM values after ComBat run, PCs 1&2, **Figure 4i**:
 
 ```r
 plot.pca.reprocessed(combat.cufflinks,1,2,"COMBAT")
@@ -2152,7 +2049,9 @@ do_anova(combat.cufflinks,sampleinfo_cufflinks,caption="ANOVA, Cufflinks ComBat 
 ```
 
 ![plot of chunk :cufflinks log combat anova](figure/:cufflinks log combat anova-1.png) 
+
 Perform a joint analysis of both published and reprocessed data to try to quantify the influence of using different bioinformatics pipelines.
+
 
 ```r
 j <- merge(published.nozero, cufflinks_pc_nozero, by.x=0, by.y="ENSEMBL_ID")
@@ -2231,7 +2130,7 @@ legend("bottom",legend=c("HPA-P","HPA-R","AltIso-P","AltIso-R", "Atlas-P", "Atla
 
 ![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-17-1.png) 
 
-ANOVAs including quantification method (**Figure 4k-l**).
+ANOVAs including quantification method, (**Figure 4k-l**).
 
 
 ```r
@@ -2522,14 +2421,30 @@ Let's compare the FPKM distribution in the samples before and after merge
 
 ```r
 altIso_all <- read.delim("altiso_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
-atlas_all <- read.delim("atlas_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 gtex_all <- read.delim("gtex_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
 HPA_all <- read.delim("hpa_fpkms.txt",sep="\t",stringsAsFactors=FALSE)
+
+#Atlas requires a little bit of extra work:
+atlas <- read.delim("atlas_fpkms_all.txt",sep="\t",stringsAsFactors=FALSE)
+library(org.Hs.eg.db)
+library(data.table)
+m <- org.Hs.egENSEMBL
+mapped_genes <- mappedkeys(m)
+ensg.for.entrez <- as.list(m[mapped_genes])
+remapped.ensg <- ensg.for.entrez[as.character(atlas$entrez_gene_id)]
+atlas$remapped_ensg <- as.character(remapped.ensg)
+
+# And add expression values
+data.dt <- data.table(atlas[,6:ncol(atlas)])
+setkey(data.dt, remapped_ensg)
+temp <- data.dt[, lapply(.SD, sum), by=remapped_ensg]
+collapsed <- as.data.frame(temp)
+atlas_all <- collapsed[,c("remapped_ensg","hypothalamus","heart","kidney")]
 
 colnames(altIso_all)[1] <- "ENSEMBL_ID"
 altIso_pc <- getPcs(altIso_all)
 
-colnames(atlas_all)[1] <- "ENSEMBL_ID"
+colnames(atlas_all)[c(1:2)] <- c("ENSEMBL_ID","brain")
 atlas_pc <- getPcs(atlas_all)
 
 colnames(gtex_all)[1] <- "ENSEMBL_ID"
@@ -2613,7 +2528,8 @@ kidney_data_beforemerge <- rbind(all_atlas_kidney,
                                  all_HPA_kidney)
 
 
-ggplot(all_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+
+ggplot(all_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
 ```
 
 ```
@@ -2621,7 +2537,7 @@ ggplot(all_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(a
 ```
 
 ```
-## Warning: Removed 51 rows containing non-finite values (stat_density).
+## Warning: Removed 506 rows containing non-finite values (stat_density).
 ```
 
 ```
@@ -2635,7 +2551,7 @@ ggplot(all_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(a
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-1.png) 
 
 ```r
-ggplot(brain_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(brain_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2643,7 +2559,7 @@ ggplot(brain_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density
 ```
 
 ```
-## Warning: Removed 17 rows containing non-finite values (stat_density).
+## Warning: Removed 181 rows containing non-finite values (stat_density).
 ```
 
 ```
@@ -2657,7 +2573,7 @@ ggplot(brain_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-2.png) 
 
 ```r
-ggplot(heart_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(heart_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2665,7 +2581,7 @@ ggplot(heart_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density
 ```
 
 ```
-## Warning: Removed 25 rows containing non-finite values (stat_density).
+## Warning: Removed 209 rows containing non-finite values (stat_density).
 ```
 
 ```
@@ -2679,11 +2595,11 @@ ggplot(heart_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-3.png) 
 
 ```r
-ggplot(kidney_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(kidney_data_beforemerge, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
-## Warning: Removed 9 rows containing non-finite values (stat_density).
+## Warning: Removed 116 rows containing non-finite values (stat_density).
 ```
 
 ```
@@ -2720,7 +2636,7 @@ kidney_data_merged <- rbind(merg_atlas_kidney,
 
 
 
-ggplot(merged_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0,7) + theme_bw()
+ggplot(merged_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2742,7 +2658,7 @@ ggplot(merged_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-5.png) 
 
 ```r
-ggplot(brain_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(brain_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2764,7 +2680,7 @@ ggplot(brain_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alph
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-6.png) 
 
 ```r
-ggplot(heart_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(heart_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2786,7 +2702,7 @@ ggplot(heart_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alph
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-7.png) 
 
 ```r
-ggplot(kidney_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(kidney_data_merged, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2831,7 +2747,7 @@ kidney_data_repr <- rbind(repr_atlas_kidney,
                            repr_EoGE_kidney,
                            repr_HPA_kidney)
 
-ggplot(repr_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0,7) + theme_bw()
+ggplot(repr_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2857,7 +2773,7 @@ ggplot(repr_data, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2)
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-9.png) 
 
 ```r
-ggplot(brain_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(brain_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2883,7 +2799,7 @@ ggplot(brain_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha 
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-10.png) 
 
 ```r
-ggplot(heart_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(heart_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2909,7 +2825,7 @@ ggplot(heart_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha 
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-11.png) 
 
 ```r
-ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2) + xlim(0, 7) + theme_bw()
+ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha = 0.2,size=0.6) + xlim(0, 7) + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 ```
@@ -2930,25 +2846,22 @@ ggplot(kidney_data_repr, aes(log2(FPKM+1), colour = study)) + geom_density(alpha
 
 ![plot of chunk :FPKM distribution for merged data vs non-merged data](figure/:FPKM distribution for merged data vs non-merged data-12.png) 
 
+Analyses relating to Supplementary Figure 3.
+
 
 ```r
-#pdf("Boxplot_distributions_published.pdf")
-boxplot(published,outline=F,las=2,main="F/RPKM distributions, published data\n(Outliers not shown for clarity)",cex.axis=0.8)
+boxplot(published.nozero,outline=F,las=2,main="F/RPKM distributions, published data\n(Outliers not shown for clarity)",cex.axis=0.8)
 ```
 
 ![plot of chunk :published-data-distributions](figure/:published-data-distributions-1.png) 
 
-```r
-#dev.off()
-```
-
+Analyses relating to Supplementary Figure 4.
 Quantile normalization
 
 
 ```r
 published.qn <- quantile_normalisation(published.nozero)
 published.log.qn <- quantile_normalisation(published.log)
-
 
 plot.pca.published(published.qn,1,2,"Quantile normalized")
 ```
